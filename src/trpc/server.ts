@@ -15,6 +15,9 @@ import { appRouter, type AppRouter } from "~/server/api/root";
 import { createTRPCContext } from "~/server/api/trpc";
 import { transformer } from "./shared";
 
+import { getAuth } from "@clerk/nextjs/server";
+import { NextRequest } from "next/server";
+
 /**
  * This wraps the `createTRPCContext` helper and provides the required context for the tRPC API when
  * handling a tRPC call from a React Server Component.
@@ -25,6 +28,9 @@ const createContext = cache(() => {
 
   return createTRPCContext({
     headers: heads,
+    auth: getAuth(
+      new NextRequest(getBaseUrl(), { headers: headers() }),
+    ),
   });
 });
 
@@ -63,3 +69,10 @@ export const api = createTRPCProxyClient<AppRouter>({
         }),
   ],
 });
+
+function getBaseUrl() {
+  if (typeof window !== "undefined") return window.location.origin;
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return `http://localhost:${process.env.PORT ?? 3000}`;
+}
