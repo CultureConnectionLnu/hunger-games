@@ -5,6 +5,7 @@ import {
   pgTableCreator,
   serial,
   timestamp,
+  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -51,3 +52,12 @@ export const userRoles = createTable(
     roleIndex: index("role_idx").on(userRoles.role),
   }),
 );
+
+export const match = createTable( 'match', {
+    id: uuid('id').primaryKey().defaultRandom(),
+    type: varchar('type', { length: 255 }).notNull(),
+    winner: varchar('winner', { length: 255 }),
+    createdAt: timestamp("created_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+});
