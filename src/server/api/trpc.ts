@@ -14,6 +14,7 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 
 import { db } from "~/server/db";
+import { getUrl } from "~/trpc/shared";
 
 type AuthObject = ReturnType<typeof getAuth>;
 /**
@@ -33,8 +34,7 @@ export const createTRPCContext = async (opts: {
   auth?: AuthObject;
 }) => {
   const auth =
-    opts.auth ??
-    getAuth(new NextRequest(getBaseUrl(), { headers: opts.headers }));
+    opts.auth ?? getAuth(new NextRequest(getUrl(), { headers: opts.headers }));
   return {
     db,
     userId: auth.userId,
@@ -95,7 +95,7 @@ export const publicProcedure = t.procedure;
  *
  * @see https://trpc.io/docs/procedures
  */
-export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
+export const userProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
@@ -107,9 +107,31 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
-function getBaseUrl() {
-  if (typeof window !== "undefined") return window.location.origin;
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return `http://localhost:${process.env.PORT ?? 3000}`;
-}
+export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
+  const hasModeratorRole = await ctx.db.query.userRoles.findFirst({
+    where: (roles, { eq, and, inArray }) =>
+      and(
+        eq(roles.userId, ctx.userId),
+        inArray(roles.role, ["moderator", "admin"]),
+      ),
+  });
+
+  if (!hasModeratorRole) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a moderator" });
+  }
+
+  return next();
+});
+
+export const adminProcedure = userProcedure.use(async ({ ctx, next }) => {
+  const hasModeratorRole = await ctx.db.query.userRoles.findFirst({
+    where: (roles, { eq, and }) =>
+      and(eq(roles.userId, ctx.userId), eq(roles.role, "admin")),
+  });
+
+  if (!hasModeratorRole) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not an admin" });
+  }
+
+  return next();
+});

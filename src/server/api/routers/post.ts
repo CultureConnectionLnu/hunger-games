@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import {
   createTRPCRouter,
-  protectedProcedure,
+  userProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
 import { posts } from "~/server/db/schema";
@@ -16,7 +16,7 @@ export const postRouter = createTRPCRouter({
       };
     }),
 
-  create: protectedProcedure
+  create: userProcedure
     .input(z.object({ name: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
       // simulate a slow db call
@@ -34,7 +34,7 @@ export const postRouter = createTRPCRouter({
     });
   }),
 
-  getSecretMessage: protectedProcedure.query(() => {
+  getSecretMessage: userProcedure.query(() => {
     return "you can now see this secret message!";
   }),
 });

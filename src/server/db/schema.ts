@@ -1,10 +1,11 @@
 import { sql } from "drizzle-orm";
 import {
   index,
+  pgEnum,
   pgTableCreator,
   serial,
   timestamp,
-  varchar
+  varchar,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -20,8 +21,7 @@ export const posts = createTable(
   {
     id: serial("id").primaryKey(),
     name: varchar("name", { length: 256 }),
-    createdById: varchar("createdById", { length: 255 })
-      .notNull(),
+    createdById: varchar("createdById", { length: 255 }).notNull(),
     createdAt: timestamp("created_at")
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -30,5 +30,24 @@ export const posts = createTable(
   (example) => ({
     createdByIdIdx: index("createdById_idx").on(example.createdById),
     nameIndex: index("name_idx").on(example.name),
-  })
+  }),
+);
+
+export const roleEnum = pgEnum("role_type", ["admin", "moderator", "user"]);
+
+export const userRoles = createTable(
+  "user_role",
+  {
+    id: serial("id").primaryKey(),
+    userId: varchar("user_id", { length: 255 }).notNull(),
+    role: roleEnum("role").notNull(),
+    createdAt: timestamp("created_at")
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp("updatedAt"),
+  },
+  (userRoles) => ({
+    userIdIdx: index("user_id_idx").on(userRoles.userId),
+    roleIndex: index("role_idx").on(userRoles.role),
+  }),
 );
