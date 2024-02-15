@@ -7,10 +7,12 @@ import { uuidToSlug } from "~/lib/slug";
 
 import { FaSpinner } from "react-icons/fa";
 import { useState } from "react";
+import { useSearchParams } from 'next/navigation'
 
-export function CreateFight() {
-  const [opponent, setOpponent] = useState("");
+export function StartMatch() {
+  const searchParams = useSearchParams();
   const router = useRouter();
+  const [opponent, setOpponent] = useState(searchParams.get('userId') ?? "")
   const createMatch = api.fight.create.useMutation({
     onSuccess: ({ id }) => router.push(`/match/${uuidToSlug(id)}`),
   });

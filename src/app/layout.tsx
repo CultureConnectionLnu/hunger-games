@@ -25,7 +25,9 @@ export default function RootLayout({
     <ClerkProvider>
       <html lang="en">
         <body className={`font-sans ${inter.variable}`}>
-          <TRPCReactProvider>{children}</TRPCReactProvider>
+          <TRPCReactProvider>
+            <div style={{ width: 900 }}>{children}</div>
+          </TRPCReactProvider>
         </body>
       </html>
     </ClerkProvider>
