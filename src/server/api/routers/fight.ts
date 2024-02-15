@@ -1,14 +1,14 @@
 import { z } from "zod";
 import { createTRPCRouter, userProcedure } from "~/server/api/trpc";
-import { match } from "~/server/db/schema";
+import { fight } from "~/server/db/schema";
 import { validate } from "uuid";
 
-export const matchRouter = createTRPCRouter({
+export const fightRouter = createTRPCRouter({
   create: userProcedure.mutation(async ({ ctx }) => {
     const value = await ctx.db
-      .insert(match)
-      .values({ type: "test" })
-      .returning({ id: match.id });
+      .insert(fight)
+      .values({ game: "test" })
+      .returning({ id: fight.id });
     return value[0]!;
   }),
   exists: userProcedure
@@ -17,7 +17,7 @@ export const matchRouter = createTRPCRouter({
       if (!validate(input.id)) {
         return false;
       }
-      const result = await ctx.db.query.match.findFirst({
+      const result = await ctx.db.query.fight.findFirst({
         where: (matches, { eq }) => eq(matches.id, input.id),
       });
       return Boolean(result);

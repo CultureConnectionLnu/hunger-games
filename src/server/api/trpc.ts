@@ -35,10 +35,15 @@ export const createTRPCContext = async (opts: {
 }) => {
   const auth =
     opts.auth ?? getAuth(new NextRequest(getUrl(), { headers: opts.headers }));
+  const user = auth.userId
+    ? await db.query.users.findFirst({
+        where: (users, { eq }) => eq(users.clerkId, auth.userId),
+      })
+    : null;
   return {
     db,
-    userId: auth.userId,
     auth,
+    user,
     ...opts,
   };
 };
@@ -88,50 +93,40 @@ export const createTRPCRouter = t.router;
 export const publicProcedure = t.procedure;
 
 /**
- * Protected (authenticated) procedure
- *
- * If you want a query or mutation to ONLY be accessible to logged in users, use this. It verifies
- * the session is valid and guarantees `ctx.session.user` is not null.
- *
- * @see https://trpc.io/docs/procedures
+ * Protected (authenticated) procedure for users
  */
 export const userProcedure = t.procedure.use(({ ctx, next }) => {
-  if (!ctx.userId) {
+  if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
+  // default role is user, so no further checks are needed
 
   return next({
     ctx: {
-      userId: ctx.userId,
+      ...ctx,
+      user: ctx.user,
     },
   });
 });
 
+/**
+ * Protected (authenticated) procedure for moderators
+ */
 export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
-  const hasModeratorRole = await ctx.db.query.userRoles.findFirst({
-    where: (roles, { eq, and, inArray }) =>
-      and(
-        eq(roles.userId, ctx.userId),
-        inArray(roles.role, ["moderator", "admin"]),
-      ),
-  });
-
-  if (!hasModeratorRole) {
+  if (!["moderator", "admin"].includes(ctx.user.role)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a moderator" });
   }
 
-  return next();
+  return next({ctx});
 });
 
+/**
+ * Protected (authenticated) procedure for admins
+ */
 export const adminProcedure = userProcedure.use(async ({ ctx, next }) => {
-  const hasModeratorRole = await ctx.db.query.userRoles.findFirst({
-    where: (roles, { eq, and }) =>
-      and(eq(roles.userId, ctx.userId), eq(roles.role, "admin")),
-  });
-
-  if (!hasModeratorRole) {
+  if (!["admin"].includes(ctx.user.role)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not an admin" });
   }
 
-  return next();
+  return next({ctx});
 });

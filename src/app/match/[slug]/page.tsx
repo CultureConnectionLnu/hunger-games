@@ -8,7 +8,7 @@ export default async function MatchPage({
   params: { slug: string };
 }) {
   const uuid = slugToUuid(params.slug);
-  if (!await api.match.exists.query({ id: uuid })){
+  if (!await api.fight.exists.query({ id: uuid })){
     redirect("/match");
   }
 

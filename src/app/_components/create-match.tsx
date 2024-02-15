@@ -7,7 +7,7 @@ import { uuidToSlug } from "~/lib/slug";
 
 export function CreateMatch() {
   const router = useRouter();
-  const createMatch = api.match.create.useMutation({
+  const createMatch = api.fight.create.useMutation({
     onSuccess: ({ id }) => router.push(`/match/${uuidToSlug(id)}`),
   });
   return <Button onClick={() => createMatch.mutate()}>enter match</Button>;
