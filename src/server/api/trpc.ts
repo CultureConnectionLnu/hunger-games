@@ -15,6 +15,7 @@ import { ZodError } from "zod";
 
 import { db } from "~/server/db";
 import { getUrl } from "~/trpc/shared";
+import { users } from "../db/schema";
 
 type AuthObject = ReturnType<typeof getAuth>;
 /**
@@ -35,11 +36,35 @@ export const createTRPCContext = async (opts: {
 }) => {
   const auth =
     opts.auth ?? getAuth(new NextRequest(getUrl(), { headers: opts.headers }));
-  const user = auth.userId
-    ? await db.query.users.findFirst({
-        where: (users, { eq }) => eq(users.clerkId, auth.userId),
-      })
-    : null;
+  if (!auth.userId) {
+    return {
+      db,
+      auth,
+      user: undefined,
+      ...opts,
+    };
+  }
+  let user = await db.query.users.findFirst({
+    where: (users, { eq }) => eq(users.clerkId, auth.userId),
+  });
+  if (!user) {
+    /**
+     * make sure the clerkId is in the users table.
+     * this is only needed in development, so that the already registered users are added to the system.
+     * in production the webhook in `clerk.ts` will handle this for us
+     */
+    const newUser = await db
+      .insert(users)
+      .values({ clerkId: auth.userId, role: "user" })
+      .returning({
+        id: users.id,
+        createdAt: users.createdAt,
+        clerkId: users.clerkId,
+        isDeleted: users.isDeleted,
+        role: users.role,
+      });
+    user = newUser[0]!;
+  }
   return {
     db,
     auth,
@@ -117,7 +142,7 @@ export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a moderator" });
   }
 
-  return next({ctx});
+  return next({ ctx });
 });
 
 /**
@@ -128,5 +153,5 @@ export const adminProcedure = userProcedure.use(async ({ ctx, next }) => {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not an admin" });
   }
 
-  return next({ctx});
+  return next({ ctx });
 });

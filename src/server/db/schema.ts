@@ -38,16 +38,18 @@ export const posts = createTable(
 );
 
 export const roleEnum = pgEnum("role_type", ["admin", "moderator", "user"]);
+const metadata = {
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+};
 
 export const users = createTable("user", {
   id: serial("id").primaryKey(),
   clerkId: varchar("clerk_id", { length: 255 }),
   isDeleted: boolean("is_deleted").default(false).notNull(),
   role: roleEnum("role").notNull(),
-  createdAt: timestamp("created_at")
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  updatedAt: timestamp("updatedAt"),
+  ...metadata,
 });
 
 export const userRelations = relations(users, ({ many }) => ({
@@ -58,9 +60,7 @@ export const fight = createTable("fight", {
   id: uuid("id").primaryKey().defaultRandom(),
   game: varchar("game", { length: 255 }).notNull(),
   winner: integer("winner").references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at")
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
+  ...metadata,
 });
 
 export const fightRelations = relations(fight, ({ many }) => ({
@@ -71,11 +71,12 @@ export const usersToFight = createTable(
   "usersToMatch",
   {
     fightId: uuid("fight_id")
-      .references(() => fight.id)
+      .references(() => fight.id, { onDelete: "cascade" })
       .notNull(),
     userId: integer("user_id")
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
+    ...metadata,
   },
   (t) => ({
     pk: primaryKey({ columns: [t.fightId, t.userId] }),
