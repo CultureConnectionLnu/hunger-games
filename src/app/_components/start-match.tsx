@@ -1,21 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
-import { uuidToSlug } from "~/lib/slug";
 
-import { FaSpinner } from "react-icons/fa";
+import { useSearchParams } from 'next/navigation';
 import { useState } from "react";
-import { useSearchParams } from 'next/navigation'
+import { FaSpinner } from "react-icons/fa";
 
 export function StartMatch() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const [opponent, setOpponent] = useState(searchParams.get('userId') ?? "")
-  const createMatch = api.fight.create.useMutation({
-    onSuccess: ({ id }) => router.push(`/match/${uuidToSlug(id)}`),
-  });
+  const createMatch = api.fight.create.useMutation();
   return (
     <form
       onSubmit={(e) => {

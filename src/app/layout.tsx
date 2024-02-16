@@ -1,7 +1,7 @@
 import "~/styles/globals.css";
 
+import { ClerkProvider, SignedIn } from "@clerk/nextjs";
 import { Inter } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 
 import { TRPCReactProvider } from "~/trpc/react";
 
@@ -26,6 +26,8 @@ export default function RootLayout({
       <html lang="en">
         <body className={`font-sans ${inter.variable}`}>
           <TRPCReactProvider>
+            <SignedIn>
+            </SignedIn>
             <div style={{ width: 900 }}>{children}</div>
           </TRPCReactProvider>
         </body>

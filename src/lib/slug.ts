@@ -1,9 +1,14 @@
+import { env } from "~/env";
+
 /**
  * convert a uuid to a slug by converting it to base64
  * @param uuid
  * @returns
  */
 export function uuidToSlug(uuid: string): string {
+  if (env.NEXT_PUBLIC_NODE_ENV === "development") {
+    return uuid;
+  }
   // Remove dashes and convert to a byte array
   const hex = uuid.replace(/-/g, "");
   const byteArray = new Uint8Array(
@@ -28,6 +33,9 @@ export function uuidToSlug(uuid: string): string {
  * @returns
  */
 export function slugToUuid(base64: string): string {
+  if (env.NEXT_PUBLIC_NODE_ENV === "development") {
+    return base64;
+  }
   try {
     // Convert URL-safe Base64 back to standard Base64
     let standardBase64 = base64.replace(/-/g, "+").replace(/_/g, "/");

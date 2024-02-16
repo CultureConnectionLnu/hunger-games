@@ -3,7 +3,6 @@ import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
 
 import { CreatePost } from "~/app/_components/create-post";
-import { CreateFight } from "~/app/_components/create-fight";
 import { api } from "~/trpc/server";
 
 export default async function Home() {
@@ -57,7 +56,6 @@ export default async function Home() {
 }
 
 async function CrudShowcase() {
-
   const latestPost = await api.post.getLatest.query();
 
   return (
@@ -69,7 +67,6 @@ async function CrudShowcase() {
       )}
 
       <CreatePost />
-      <CreateFight />
     </div>
   );
 }

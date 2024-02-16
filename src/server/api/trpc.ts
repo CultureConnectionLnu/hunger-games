@@ -7,17 +7,73 @@
  * need to use are documented accordingly near the end.
  */
 
-import { getAuth } from "@clerk/nextjs/server";
 import { initTRPC, TRPCError } from "@trpc/server";
-import { NextRequest } from "next/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { TypedEventEmitter } from "~/lib/event-emitter";
 import { db } from "~/server/db";
-import { getUrl } from "~/trpc/shared";
-import { users } from "../db/schema";
+import { users } from "~/server/db/schema";
+// import { auth } from "@clerk/nextjs";
+/**
+ * Hack to get rid of:
+ * import { auth } from "@clerk/nextjs";
+ *          ^
+ * SyntaxError: The requested module '@clerk/nextjs' does not provide an export named 'auth'
+ */
+const clerkModule = import("@clerk/nextjs");
 
-type AuthObject = ReturnType<typeof getAuth>;
+const globalForEE = globalThis as unknown as {
+  ee: TypedEventEmitter | undefined;
+};
+
+if (!globalForEE.ee) {
+  // this must be the same instance otherwise the websocket connection requests can't interact with the normal requests
+  globalForEE.ee = new TypedEventEmitter();
+}
+
+export async function createCommonContext(opts: {
+  ee: TypedEventEmitter;
+  userId: string | undefined;
+}) {
+  const base = { db, user: undefined, ...opts };
+  const { userId } = opts;
+  if (!userId) {
+    return base;
+  }
+
+  try {
+    let user = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.clerkId, userId),
+    });
+    if (!user) {
+      /**
+       * make sure the clerkId is in the users table.
+       * this is only needed in development, so that the already registered users are added to the system.
+       * in production the webhook in `clerk.ts` will handle this for us
+       */
+      const newUser = await db
+        .insert(users)
+        .values({ clerkId: userId, role: "user" })
+        .returning({
+          id: users.id,
+          createdAt: users.createdAt,
+          clerkId: users.clerkId,
+          isDeleted: users.isDeleted,
+          role: users.role,
+        });
+      user = newUser[0]!;
+    }
+    return {
+      ...base,
+      user: user.isDeleted ? undefined : user,
+    };
+  } catch (e) {
+    console.error(e);
+    return base;
+  }
+}
+
 /**
  * 1. CONTEXT
  *
@@ -30,49 +86,21 @@ type AuthObject = ReturnType<typeof getAuth>;
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: {
-  headers: Headers;
-  auth?: AuthObject;
-}) => {
-  const auth =
-    opts.auth ?? getAuth(new NextRequest(getUrl(), { headers: opts.headers }));
-  if (!auth.userId) {
-    return {
-      db,
-      auth,
-      user: undefined,
-      ...opts,
-    };
-  }
-  let user = await db.query.users.findFirst({
-    where: (users, { eq }) => eq(users.clerkId, auth.userId),
+export const createTRPCContext = async () => {
+  const { auth } = await clerkModule;
+  const session = auth();
+  return createCommonContext({
+    ee: globalForEE.ee!,
+    userId: session.userId ?? undefined,
   });
-  if (!user) {
-    /**
-     * make sure the clerkId is in the users table.
-     * this is only needed in development, so that the already registered users are added to the system.
-     * in production the webhook in `clerk.ts` will handle this for us
-     */
-    const newUser = await db
-      .insert(users)
-      .values({ clerkId: auth.userId, role: "user" })
-      .returning({
-        id: users.id,
-        createdAt: users.createdAt,
-        clerkId: users.clerkId,
-        isDeleted: users.isDeleted,
-        role: users.role,
-      });
-    user = newUser[0]!;
-  }
-  return {
-    db,
-    auth,
-    user,
-    ...opts,
-  };
 };
 
+export const createWebSocketContext = async () => {
+  return createCommonContext({
+    ee: globalForEE.ee!,
+    userId: undefined,
+  });
+}
 /**
  * 2. INITIALIZATION
  *

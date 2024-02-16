@@ -1,8 +1,28 @@
-import { z } from "zod";
-import { createTRPCRouter, userProcedure } from "~/server/api/trpc";
-import { fight, usersToFight } from "~/server/db/schema";
 import { TRPCError } from "@trpc/server";
+import { observable } from "@trpc/server/observable";
 import { and, eq, isNull } from "drizzle-orm";
+import { z } from "zod";
+import {
+  createTRPCRouter,
+  publicProcedure,
+  userProcedure,
+} from "~/server/api/trpc";
+import { fight, usersToFight } from "~/server/db/schema";
+
+const messageSchema = z.object({
+  fightId: z.string().uuid(),
+  game: z.string(),
+  players: z.array(z.string()).min(2).max(2),
+});
+type Message = Pick<z.TypeOf<typeof messageSchema>, "fightId" | "game">;
+
+declare module "~/lib/event-emitter" {
+  type UserId = string;
+  // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
+  interface KnownEvents {
+    [key: `fight.join.${UserId}`]: Message;
+  }
+}
 
 export const fightRouter = createTRPCRouter({
   create: userProcedure
@@ -16,7 +36,7 @@ export const fightRouter = createTRPCRouter({
         where: (users, { eq }) => eq(users.clerkId, input.opponent),
       });
 
-      if (!opponent) {
+      if (!opponent || opponent.isDeleted) {
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Opponent not found",
@@ -31,19 +51,19 @@ export const fightRouter = createTRPCRouter({
         .limit(1)
         .execute();
 
-      if(existingFight.length > 0) {
+      if (existingFight.length > 0) {
         throw new TRPCError({
           code: "CONFLICT",
           message: "You already have an ongoing fight",
         });
       }
 
-      return await ctx.db.transaction(async (tx) => {
+      const newFight = await ctx.db.transaction(async (tx) => {
         const newFights = await tx
           .insert(fight)
-          // todo: implement games
-          .values({ game: "test" })
-          .returning({ id: fight.id });
+          // todo: implement game selection
+          .values({ game: "rock-paper-scissors" })
+          .returning({ id: fight.id, game: fight.game });
         const newFight = newFights[0];
 
         if (!newFight) {
@@ -62,9 +82,23 @@ export const fightRouter = createTRPCRouter({
 
         return newFight;
       });
+
+      const event = {
+        fightId: newFight.id,
+        game: newFight.game,
+      };
+      // both values are checked to be non-null by validating isDeleted
+      [ctx.user.clerkId!, opponent.clerkId!].forEach((player) => {
+        ctx.ee.emit(`fight.join.${player}`, event);
+      });
+
+      return {
+        id: newFight.id,
+      };
     }),
+
   canJoin: userProcedure
-    .input(z.object({ id: z.string().uuid() }))
+    .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
       const result = await ctx.db.query.fight.findFirst({
         where: (matches, { and, eq, isNull }) =>
@@ -79,5 +113,25 @@ export const fightRouter = createTRPCRouter({
       return result.participants.some(
         (participant) => participant.userId === ctx.user.id,
       );
+    }),
+
+  onInvite: publicProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      }),
+    )
+    .subscription(({ ctx, input }) => {
+      return observable<Message>((emit) => {
+        function onMessage(data: Message) {
+          emit.next(data);
+        }
+
+        ctx.ee.on(`fight.join.${input.id}`, onMessage);
+
+        return () => {
+          ctx.ee.off(`fight.join.${input.id}`, onMessage);
+        };
+      });
     }),
 });
