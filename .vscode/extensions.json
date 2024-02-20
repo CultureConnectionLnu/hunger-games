@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "dbaeumer.vscode-eslint",
+    "usernamehw.errorlens",
+    "eamodio.gitlens",
+    "yoavbls.pretty-ts-errors",
+    "mhutchie.git-graph",
+    "christian-kohler.npm-intellisense",
+    "meganrogge.template-string-converter",
+    "streetsidesoftware.code-spell-checker",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss"
+  ]
+}
