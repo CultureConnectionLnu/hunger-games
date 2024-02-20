@@ -45,7 +45,6 @@ const metadata = {
 };
 
 export const users = createTable("user", {
-  id: serial("id").primaryKey(),
   clerkId: varchar("clerk_id", { length: 255 }),
   isDeleted: boolean("is_deleted").default(false).notNull(),
   role: roleEnum("role").notNull(),
@@ -59,7 +58,9 @@ export const userRelations = relations(users, ({ many }) => ({
 export const fight = createTable("fight", {
   id: uuid("id").primaryKey().defaultRandom(),
   game: varchar("game", { length: 255 }).notNull(),
-  winner: integer("winner").references(() => users.id, { onDelete: "cascade" }),
+  winner: integer("winner").references(() => users.clerkId, {
+    onDelete: "cascade",
+  }),
   ...metadata,
 });
 
@@ -73,8 +74,8 @@ export const usersToFight = createTable(
     fightId: uuid("fight_id")
       .references(() => fight.id, { onDelete: "cascade" })
       .notNull(),
-    userId: integer("user_id")
-      .references(() => users.id, { onDelete: "cascade" })
+    userId: varchar("user_id", { length: 255 })
+      .references(() => users.clerkId, { onDelete: "cascade" })
       .notNull(),
     ...metadata,
   },
@@ -90,6 +91,6 @@ export const userToFightRelations = relations(usersToFight, ({ one }) => ({
   }),
   user: one(users, {
     fields: [usersToFight.userId],
-    references: [users.id],
+    references: [users.clerkId],
   }),
 }));

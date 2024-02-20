@@ -8,6 +8,7 @@ import {
   userProcedure,
 } from "~/server/api/trpc";
 import { fight, usersToFight } from "~/server/db/schema";
+import { RockPaperScissorsHandler } from "../logic/rock-paper-scissors";
 
 const messageSchema = z.object({
   fightId: z.string().uuid(),
@@ -18,11 +19,44 @@ type Message = Pick<z.TypeOf<typeof messageSchema>, "fightId" | "game">;
 
 declare module "~/lib/event-emitter" {
   type UserId = string;
+  type FightId = string;
   // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
   interface KnownEvents {
     [key: `fight.join.${UserId}`]: Message;
   }
 }
+
+/**
+ * makes sure that a user is in a fight
+ */
+export const fightProcedure = userProcedure.use(async ({ ctx, next }) => {
+  const existingFight = await ctx.db
+    .select()
+    .from(fight)
+    .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
+    .where(and(isNull(fight.winner), eq(usersToFight.userId, ctx.user.clerkId)))
+    .execute();
+
+  if (existingFight.length === 0) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "No ongoing fight",
+    });
+  }
+
+  const currentFight = {
+    fightId: existingFight[0]!.fight.id,
+    game: existingFight[0]!.fight.game,
+    players: existingFight.map((f) => f.usersToMatch?.userId).filter(Boolean),
+  };
+
+  return next({
+    ctx: {
+      ...ctx,
+      currentFight,
+    },
+  });
+});
 
 export const fightRouter = createTRPCRouter({
   create: userProcedure
@@ -47,7 +81,9 @@ export const fightRouter = createTRPCRouter({
         .select()
         .from(fight)
         .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
-        .where(and(isNull(fight.winner), eq(usersToFight.userId, 1)))
+        .where(
+          and(isNull(fight.winner), eq(usersToFight.userId, ctx.user.clerkId)),
+        )
         .limit(1)
         .execute();
 
@@ -76,11 +112,19 @@ export const fightRouter = createTRPCRouter({
         await tx.insert(usersToFight).values(
           [opponent, ctx.user].map((user) => ({
             fightId: newFight.id,
-            userId: user.id,
+            userId: user.clerkId!,
           })),
         );
 
         return newFight;
+      });
+
+      // initiate the game
+      // ensure that the correct data is in the players array
+      // required because web sockets is not secure and someone might 
+      RockPaperScissorsHandler.instance.getOrCreateMatch({
+        fightId: newFight.id,
+        players: [ctx.user.clerkId, opponent.clerkId!],
       });
 
       const event = {
@@ -88,7 +132,7 @@ export const fightRouter = createTRPCRouter({
         game: newFight.game,
       };
       // both values are checked to be non-null by validating isDeleted
-      [ctx.user.clerkId!, opponent.clerkId!].forEach((player) => {
+      [ctx.user.clerkId, opponent.clerkId!].forEach((player) => {
         ctx.ee.emit(`fight.join.${player}`, event);
       });
 
@@ -111,7 +155,7 @@ export const fightRouter = createTRPCRouter({
         return false;
       }
       return result.participants.some(
-        (participant) => participant.userId === ctx.user.id,
+        (participant) => participant.userId === ctx.user.clerkId,
       );
     }),
 

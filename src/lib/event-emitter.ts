@@ -32,3 +32,28 @@ export class TypedEventEmitter{
     this.emitter.off(eventName, handler);
   }
 }
+
+export class GenericEventEmitter<TEvents extends Record<string, any>> {
+  private emitter = new EventEmitter();
+
+  emit<TEventName extends keyof TEvents>(
+    eventName: TEventName & string,
+    eventArg: TEvents[TEventName]
+  ) {
+    this.emitter.emit(eventName, eventArg);
+  }
+
+  on<TEventName extends keyof TEvents>(
+    eventName: TEventName & string,
+    handler: (eventArg: TEvents[TEventName]) => void,
+  ) {
+    this.emitter.on(eventName, handler);
+  }
+
+  off<TEventName extends keyof TEvents>(
+    eventName: TEventName & string,
+    handler: (eventArg: TEvents[TEventName]) => void,
+  ) {
+    this.emitter.off(eventName, handler);
+  }
+}
