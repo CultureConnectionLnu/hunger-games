@@ -27,6 +27,14 @@ jobs:
         with:
           version: 8
 
+      - name: cache .pnpm-store 📦
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashfiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
       - name: Install 📦
         run: |
           pnpm install
@@ -34,6 +42,10 @@ jobs:
       - name: Lint 📝
         run: |
           SKIP_ENV_VALIDATION=1 pnpm run lint
+
+      - name: Lint 📝
+        run: |
+          pnpm run lint-non-code-files
 
   build:
     name: Build 🏗️
@@ -51,6 +63,14 @@ jobs:
         uses: pnpm/action-setup@v3
         with:
           version: 8
+
+      - name: Cache .pnpm-store 📦
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
 
       - name: Install 📦
         run: |
