@@ -7,16 +7,73 @@
  * need to use are documented accordingly near the end.
  */
 
-import { getAuth } from "@clerk/nextjs/server";
 import { initTRPC, TRPCError } from "@trpc/server";
-import { NextRequest } from "next/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
 
+import { TypedEventEmitter } from "~/lib/event-emitter";
 import { db } from "~/server/db";
-import { getUrl } from "~/trpc/shared";
+import { users } from "~/server/db/schema";
+// import { auth } from "@clerk/nextjs";
+/**
+ * Hack to get rid of:
+ * import { auth } from "@clerk/nextjs";
+ *          ^
+ * SyntaxError: The requested module '@clerk/nextjs' does not provide an export named 'auth'
+ */
+const clerkModule = import("@clerk/nextjs");
 
-type AuthObject = ReturnType<typeof getAuth>;
+const globalForEE = globalThis as unknown as {
+  ee: TypedEventEmitter | undefined;
+};
+
+if (!globalForEE.ee) {
+  // this must be the same instance otherwise the websocket connection requests can't interact with the normal requests
+  globalForEE.ee = new TypedEventEmitter();
+}
+
+export async function createCommonContext(opts: {
+  ee: TypedEventEmitter;
+  userId: string | undefined;
+}) {
+  const base = { db, user: undefined, ...opts };
+  const { userId } = opts;
+  if (!userId) {
+    return base;
+  }
+
+  try {
+    let user = await db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.clerkId, userId),
+    });
+    if (!user) {
+      /**
+       * make sure the clerkId is in the users table.
+       * this is only needed in development, so that the already registered users are added to the system.
+       * in production the webhook in `clerk.ts` will handle this for us
+       */
+      const newUser = await db
+        .insert(users)
+        .values({ clerkId: userId, role: "user" })
+        .returning({
+          id: users.id,
+          createdAt: users.createdAt,
+          clerkId: users.clerkId,
+          isDeleted: users.isDeleted,
+          role: users.role,
+        });
+      user = newUser[0]!;
+    }
+    return {
+      ...base,
+      user: user.isDeleted ? undefined : user,
+    };
+  } catch (e) {
+    console.error(e);
+    return base;
+  }
+}
+
 /**
  * 1. CONTEXT
  *
@@ -29,20 +86,21 @@ type AuthObject = ReturnType<typeof getAuth>;
  *
  * @see https://trpc.io/docs/server/context
  */
-export const createTRPCContext = async (opts: {
-  headers: Headers;
-  auth?: AuthObject;
-}) => {
-  const auth =
-    opts.auth ?? getAuth(new NextRequest(getUrl(), { headers: opts.headers }));
-  return {
-    db,
-    userId: auth.userId,
-    auth,
-    ...opts,
-  };
+export const createTRPCContext = async () => {
+  const { auth } = await clerkModule;
+  const session = auth();
+  return createCommonContext({
+    ee: globalForEE.ee!,
+    userId: session.userId ?? undefined,
+  });
 };
 
+export const createWebSocketContext = async () => {
+  return createCommonContext({
+    ee: globalForEE.ee!,
+    userId: undefined,
+  });
+}
 /**
  * 2. INITIALIZATION
  *
@@ -88,50 +146,40 @@ export const createTRPCRouter = t.router;
 export const publicProcedure = t.procedure;
 
 /**
- * Protected (authenticated) procedure
- *
- * If you want a query or mutation to ONLY be accessible to logged in users, use this. It verifies
- * the session is valid and guarantees `ctx.session.user` is not null.
- *
- * @see https://trpc.io/docs/procedures
+ * Protected (authenticated) procedure for users
  */
 export const userProcedure = t.procedure.use(({ ctx, next }) => {
-  if (!ctx.userId) {
+  if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
+  // default role is user, so no further checks are needed
 
   return next({
     ctx: {
-      userId: ctx.userId,
+      ...ctx,
+      user: ctx.user,
     },
   });
 });
 
+/**
+ * Protected (authenticated) procedure for moderators
+ */
 export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
-  const hasModeratorRole = await ctx.db.query.userRoles.findFirst({
-    where: (roles, { eq, and, inArray }) =>
-      and(
-        eq(roles.userId, ctx.userId),
-        inArray(roles.role, ["moderator", "admin"]),
-      ),
-  });
-
-  if (!hasModeratorRole) {
+  if (!["moderator", "admin"].includes(ctx.user.role)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a moderator" });
   }
 
-  return next();
+  return next({ ctx });
 });
 
+/**
+ * Protected (authenticated) procedure for admins
+ */
 export const adminProcedure = userProcedure.use(async ({ ctx, next }) => {
-  const hasModeratorRole = await ctx.db.query.userRoles.findFirst({
-    where: (roles, { eq, and }) =>
-      and(eq(roles.userId, ctx.userId), eq(roles.role, "admin")),
-  });
-
-  if (!hasModeratorRole) {
+  if (!["admin"].includes(ctx.user.role)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not an admin" });
   }
 
-  return next();
+  return next({ ctx });
 });

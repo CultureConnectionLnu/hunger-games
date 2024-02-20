@@ -56,7 +56,6 @@ export default async function Home() {
 }
 
 async function CrudShowcase() {
-
   const latestPost = await api.post.getLatest.query();
 
   return (

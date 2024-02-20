@@ -4,13 +4,13 @@ import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { env } from "~/env";
 import { db } from "~/server/db";
-import { posts, userRoles } from "~/server/db/schema";
+import { users } from "~/server/db/schema";
 
 async function handleEvent(event: WebhookEvent) {
   switch (event.type) {
     case "user.created":
-      return await db.insert(userRoles).values({
-        userId: event.data.id,
+      return await db.insert(users).values({
+        clerkId: event.data.id,
         role: "user",
       });
 
@@ -21,8 +21,12 @@ async function handleEvent(event: WebhookEvent) {
             cause: event
         });
       }
-      await db.delete(userRoles).where(eq(userRoles.userId, userId));
-      await db.delete(posts).where(eq(posts.createdById, userId));
+      const updated = await db.update(users).set({ isDeleted: true, clerkId: null }).where(eq(users.clerkId, userId)).returning({updatedId: users.id})
+      if(updated.length === 0) {
+        throw new Error(`user.deleted webhook event for unknown user`, {
+            cause: event
+        });
+      }
       break;
   }
 }

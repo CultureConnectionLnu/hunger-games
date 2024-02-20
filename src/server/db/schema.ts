@@ -1,10 +1,14 @@
-import { sql } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
+  boolean,
   index,
+  integer,
   pgEnum,
   pgTableCreator,
+  primaryKey,
   serial,
   timestamp,
+  uuid,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -34,20 +38,58 @@ export const posts = createTable(
 );
 
 export const roleEnum = pgEnum("role_type", ["admin", "moderator", "user"]);
+const metadata = {
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+};
 
-export const userRoles = createTable(
-  "user_role",
+export const users = createTable("user", {
+  id: serial("id").primaryKey(),
+  clerkId: varchar("clerk_id", { length: 255 }),
+  isDeleted: boolean("is_deleted").default(false).notNull(),
+  role: roleEnum("role").notNull(),
+  ...metadata,
+});
+
+export const userRelations = relations(users, ({ many }) => ({
+  fights: many(usersToFight),
+}));
+
+export const fight = createTable("fight", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  game: varchar("game", { length: 255 }).notNull(),
+  winner: integer("winner").references(() => users.id, { onDelete: "cascade" }),
+  ...metadata,
+});
+
+export const fightRelations = relations(fight, ({ many }) => ({
+  participants: many(usersToFight),
+}));
+
+export const usersToFight = createTable(
+  "usersToMatch",
   {
-    id: serial("id").primaryKey(),
-    userId: varchar("user_id", { length: 255 }).notNull(),
-    role: roleEnum("role").notNull(),
-    createdAt: timestamp("created_at")
-      .default(sql`CURRENT_TIMESTAMP`)
+    fightId: uuid("fight_id")
+      .references(() => fight.id, { onDelete: "cascade" })
       .notNull(),
-    updatedAt: timestamp("updatedAt"),
+    userId: integer("user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    ...metadata,
   },
-  (userRoles) => ({
-    userIdIdx: index("user_id_idx").on(userRoles.userId),
-    roleIndex: index("role_idx").on(userRoles.role),
+  (t) => ({
+    pk: primaryKey({ columns: [t.fightId, t.userId] }),
   }),
 );
+
+export const userToFightRelations = relations(usersToFight, ({ one }) => ({
+  fight: one(fight, {
+    fields: [usersToFight.fightId],
+    references: [fight.id],
+  }),
+  user: one(users, {
+    fields: [usersToFight.userId],
+    references: [users.id],
+  }),
+}));

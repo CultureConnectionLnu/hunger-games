@@ -31,6 +31,17 @@ const config = {
         checksVoidReturn: { attributes: false },
       },
     ],
+    "no-restricted-imports": ["error", {
+      "paths": [{
+        "name": "events",
+        "importNames": ["EventEmitter"],
+        "message": "Please do not import EventEmitter directly from 'events'. Consider using a different event mechanism or a utility module."
+      }, {
+        "name": "node:events",
+        "importNames": ["EventEmitter"],
+        "message": "Please do not import EventEmitter directly from 'node:events'. Consider using a different event mechanism or a utility module."
+      }]
+    }]
   },
 };
 
