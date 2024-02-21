@@ -45,7 +45,7 @@ const metadata = {
 };
 
 export const users = createTable("user", {
-  clerkId: varchar("clerk_id", { length: 255 }),
+  clerkId: varchar("clerk_id", { length: 255 }).primaryKey(),
   isDeleted: boolean("is_deleted").default(false).notNull(),
   role: roleEnum("role").notNull(),
   ...metadata,
@@ -58,7 +58,7 @@ export const userRelations = relations(users, ({ many }) => ({
 export const fight = createTable("fight", {
   id: uuid("id").primaryKey().defaultRandom(),
   game: varchar("game", { length: 255 }).notNull(),
-  winner: integer("winner").references(() => users.clerkId, {
+  winner: varchar("winner", {length: 255}).references(() => users.clerkId, {
     onDelete: "cascade",
   }),
   ...metadata,
