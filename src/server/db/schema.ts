@@ -2,14 +2,13 @@ import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   index,
-  integer,
   pgEnum,
   pgTableCreator,
   primaryKey,
   serial,
   timestamp,
   uuid,
-  varchar,
+  varchar
 } from "drizzle-orm/pg-core";
 
 /**

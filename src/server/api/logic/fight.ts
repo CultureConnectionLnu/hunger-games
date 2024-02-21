@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
-import { GenericEventEmitter } from "~/lib/event-emitter";
 import { db, type DB } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
 import { RockPaperScissorsMatch } from "./rock-paper-scissors";
+import { BaseGame } from "./base-game";
 
 /**
  * insert a new entry for each game added 
@@ -128,26 +128,6 @@ export class FightHandler {
     game.destroy();
   }
 }
-
-export abstract class BaseGame<
-  T extends Record<string, unknown>,
-> extends GenericEventEmitter<
-  T & {
-    // game finished
-    end: { winner: string };
-    // emitted upon game destruction
-    destroy: void;
-  }
-> {
-  constructor(
-    public readonly fightId: string,
-    public readonly players: string[],
-  ) {
-    super();
-  }
-  abstract destroy(): void;
-}
-
 // eslint-disable-next-line @typescript-eslint/ban-types
 type AnyGame = BaseGame<{}>;
 

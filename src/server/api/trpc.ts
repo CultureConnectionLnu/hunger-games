@@ -164,7 +164,7 @@ export const userProcedure = t.procedure.use(({ ctx, next }) => {
       ...ctx,
       user: {
         ...ctx.user,
-        clerkId: ctx.user.clerkId!,
+        clerkId: ctx.user.clerkId,
       },
     },
   });

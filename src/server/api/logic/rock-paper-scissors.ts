@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { z } from "zod";
-import { BaseGame } from "./fight";
+import { BaseGame } from "./base-game";
 
 export const rockPaperScissorsItemsSchema = z.enum([
   "rock",
