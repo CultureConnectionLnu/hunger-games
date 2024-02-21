@@ -112,7 +112,7 @@ export const fightRouter = createTRPCRouter({
         await tx.insert(usersToFight).values(
           [opponent, ctx.user].map((user) => ({
             fightId: newFight.id,
-            userId: user.clerkId!,
+            userId: user.clerkId,
           })),
         );
 
@@ -121,10 +121,19 @@ export const fightRouter = createTRPCRouter({
 
       // initiate the game
       // ensure that the correct data is in the players array
-      // required because web sockets is not secure and someone might 
-      RockPaperScissorsHandler.instance.getOrCreateMatch({
+      // required because web sockets is not secure and someone might
+      const match = RockPaperScissorsHandler.instance.getOrCreateMatch({
         fightId: newFight.id,
-        players: [ctx.user.clerkId, opponent.clerkId!],
+        players: [ctx.user.clerkId, opponent.clerkId],
+      });
+      match.on("end", (winnerId) => {
+        void ctx.db
+          .update(fight)
+          .set({ winner: winnerId })
+          // todo
+          .where({ : newFight.id })
+          .execute();
+        RockPaperScissorsHandler.instance.completeMatch(newFight.id);
       });
 
       const event = {
@@ -132,7 +141,7 @@ export const fightRouter = createTRPCRouter({
         game: newFight.game,
       };
       // both values are checked to be non-null by validating isDeleted
-      [ctx.user.clerkId, opponent.clerkId!].forEach((player) => {
+      [ctx.user.clerkId, opponent.clerkId].forEach((player) => {
         ctx.ee.emit(`fight.join.${player}`, event);
       });
 

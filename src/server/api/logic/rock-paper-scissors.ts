@@ -46,7 +46,11 @@ export class RockPaperScissorsHandler {
     this.matches.delete(fightId);
   }
 }
-export const rockPaperScissorsItemsSchema = z.enum(["rock", "paper", "scissors"]);
+export const rockPaperScissorsItemsSchema = z.enum([
+  "rock",
+  "paper",
+  "scissors",
+]);
 
 type PlayerChooseItem = z.infer<typeof rockPaperScissorsItemsSchema>;
 
@@ -113,7 +117,7 @@ type ServerStateData = {
 type SimpleGameEvent<T extends keyof ServerStateData> = {
   state: T;
   data: ServerStateData[T];
-} ;
+};
 
 type GameEvent<T extends keyof ServerStateData> = SimpleGameEvent<T> & {
   fightId: string;
@@ -124,6 +128,8 @@ export type AnyGameEvent = GameEvent<keyof ServerStateData>;
 
 class RockPaperScissorsMatch extends GenericEventEmitter<{
   event: AnyGameEvent;
+  end: string;
+  delete: void;
 }> {
   private events: AnyGameEvent[] = [];
   private state;
@@ -165,7 +171,9 @@ class RockPaperScissorsMatch extends GenericEventEmitter<{
     void selfDestruct.then(() => this.selfDestruct());
   }
 
-  private emitEvent<T extends keyof ServerStateData>(event: SimpleGameEvent<T>) {
+  private emitEvent<T extends keyof ServerStateData>(
+    event: SimpleGameEvent<T>,
+  ) {
     const extendedEvent = {
       ...event,
       fightId: this.fightId,
@@ -173,6 +181,10 @@ class RockPaperScissorsMatch extends GenericEventEmitter<{
     };
     this.events.push(extendedEvent);
     this.emit("event", extendedEvent);
+
+    if (event.state === "end") {
+      this.emit("end", undefined);
+    }
   }
 
   playerJoin(playerId: string) {
@@ -397,5 +409,6 @@ class RockPaperScissorsMatch extends GenericEventEmitter<{
     this.onStateChange = null;
     //@ts-expect-error
     this.events = null;
+    this.emit("delete", undefined);
   }
 }
