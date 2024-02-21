@@ -1,63 +1,12 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { z } from "zod";
-import { GenericEventEmitter } from "~/lib/event-emitter";
-import { timeoutToPromise } from "~/lib/utils";
+import { BaseGame } from "./fight";
 
-export class RockPaperScissorsHandler {
-  private static _instance: RockPaperScissorsHandler;
-  static get instance() {
-    if (!this._instance) {
-      this._instance = new RockPaperScissorsHandler();
-    }
-    return this._instance;
-  }
-
-  private matches = new Map<
-    string,
-    { match: RockPaperScissorsMatch; destruct: () => void }
-  >();
-
-  getOrCreateMatch(
-    init: { fightId: string; players: string[] },
-    // onStateChange: OnStateChange,
-  ) {
-    const existingMatch = this.matches.get(init.fightId);
-    if (existingMatch) {
-      return existingMatch.match;
-    }
-
-    const [selfDestruct, forceDestruct] = timeoutToPromise(1000 * 60 * 60);
-    const match = new RockPaperScissorsMatch(
-      init.fightId,
-      init.players,
-      // self destruct after 1 hour
-      selfDestruct,
-    );
-    this.matches.set(init.fightId, { match, destruct: forceDestruct });
-    return match;
-  }
-
-  getMatch(fightId: string) {
-    return this.matches.get(fightId)?.match;
-  }
-
-  completeMatch(fightId: string) {
-    this.matches.get(fightId)?.destruct();
-    this.matches.delete(fightId);
-  }
-}
 export const rockPaperScissorsItemsSchema = z.enum([
   "rock",
   "paper",
   "scissors",
 ]);
-
-type PlayerChooseItem = z.infer<typeof rockPaperScissorsItemsSchema>;
-
-type GameEvaluation = {
-  item: PlayerChooseItem;
-  beats: PlayerChooseItem[];
-};
 
 const GameConfig = {
   joinTimeoutInSeconds: 30,
@@ -78,6 +27,13 @@ const GameConfig = {
     },
   ] as GameEvaluation[],
 } as const;
+
+type PlayerChooseItem = z.infer<typeof rockPaperScissorsItemsSchema>;
+
+type GameEvaluation = {
+  item: PlayerChooseItem;
+  beats: PlayerChooseItem[];
+};
 
 type PlayerState = "none" | "join" | "ready" | "choose";
 
@@ -126,11 +82,7 @@ type GameEvent<T extends keyof ServerStateData> = SimpleGameEvent<T> & {
 
 export type AnyGameEvent = GameEvent<keyof ServerStateData>;
 
-class RockPaperScissorsMatch extends GenericEventEmitter<{
-  event: AnyGameEvent;
-  end: string;
-  delete: void;
-}> {
+export class RockPaperScissorsMatch extends BaseGame<{ event: AnyGameEvent }> {
   private events: AnyGameEvent[] = [];
   private state;
   private timeout: NodeJS.Timeout | null = null;
@@ -139,12 +91,8 @@ class RockPaperScissorsMatch extends GenericEventEmitter<{
     return [...this.events];
   }
 
-  constructor(
-    private readonly fightId: string,
-    public readonly players: string[],
-    selfDestruct: Promise<void>,
-  ) {
-    super();
+  constructor(fightId: string, players: string[]) {
+    super(fightId, players);
     this.state = {
       server: "init" as keyof ServerStateData,
       players: players.reduce<Record<string, PlayerStateData>>(
@@ -167,8 +115,6 @@ class RockPaperScissorsMatch extends GenericEventEmitter<{
         startTime: new Date(Date.now()),
       },
     });
-
-    void selfDestruct.then(() => this.selfDestruct());
   }
 
   private emitEvent<T extends keyof ServerStateData>(
@@ -178,12 +124,15 @@ class RockPaperScissorsMatch extends GenericEventEmitter<{
       ...event,
       fightId: this.fightId,
       players: this.players,
-    };
+    } as const;
     this.events.push(extendedEvent);
     this.emit("event", extendedEvent);
 
     if (event.state === "end") {
-      this.emit("end", undefined);
+      const winner = (event as SimpleGameEvent<"end">).data.winner;
+      this.emit("end", {
+        winner,
+      });
     }
   }
 
@@ -401,7 +350,7 @@ class RockPaperScissorsMatch extends GenericEventEmitter<{
     );
   }
 
-  private selfDestruct() {
+  public destroy() {
     clearTimeout(this.timeout!);
     //@ts-expect-error
     this.state = null;
@@ -409,6 +358,7 @@ class RockPaperScissorsMatch extends GenericEventEmitter<{
     this.onStateChange = null;
     //@ts-expect-error
     this.events = null;
-    this.emit("delete", undefined);
+    this.emit("destroy", undefined);
+    this.removeAllListeners();
   }
 }

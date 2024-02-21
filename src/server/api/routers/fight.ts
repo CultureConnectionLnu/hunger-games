@@ -1,14 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
-import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import {
   createTRPCRouter,
   publicProcedure,
   userProcedure,
 } from "~/server/api/trpc";
-import { fight, usersToFight } from "~/server/db/schema";
-import { RockPaperScissorsHandler } from "../logic/rock-paper-scissors";
+import { FightHandler } from "../logic/fight";
 
 const messageSchema = z.object({
   fightId: z.string().uuid(),
@@ -29,31 +27,12 @@ declare module "~/lib/event-emitter" {
 /**
  * makes sure that a user is in a fight
  */
-export const fightProcedure = userProcedure.use(async ({ ctx, next }) => {
-  const existingFight = await ctx.db
-    .select()
-    .from(fight)
-    .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
-    .where(and(isNull(fight.winner), eq(usersToFight.userId, ctx.user.clerkId)))
-    .execute();
-
-  if (existingFight.length === 0) {
-    throw new TRPCError({
-      code: "NOT_FOUND",
-      message: "No ongoing fight",
-    });
-  }
-
-  const currentFight = {
-    fightId: existingFight[0]!.fight.id,
-    game: existingFight[0]!.fight.game,
-    players: existingFight.map((f) => f.usersToMatch?.userId).filter(Boolean),
-  };
-
+export const inFightProcedure = userProcedure.use(async ({ ctx, next }) => {
   return next({
     ctx: {
       ...ctx,
-      currentFight,
+      currentFight: await FightHandler.instance.getCurrentFight(ctx.user.clerkId),
+      fightHandler: FightHandler.instance,
     },
   });
 });
@@ -77,72 +56,24 @@ export const fightRouter = createTRPCRouter({
         });
       }
 
-      const existingFight = await ctx.db
-        .select()
-        .from(fight)
-        .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
-        .where(
-          and(isNull(fight.winner), eq(usersToFight.userId, ctx.user.clerkId)),
-        )
-        .limit(1)
-        .execute();
-
-      if (existingFight.length > 0) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "You already have an ongoing fight",
-        });
-      }
-
-      const newFight = await ctx.db.transaction(async (tx) => {
-        const newFights = await tx
-          .insert(fight)
-          // todo: implement game selection
-          .values({ game: "rock-paper-scissors" })
-          .returning({ id: fight.id, game: fight.game });
-        const newFight = newFights[0];
-
-        if (!newFight) {
-          tx.rollback();
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to create fight",
-          });
-        }
-        await tx.insert(usersToFight).values(
-          [opponent, ctx.user].map((user) => ({
-            fightId: newFight.id,
-            userId: user.clerkId,
-          })),
-        );
-
-        return newFight;
-      });
-
-      // initiate the game
-      // ensure that the correct data is in the players array
-      // required because web sockets is not secure and someone might
-      const match = RockPaperScissorsHandler.instance.getOrCreateMatch({
-        fightId: newFight.id,
-        players: [ctx.user.clerkId, opponent.clerkId],
-      });
-      match.on("end", (winnerId) => {
-        void ctx.db
-          .update(fight)
-          .set({ winner: winnerId })
-          // todo
-          .where({ : newFight.id })
-          .execute();
-        RockPaperScissorsHandler.instance.completeMatch(newFight.id);
-      });
+      await FightHandler.instance.assertHasNoFight(ctx.user.clerkId);
+      const newFight = await FightHandler.instance.createFight(
+        ctx.user.clerkId,
+        opponent.clerkId,
+      );
 
       const event = {
         fightId: newFight.id,
         game: newFight.game,
       };
-      // both values are checked to be non-null by validating isDeleted
       [ctx.user.clerkId, opponent.clerkId].forEach((player) => {
         ctx.ee.emit(`fight.join.${player}`, event);
+      });
+
+      console.log("New fight", {
+        id: newFight.id,
+        game: newFight.game,
+        players: [ctx.user.clerkId, opponent.clerkId],
       });
 
       return {

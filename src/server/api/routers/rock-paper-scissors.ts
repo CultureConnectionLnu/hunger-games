@@ -5,28 +5,44 @@ import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import {
   type AnyGameEvent,
-  RockPaperScissorsHandler,
   rockPaperScissorsItemsSchema,
 } from "../logic/rock-paper-scissors";
-import { fightProcedure } from "./fight";
+import { inFightProcedure } from "./fight";
+import { FightHandler } from "../logic/fight";
 
 /**
  * makes sure the user is actually in a rock-paper-scissors fight
  */
-const rockPaperScissorsProcedure = fightProcedure.use(({ ctx, next }) => {
+const rockPaperScissorsProcedure = inFightProcedure.use(({ ctx, next }) => {
   if (ctx.currentFight.game !== "rock-paper-scissors") {
     throw new TRPCError({
       code: "BAD_REQUEST",
-      message: "Invalid game",
+      message: "Invalid game type",
+    });
+  }
+
+  const currentGame = ctx.fightHandler.getGame(ctx.currentFight.fightId);
+  if (!currentGame) {
+    // TODO: introduce delete action for the invalid fight
+    console.error(`Could not find the fight with id '${ctx.currentFight.fightId}' in the GameHandler`)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Could not find your match, even though it should exist",
+    });
+  }
+
+  if (currentGame.type !== "rock-paper-scissors") {
+    // TODO: introduce delete action for the invalid fight
+    console.error(`The fight with id '${ctx.currentFight.fightId}' is not of type 'rock-paper-scissors', even though it is supposed to be.`)
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Could not find your match, even though it should exist",
     });
   }
   return next({
     ctx: {
       ...ctx,
-      currentMatch: RockPaperScissorsHandler.instance.getOrCreateMatch({
-        fightId: ctx.currentFight.fightId,
-        players: ctx.currentFight.players,
-      }),
+      currentGame: currentGame.instance,
     },
   });
 });
@@ -55,19 +71,19 @@ function catchMatchError(fn: () => void) {
 export const rockPaperScissorsRouter = createTRPCRouter({
   join: rockPaperScissorsProcedure.query(({ ctx }) => {
     catchMatchError(() => {
-      ctx.currentMatch.playerJoin(ctx.user.clerkId);
+      ctx.currentGame.playerJoin(ctx.user.clerkId);
     });
   }),
   ready: rockPaperScissorsProcedure.mutation(({ ctx }) => {
     catchMatchError(() => {
-      ctx.currentMatch.playerReady(ctx.user.clerkId);
+      ctx.currentGame.playerReady(ctx.user.clerkId);
     });
   }),
   choose: rockPaperScissorsProcedure
     .input(rockPaperScissorsItemsSchema)
     .mutation(({ ctx, input }) => {
       catchMatchError(() => {
-        ctx.currentMatch.playerChoose(ctx.user.clerkId, input);
+        ctx.currentGame.playerChoose(ctx.user.clerkId, input);
       });
     }),
 
@@ -80,7 +96,7 @@ export const rockPaperScissorsRouter = createTRPCRouter({
     )
     .subscription(({ input }) => {
       return observable<AnyGameEvent>((emit) => {
-        const match = RockPaperScissorsHandler.instance.getMatch(input.fightId);
+        const match = FightHandler.instance.getGame(input.fightId)?.instance;
         if (!match || !match.players.includes(input.userId)) {
           throw new TRPCError({
             code: "NOT_FOUND",
@@ -93,6 +109,10 @@ export const rockPaperScissorsRouter = createTRPCRouter({
         }
         match.on("event", onMessage);
         match.allEvents.forEach(onMessage);
+
+        match.once('destroy', () => {
+          emit.complete();
+        });
 
         return () => {
           match.off("event", onMessage);

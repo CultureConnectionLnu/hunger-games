@@ -50,10 +50,21 @@ export class GenericEventEmitter<TEvents extends Record<string, any>> {
     this.emitter.on(eventName, handler);
   }
 
+  once<TEventName extends keyof TEvents>(
+    eventName: TEventName & string,
+    handler: (eventArg: TEvents[TEventName]) => void,
+  ) {
+    this.emitter.once(eventName, handler);
+  }
+
   off<TEventName extends keyof TEvents>(
     eventName: TEventName & string,
     handler: (eventArg: TEvents[TEventName]) => void,
   ) {
     this.emitter.off(eventName, handler);
+  }
+
+  removeAllListeners(){
+    this.emitter.removeAllListeners();
   }
 }
