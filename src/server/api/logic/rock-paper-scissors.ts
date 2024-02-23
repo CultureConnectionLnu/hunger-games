@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
 import { z } from "zod";
 import { BaseGame } from "./base-game";
+import { env } from "~/env";
 
 export const rockPaperScissorsItemsSchema = z.enum([
   "rock",
@@ -9,8 +10,12 @@ export const rockPaperScissorsItemsSchema = z.enum([
 ]);
 
 const GameConfig = {
-  joinTimeoutInSeconds: 30,
-  chooseTimeoutInSeconds: 30,
+  get joinTimeoutInSeconds() {
+    return env.FEATURE_GAME_TIMEOUT ? 30 : Number.POSITIVE_INFINITY;
+  },
+  get chooseTimeoutInSeconds() {
+    return env.FEATURE_GAME_TIMEOUT ? 30 : Number.POSITIVE_INFINITY;
+  },
   bestOf: 3,
   evaluation: [
     {

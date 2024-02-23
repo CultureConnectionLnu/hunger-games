@@ -7,7 +7,7 @@
     "db:push": "drizzle-kit push:pg",
     "db:studio": "drizzle-kit studio",
     "build": "next build",
-    "dev": "dotenv cross-env NODE_ENV=development dotenv tsx src/server/server.ts",
+    "dev": "dotenv cross-env NODE_ENV=development tsx src/server/server.ts",
     "start": "dotenv cross-env NODE_ENV=production  tsx src/server/server.ts",
     "start:docker": "tsx src/server/server.ts",
     "lint": "next lint",

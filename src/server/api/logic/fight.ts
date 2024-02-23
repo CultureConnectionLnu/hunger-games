@@ -3,10 +3,11 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db, type DB } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
 import { RockPaperScissorsMatch } from "./rock-paper-scissors";
-import { BaseGame } from "./base-game";
+import type { BaseGame } from "./base-game";
+import { env } from "~/env";
 
 /**
- * insert a new entry for each game added 
+ * insert a new entry for each game added
  */
 const knownGames = {
   "rock-paper-scissors": RockPaperScissorsMatch,
@@ -138,10 +139,11 @@ type KnownGamesMap = {
   };
 }[keyof typeof knownGames];
 
-
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();
-  private readonly forceDeleteGameTimeout = 1000 * 60 * 60;
+  private readonly forceDeleteGameTimeout = env.FEATURE_GAME_TIMEOUT
+    ? 1000 * 60 * 60
+    : Number.POSITIVE_INFINITY;
 
   public getGame(fightId: string) {
     return this.runningGames.get(fightId);
