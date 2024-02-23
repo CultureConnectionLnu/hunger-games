@@ -151,7 +151,7 @@ export const userProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  if (!ctx.user.isDeleted) {
+  if (ctx.user.isDeleted) {
     throw new TRPCError({
       code: "UNPROCESSABLE_CONTENT",
       message: "User is deleted",

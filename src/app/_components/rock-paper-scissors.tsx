@@ -1,11 +1,19 @@
 import { useUser } from "@clerk/nextjs";
+import { read, readFile } from "fs";
 import { useState } from "react";
 import { FaSpinner } from "react-icons/fa";
-import type { AnyGameEvent } from "~/server/api/logic/rock-paper-scissors";
+import { Button } from "~/components/ui/button";
+import type {
+  AnyGameEvent,
+  GameEvent,
+  ServerState,
+} from "~/server/api/logic/rock-paper-scissors";
 import { api } from "~/trpc/react";
 import type { RouterInputs } from "~/trpc/shared";
 
 type ActionOptions = RouterInputs["rockPaperScissors"]["choose"];
+
+type Views = "joining" | "joined" | "ready" | "choose" | "result" | "end";
 
 export default function RockPaperScissorsGame({
   params,
@@ -14,28 +22,69 @@ export default function RockPaperScissorsGame({
 }) {
   const { user } = useUser();
   const [events, setEvents] = useState<AnyGameEvent[]>([]);
+  const [view, setView] = useState<Views>("joining");
+  const [data, setData] = useState<GameEvent<ServerState>>();
   api.rockPaperScissors.onAction.useSubscription(
     { fightId: params.fightId, userId: user?.id ?? "" },
     {
       onData(data) {
         console.log(data);
         setEvents((prev) => [...prev, data]);
+        setData(data);
+
+        switch (data.state) {
+          case "init":
+            setView("joining");
+            break;
+          case "allJoined":
+            setView("ready");
+          case "start":
+            setView("choose");
+            break;
+          case "evaluate":
+            setView("result");
+            break;
+          case "end":
+            setView("end");
+            break;
+        }
       },
       enabled: Boolean(user),
     },
   );
   const { isLoading: joining } = api.rockPaperScissors.join.useQuery();
-  const ready = api.rockPaperScissors.ready.useMutation();
-  const choose = api.rockPaperScissors.choose.useMutation();
 
   if (joining) return <LoadingScreen />;
+
+  console.log("events", events);
 
   return (
     <div>
       <Header params={{ wins: 0, countdown: 20 }} />
-      <SelectionContainer params={{choose: (option) => choose.mutate(option)}}/>
+      <ViewContainer params={{ view }} />
     </div>
   );
+}
+
+function ViewContainer({ params }: { params: { view: Views } }) {
+  switch (params.view) {
+    case "joining":
+      return <LoadingScreen />;
+    case "joined":
+      // todo: pass time left
+      return <ReadyScreen params={{ timeLeft: 10 }} />;
+    case "ready":
+      return <p>Wait for start</p>;
+    case "choose":
+      return <SelectionContainer />;
+    case "result":
+      return <p>Result</p>;
+    case "end":
+      return <p>End</p>;
+      1;
+    default:
+      break;
+  }
 }
 
 function LoadingScreen() {
@@ -57,29 +106,48 @@ function Header({ params }: { params: { wins: number; countdown: number } }) {
   );
 }
 
-function SelectionContainer({
-  params,
-}: {
-  params: { choose: (option: ActionOptions) => void };
-}) {
+function ReadyScreen({ params }: { params: { timeLeft: number } }) {
+  const ready = api.rockPaperScissors.ready.useMutation();
+  return (
+    <div>
+      <p>Ready to play?</p>
+      <p>Time left {params.timeLeft}</p>
+      <Button onClick={() => ready.mutate()}>
+        Ready {ready.isLoading ? <FaSpinner className="animate-spin" /> : <></>}
+      </Button>
+    </div>
+  );
+}
+
+function SelectionContainer() {
+  const choose = api.rockPaperScissors.choose.useMutation();
+
+  if (choose.isLoading)
+    return (
+      <p>
+        <FaSpinner className="animate-spin" />
+        <span>Waiting for opponent</span>
+      </p>
+    );
+
   return (
     <div className="flex flex-col items-center justify-center">
       <div className="mt-32 flex scale-90 flex-row sm:scale-125">
         <div
           className="absolute z-10 -mx-48 -my-12 cursor-grab transition duration-300 hover:scale-125"
-          onClick={() => params.choose("paper")}
+          onClick={() => choose.mutate("paper")}
         >
           <Paper />
         </div>
         <div
           className="absolute z-10 -my-12 mx-8 transition duration-300 hover:scale-125"
-          onClick={() => params.choose("scissors")}
+          onClick={() => choose.mutate("scissors")}
         >
           <Scissors />
         </div>
         <div
           className="absolute z-10 -mx-20 my-32 cursor-grabbing transition duration-300 hover:scale-125"
-          onClick={() => params.choose("rock")}
+          onClick={() => choose.mutate("rock")}
         >
           <Rock />
         </div>

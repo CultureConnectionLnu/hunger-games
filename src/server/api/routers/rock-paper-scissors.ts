@@ -24,7 +24,9 @@ const rockPaperScissorsProcedure = inFightProcedure.use(({ ctx, next }) => {
   const currentGame = ctx.fightHandler.getGame(ctx.currentFight.fightId);
   if (!currentGame) {
     // TODO: introduce delete action for the invalid fight
-    console.error(`Could not find the fight with id '${ctx.currentFight.fightId}' in the GameHandler`)
+    console.error(
+      `Could not find the fight with id '${ctx.currentFight.fightId}' in the GameHandler`,
+    );
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "Could not find your match, even though it should exist",
@@ -33,7 +35,9 @@ const rockPaperScissorsProcedure = inFightProcedure.use(({ ctx, next }) => {
 
   if (currentGame.type !== "rock-paper-scissors") {
     // TODO: introduce delete action for the invalid fight
-    console.error(`The fight with id '${ctx.currentFight.fightId}' is not of type 'rock-paper-scissors', even though it is supposed to be.`)
+    console.error(
+      `The fight with id '${ctx.currentFight.fightId}' is not of type 'rock-paper-scissors', even though it is supposed to be.`,
+    );
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "Could not find your match, even though it should exist",
@@ -73,11 +77,13 @@ export const rockPaperScissorsRouter = createTRPCRouter({
     catchMatchError(() => {
       ctx.currentGame.playerJoin(ctx.user.clerkId);
     });
+    return true;
   }),
   ready: rockPaperScissorsProcedure.mutation(({ ctx }) => {
     catchMatchError(() => {
       ctx.currentGame.playerReady(ctx.user.clerkId);
     });
+    return true;
   }),
   choose: rockPaperScissorsProcedure
     .input(rockPaperScissorsItemsSchema)
@@ -85,6 +91,7 @@ export const rockPaperScissorsRouter = createTRPCRouter({
       catchMatchError(() => {
         ctx.currentGame.playerChoose(ctx.user.clerkId, input);
       });
+      return true;
     }),
 
   onAction: publicProcedure
@@ -110,7 +117,7 @@ export const rockPaperScissorsRouter = createTRPCRouter({
         match.on("event", onMessage);
         match.allEvents.forEach(onMessage);
 
-        match.once('destroy', () => {
+        match.once("destroy", () => {
           emit.complete();
         });
 

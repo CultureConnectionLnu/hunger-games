@@ -13,13 +13,16 @@ const knownGames = {
   "rock-paper-scissors": RockPaperScissorsMatch,
 } satisfies Record<string, new (fightId: string, players: string[]) => AnyGame>;
 
+const globalForFightHandler = globalThis as unknown as {
+  fightHandler: FightHandler | undefined;
+};
+
 export class FightHandler {
-  private static _instance: FightHandler;
   static get instance() {
-    if (!this._instance) {
-      this._instance = new FightHandler(db);
+    if (!globalForFightHandler.fightHandler) {
+      globalForFightHandler.fightHandler= new FightHandler(db);
     }
-    return this._instance;
+    return globalForFightHandler.fightHandler;
   }
 
   private gameHandler = new GameHandler();

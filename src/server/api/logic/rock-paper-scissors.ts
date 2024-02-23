@@ -75,17 +75,19 @@ type ServerStateData = {
   };
 };
 
-type SimpleGameEvent<T extends keyof ServerStateData> = {
+export type ServerState = keyof ServerStateData;
+
+type SimpleGameEvent<T extends ServerState> = {
   state: T;
   data: ServerStateData[T];
 };
 
-type GameEvent<T extends keyof ServerStateData> = SimpleGameEvent<T> & {
+export type GameEvent<T extends ServerState> = SimpleGameEvent<T> & {
   fightId: string;
   players: string[];
 };
 
-export type AnyGameEvent = GameEvent<keyof ServerStateData>;
+export type AnyGameEvent = GameEvent<ServerState>;
 
 export class RockPaperScissorsMatch extends BaseGame<{ event: AnyGameEvent }> {
   private events: AnyGameEvent[] = [];
@@ -99,7 +101,7 @@ export class RockPaperScissorsMatch extends BaseGame<{ event: AnyGameEvent }> {
   constructor(fightId: string, players: string[]) {
     super(fightId, players);
     this.state = {
-      server: "init" as keyof ServerStateData,
+      server: "init" as ServerState,
       players: players.reduce<Record<string, PlayerStateData>>(
         (acc, player) => {
           acc[player] = {
@@ -122,9 +124,7 @@ export class RockPaperScissorsMatch extends BaseGame<{ event: AnyGameEvent }> {
     });
   }
 
-  private emitEvent<T extends keyof ServerStateData>(
-    event: SimpleGameEvent<T>,
-  ) {
+  private emitEvent<T extends ServerState>(event: SimpleGameEvent<T>) {
     const extendedEvent = {
       ...event,
       fightId: this.fightId,
@@ -147,6 +147,16 @@ export class RockPaperScissorsMatch extends BaseGame<{ event: AnyGameEvent }> {
 
     player.state = "join";
 
+    if (this.areAllPlayerInState("join")) {
+      this.emitEvent({
+        state: "allJoined",
+        data: {
+          players: this.players,
+        },
+      });
+      return
+    }
+
     if (this.areSomePlayerInState("join")) {
       this.emitEvent({
         state: "joined",
@@ -158,15 +168,6 @@ export class RockPaperScissorsMatch extends BaseGame<{ event: AnyGameEvent }> {
         },
       });
       return;
-    }
-
-    if (this.areAllPlayerInState("join")) {
-      this.emitEvent({
-        state: "allJoined",
-        data: {
-          players: this.players,
-        },
-      });
     }
   }
 
