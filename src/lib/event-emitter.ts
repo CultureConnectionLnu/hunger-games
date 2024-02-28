@@ -8,12 +8,12 @@ export interface KnownEvents {
   // to be extended by other modules
 }
 
-export class TypedEventEmitter{
+export class TypedEventEmitter {
   private emitter = new EventEmitter();
 
   emit<TEventName extends keyof KnownEvents>(
     eventName: TEventName,
-    eventArg: KnownEvents[TEventName]
+    eventArg: KnownEvents[TEventName],
   ) {
     this.emitter.emit(eventName, eventArg);
   }
@@ -36,9 +36,9 @@ export class TypedEventEmitter{
 export class GenericEventEmitter<TEvents extends Record<string, any>> {
   private emitter = new EventEmitter();
 
-  emit<TEventName extends keyof TEvents>(
+  protected emit<TEventName extends keyof TEvents>(
     eventName: TEventName & string,
-    eventArg: TEvents[TEventName]
+    eventArg: TEvents[TEventName],
   ) {
     this.emitter.emit(eventName, eventArg);
   }
@@ -64,7 +64,7 @@ export class GenericEventEmitter<TEvents extends Record<string, any>> {
     this.emitter.off(eventName, handler);
   }
 
-  removeAllListeners(){
+  protected removeAllListeners() {
     this.emitter.removeAllListeners();
   }
 }
