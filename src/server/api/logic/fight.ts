@@ -3,15 +3,17 @@ import { and, eq, isNull } from "drizzle-orm";
 import { db, type DB } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
 import { RockPaperScissorsMatch } from "./rock-paper-scissors";
-import type { BaseGame } from "./base-game";
 import { env } from "~/env";
+import type { GameState } from "./core/game-state";
+
+// todo: remove force delete from here or only have it here
 
 /**
  * insert a new entry for each game added
  */
 const knownGames = {
   "rock-paper-scissors": RockPaperScissorsMatch,
-} satisfies Record<string, new (fightId: string, players: string[]) => AnyGame>;
+} satisfies Record<string, new (fightId: string, players: string[]) => {readonly gameState: GameState}>;
 
 const globalForFightHandler = globalThis as unknown as {
   fightHandler: FightHandler | undefined;
@@ -99,7 +101,7 @@ export class FightHandler {
       fightId: newFight.id,
       players: [userId, opponentId],
     });
-    void this.registerEndListener(game);
+    void this.registerEndListener(game.gameState);
 
     return newFight;
   }
@@ -108,10 +110,10 @@ export class FightHandler {
     return this.gameHandler.getGame(fightId);
   }
 
-  private async registerEndListener(game: AnyGame) {
+  private async registerEndListener(game: GameState) {
     try {
       const winner = await new Promise<string>((resolve, reject) => {
-        game.once("end", (event) => {
+        game.once("game-ended", (event) => {
           resolve(event.winner);
         });
         game.once("destroy", () => {
@@ -132,8 +134,6 @@ export class FightHandler {
     game.destroy();
   }
 }
-// eslint-disable-next-line @typescript-eslint/ban-types
-type AnyGame = BaseGame<{}>;
 
 type KnownGamesMap = {
   [K in keyof typeof knownGames]: {
@@ -165,18 +165,18 @@ class GameHandler {
     const game = new knownGames[type](props.fightId, props.players);
 
     this.runningGames.set(props.fightId, { type, instance: game });
-    this.registerCleanup(game);
+    this.registerCleanup(game.gameState);
 
     return game;
   }
 
-  private registerCleanup(game: AnyGame) {
+  private registerCleanup(game: GameState) {
     // make sure the game is automatically removed after a certain time
     const timeout = setTimeout(
       () => game.destroy(),
       this.forceDeleteGameTimeout,
     );
-    game.once("end", () => {
+    game.once("game-ended", () => {
       clearTimeout(timeout);
       game.destroy();
     });

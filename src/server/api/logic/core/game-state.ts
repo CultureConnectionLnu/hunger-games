@@ -65,7 +65,9 @@ export class GameState extends GenericEventEmitter<
     Pick<
       GeneralGameEvents,
       (typeof GameState)["nonPlayerSpecificEvents"][number]
-    >
+    > & {
+      destroy: undefined;
+    }
 > {
   private static nonPlayerSpecificEvents = [
     "canceled",
@@ -161,6 +163,7 @@ export class GameState extends GenericEventEmitter<
     this.disconnectedPlayers.clear();
 
     // reset listeners
+    this.emit('destroy', undefined);
     this.removeAllListeners();
   }
 
