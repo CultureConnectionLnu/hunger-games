@@ -2,18 +2,25 @@ import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { db, type DB } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
-import { RockPaperScissorsMatch } from "./rock-paper-scissors";
+import { RockPaperScissorsMatch } from "./games/rock-paper-scissors";
 import { env } from "~/env";
-import type { GameState } from "./core/game-state";
+import type { BaseGame, Player } from "./core/base-game";
+import type { AllGameStateEvents, ToEvent } from "./core/game-state";
 
 // todo: remove force delete from here or only have it here
+type AnyGame = BaseGame<
+  AllGameStateEvents,
+  string,
+  ToEvent<AllGameStateEvents>,
+  new (id: string) => Player<string>
+>;
 
 /**
  * insert a new entry for each game added
  */
 const knownGames = {
   "rock-paper-scissors": RockPaperScissorsMatch,
-} satisfies Record<string, new (fightId: string, players: string[]) => {readonly gameState: GameState}>;
+} satisfies Record<string, new (fightId: string, players: string[]) => AnyGame>;
 
 const globalForFightHandler = globalThis as unknown as {
   fightHandler: FightHandler | undefined;
@@ -22,7 +29,7 @@ const globalForFightHandler = globalThis as unknown as {
 export class FightHandler {
   static get instance() {
     if (!globalForFightHandler.fightHandler) {
-      globalForFightHandler.fightHandler= new FightHandler(db);
+      globalForFightHandler.fightHandler = new FightHandler(db);
     }
     return globalForFightHandler.fightHandler;
   }
@@ -101,7 +108,7 @@ export class FightHandler {
       fightId: newFight.id,
       players: [userId, opponentId],
     });
-    void this.registerEndListener(game.gameState);
+    void this.registerEndListener(game);
 
     return newFight;
   }
@@ -110,7 +117,7 @@ export class FightHandler {
     return this.gameHandler.getGame(fightId);
   }
 
-  private async registerEndListener(game: GameState) {
+  private async registerEndListener(game: AnyGame) {
     try {
       const winner = await new Promise<string>((resolve, reject) => {
         game.once("game-ended", (event) => {
@@ -165,12 +172,12 @@ class GameHandler {
     const game = new knownGames[type](props.fightId, props.players);
 
     this.runningGames.set(props.fightId, { type, instance: game });
-    this.registerCleanup(game.gameState);
+    this.registerCleanup(game);
 
     return game;
   }
 
-  private registerCleanup(game: GameState) {
+  private registerCleanup(game: AnyGame) {
     // make sure the game is automatically removed after a certain time
     const timeout = setTimeout(
       () => game.destroy(),

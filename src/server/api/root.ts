@@ -1,7 +1,7 @@
 import { postRouter } from "~/server/api/routers/post";
 import { createTRPCRouter } from "~/server/api/trpc";
 import { fightRouter } from "./routers/fight";
-import { rockPaperScissorsRouter } from "./routers/rock-paper-scissors";
+import { rockPaperScissorsRouter } from "./routers/games/rock-paper-scissors";
 
 /**
  * This is the primary router for your server.

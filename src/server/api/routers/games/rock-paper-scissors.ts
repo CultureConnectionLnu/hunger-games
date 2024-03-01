@@ -4,11 +4,12 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import {
-  type AnyGameEvent,
+  RockPaperScissorsMatch,
   rockPaperScissorsItemsSchema,
-} from "../logic/rock-paper-scissors";
-import { inFightProcedure } from "./fight";
-import { FightHandler } from "../logic/fight";
+} from "../../logic/games/rock-paper-scissors";
+import { inFightProcedure } from "../fight";
+import { FightHandler } from "../../logic/fight";
+import { GetEmittedEvents } from "../../logic/core/base-game";
 
 /**
  * makes sure the user is actually in a rock-paper-scissors fight
@@ -102,7 +103,7 @@ export const rockPaperScissorsRouter = createTRPCRouter({
       }),
     )
     .subscription(({ input }) => {
-      return observable<AnyGameEvent>((emit) => {
+      return observable<GetEmittedEvents<RockPaperScissorsMatch>>((emit) => {
         const match = FightHandler.instance.getGame(input.fightId)?.instance;
         if (!match || !match.players.includes(input.userId)) {
           throw new TRPCError({

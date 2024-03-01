@@ -1,8 +1,12 @@
 import { GenericEventEmitter } from "~/lib/event-emitter";
 import { PlayerState } from "./player-state";
-import { TimeoutCounter } from "./timeout-counter";
+import {
+  GetTimerEvents,
+  TimeoutCounter,
+  type TimerEvent,
+} from "./timeout-counter";
 
-type GameConfig = {
+export type GameConfig = {
   startTimeoutInSeconds: number;
   disconnectTimeoutInSeconds: number;
   forceStopInSeconds: number;
@@ -13,16 +17,8 @@ type GeneralGameEvents = {
     joined: string[];
     ready: string[];
   };
-  "start-timer": {
-    startTimeUnix: number;
-    timeoutAfterSeconds: number;
-    secondsLeft: number;
-  };
-  "disconnect-timer": {
-    startTimeUnix: number;
-    timeoutAfterSeconds: number;
-    secondsLeft: number;
-  };
+  "start-timer": TimerEvent;
+  "disconnect-timer": TimerEvent;
   "all-player-ready": undefined;
   "game-in-progress": undefined;
   "game-ended": {
@@ -38,6 +34,8 @@ type GeneralGameEvents = {
     reason: "start-timeout" | "disconnect-timeout" | "force-stop";
   };
 };
+
+type TimerEvents = GetTimerEvents<GeneralGameEvents>;
 
 export type ToEvent<T> = {
   [Key in keyof T]: {
@@ -60,6 +58,9 @@ export type PlayerEvent = ToPlayerEvent<
   PlayerState["state"]
 >;
 
+export type AllGameStateEvents =
+  GameState extends GenericEventEmitter<infer R> ? R : never;
+
 export class GameState extends GenericEventEmitter<
   Record<`player-${string}`, PlayerEvent> &
     Pick<
@@ -69,7 +70,7 @@ export class GameState extends GenericEventEmitter<
       destroy: undefined;
     }
 > {
-  private static nonPlayerSpecificEvents = [
+  public static nonPlayerSpecificEvents = [
     "canceled",
     "all-player-ready",
     "game-in-progress",
@@ -163,7 +164,7 @@ export class GameState extends GenericEventEmitter<
     this.disconnectedPlayers.clear();
 
     // reset listeners
-    this.emit('destroy', undefined);
+    this.emit("destroy", undefined);
     this.removeAllListeners();
   }
 
@@ -260,30 +261,7 @@ export class GameState extends GenericEventEmitter<
   }
 
   private setupStartTimeout() {
-    this.startTimeout.once("timeout", () => {
-      this.emitGameEvent({
-        event: "canceled",
-        data: {
-          reason: "start-timeout",
-        },
-      });
-    });
-
-    this.startTimeout.once("start", (e) => {
-      this.emitGameEvent({
-        event: "start-timer",
-        data: {
-          ...e,
-          secondsLeft: e.timeoutAfterSeconds,
-        },
-      });
-    });
-    this.startTimeout.on("countdown", (e) => {
-      this.emitGameEvent({
-        event: "start-timer",
-        data: e,
-      });
-    });
+    this.setupTimeoutCounter(this.startTimeout, "start-timer", "start-timeout");
   }
 
   private setupDisconnectTimeout() {
@@ -292,28 +270,30 @@ export class GameState extends GenericEventEmitter<
       return;
     }
 
-    // todo: check if all timer events can be aligned
-    this.disconnectedTimeout.once("timeout", () => {
+    this.setupTimeoutCounter(
+      this.disconnectedTimeout,
+      "disconnect-timer",
+      "disconnect-timeout",
+    );
+  }
+
+  private setupTimeoutCounter(
+    timeout: TimeoutCounter,
+    countdownEvent: TimerEvents,
+    cancelReason: GeneralGameEvents["canceled"]["reason"],
+  ) {
+    timeout.once("timeout", () => {
       this.emitGameEvent({
         event: "canceled",
         data: {
-          reason: "disconnect-timeout",
+          reason: cancelReason,
         },
       });
     });
 
-    this.disconnectedTimeout.once("start", (e) => {
+    timeout.on("countdown", (e) => {
       this.emitGameEvent({
-        event: "disconnect-timer",
-        data: {
-          ...e,
-          secondsLeft: e.timeoutAfterSeconds,
-        },
-      });
-    });
-    this.disconnectedTimeout.on("countdown", (e) => {
-      this.emitGameEvent({
-        event: "disconnect-timer",
+        event: countdownEvent,
         data: e,
       });
     });
