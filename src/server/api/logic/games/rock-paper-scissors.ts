@@ -76,7 +76,10 @@ type RockPaperScissorsEvents = {
     secondsLeft: number;
   };
 };
-type EmitEvent = ToEvent<RockPaperScissorsEvents>;
+export type RockPaperScissorsPlayerEvents = ToPlayerEvent<
+  RockPaperScissorsEvents,
+  RockPaperScissorsPlayer["state"]
+> ;
 
 class RockPaperScissorsPlayer extends GenericEventEmitter<{
   chosen: {
@@ -128,12 +131,9 @@ class RockPaperScissorsPlayer extends GenericEventEmitter<{
 }
 
 export class RockPaperScissorsMatch extends BaseGame<
-  Record<
-    `player-${string}`,
-    ToPlayerEvent<RockPaperScissorsEvents, RockPaperScissorsPlayer["state"]>
-  >,
+  Record<`player-${string}`, RockPaperScissorsPlayerEvents>,
   RockPaperScissorsPlayer["state"],
-  EmitEvent,
+  ToEvent<RockPaperScissorsEvents>,
   typeof RockPaperScissorsPlayer
 > {
   private winners: string[] = [];

@@ -1,17 +1,19 @@
 import { useUser } from "@clerk/nextjs";
-import { read, readFile } from "fs";
+import type { Observable } from "@trpc/server/observable";
 import { useState } from "react";
 import { FaSpinner } from "react-icons/fa";
 import { Button } from "~/components/ui/button";
-import type {
-  AnyGameEvent,
-  GameEvent,
-  ServerState,
-} from "~/server/api/logic/rock-paper-scissors";
 import { api } from "~/trpc/react";
-import type { RouterInputs } from "~/trpc/shared";
+import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 
 type ActionOptions = RouterInputs["rockPaperScissors"]["choose"];
+type ServerEvent =
+  RouterOutputs["rockPaperScissors"]["onAction"] extends Observable<
+    infer R,
+    never
+  >
+    ? R
+    : never;
 
 type Views = "joining" | "joined" | "ready" | "choose" | "result" | "end";
 
@@ -21,9 +23,9 @@ export default function RockPaperScissorsGame({
   params: { fightId: string };
 }) {
   const { user } = useUser();
-  const [events, setEvents] = useState<AnyGameEvent[]>([]);
+  const [events, setEvents] = useState<ServerEvent[]>([]);
   const [view, setView] = useState<Views>("joining");
-  const [data, setData] = useState<GameEvent<ServerState>>();
+  const [data, setData] = useState<ServerEvent>();
   api.rockPaperScissors.onAction.useSubscription(
     { fightId: params.fightId, userId: user?.id ?? "" },
     {
@@ -33,20 +35,7 @@ export default function RockPaperScissorsGame({
         setData(data);
 
         switch (data.state) {
-          case "init":
-            setView("joining");
-            break;
-          case "allJoined":
-            setView("ready");
-          case "start":
-            setView("choose");
-            break;
-          case "evaluate":
-            setView("result");
-            break;
-          case "end":
-            setView("end");
-            break;
+          case ''
         }
       },
       enabled: Boolean(user),

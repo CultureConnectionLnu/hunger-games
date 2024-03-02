@@ -12,7 +12,11 @@ export type Player<State> = {
   destroy(): void;
 };
 
-export type GetEmittedEvents<T> = T extends GenericEventEmitter<infer R> ? R : never
+export type GetEmittedEvents<T> =
+  T extends GenericEventEmitter<infer R> ? R : never;
+
+export type GetPlayerEvents<T> =
+  GetEmittedEvents<T> extends Record<`player-${string}`, infer R> ? R : never;
 
 export abstract class BaseGame<
   Events extends Record<string, unknown>,
@@ -92,10 +96,12 @@ export abstract class BaseGame<
    */
   protected emitGameEvent(event: EmitEvent, playerId?: string) {
     this.eventHistory.push(event);
-    // typing the emit for such a generic class is difficult, therefore TS ignore was used
+    // This class is to generic to type it properly, therefore ts-ignore is used
 
     if (!playerId) {
       this.players.forEach((x) =>
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         this.emit(`player-${x.id}`, {
           ...event,
           fightId: this.fightId,
@@ -105,6 +111,8 @@ export abstract class BaseGame<
       return;
     }
     const player = this.assertPlayer(playerId);
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
     this.emit(`player-${player.id}`, {
       ...event,
       fightId: this.fightId,
@@ -118,8 +126,12 @@ export abstract class BaseGame<
     }
   }
 
+  public getPlayer(id: string) {
+    return this.players.get(id);
+  }
+
   protected assertPlayer(id: string) {
-    const player = this.players.get(id);
+    const player = this.getPlayer(id);
     if (!player) {
       throw new Error("Player is not part of the game");
     }
@@ -129,6 +141,8 @@ export abstract class BaseGame<
   private setupEventForward(playerIds: string[]) {
     playerIds.forEach((id) => {
       this.gameState.on(`player-${id}`, (eventData) =>
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
         this.emit(`player-${id}`, eventData),
       );
     });

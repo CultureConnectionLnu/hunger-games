@@ -1,7 +1,7 @@
 import { GenericEventEmitter } from "~/lib/event-emitter";
 import { PlayerState } from "./player-state";
 import {
-  GetTimerEvents,
+  type GetTimerEvents,
   TimeoutCounter,
   type TimerEvent,
 } from "./timeout-counter";
@@ -58,18 +58,15 @@ export type PlayerEvent = ToPlayerEvent<
   PlayerState["state"]
 >;
 
-export type AllGameStateEvents =
-  GameState extends GenericEventEmitter<infer R> ? R : never;
+export type AllGameStateEvents = Record<`player-${string}`, PlayerEvent> &
+  Pick<
+    GeneralGameEvents,
+    (typeof GameState)["nonPlayerSpecificEvents"][number]
+  > & {
+    destroy: undefined;
+  };
 
-export class GameState extends GenericEventEmitter<
-  Record<`player-${string}`, PlayerEvent> &
-    Pick<
-      GeneralGameEvents,
-      (typeof GameState)["nonPlayerSpecificEvents"][number]
-    > & {
-      destroy: undefined;
-    }
-> {
+export class GameState extends GenericEventEmitter<AllGameStateEvents> {
   public static nonPlayerSpecificEvents = [
     "canceled",
     "all-player-ready",

@@ -1,26 +1,25 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
+import { env } from "~/env";
 import { db, type DB } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
+import type { BaseGame } from "./core/base-game";
 import { RockPaperScissorsMatch } from "./games/rock-paper-scissors";
-import { env } from "~/env";
-import type { BaseGame, Player } from "./core/base-game";
-import type { AllGameStateEvents, ToEvent } from "./core/game-state";
 
 // todo: remove force delete from here or only have it here
-type AnyGame = BaseGame<
-  AllGameStateEvents,
-  string,
-  ToEvent<AllGameStateEvents>,
-  new (id: string) => Player<string>
->;
 
 /**
  * insert a new entry for each game added
  */
 const knownGames = {
   "rock-paper-scissors": RockPaperScissorsMatch,
-} satisfies Record<string, new (fightId: string, players: string[]) => AnyGame>;
+} satisfies Record<
+  string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  new (fightId: string, players: string[]) => BaseGame<any, any, any, any>
+>;
+
+type AnyGame = InstanceType<(typeof knownGames)[keyof typeof knownGames]>;
 
 const globalForFightHandler = globalThis as unknown as {
   fightHandler: FightHandler | undefined;

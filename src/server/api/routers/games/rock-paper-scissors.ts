@@ -3,13 +3,12 @@ import { observable } from "@trpc/server/observable";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+import { FightHandler } from "../../logic/fight";
 import {
-  RockPaperScissorsMatch,
-  rockPaperScissorsItemsSchema,
+  type RockPaperScissorsPlayerEvents,
+  rockPaperScissorsItemsSchema
 } from "../../logic/games/rock-paper-scissors";
 import { inFightProcedure } from "../fight";
-import { FightHandler } from "../../logic/fight";
-import { GetEmittedEvents } from "../../logic/core/base-game";
 
 /**
  * makes sure the user is actually in a rock-paper-scissors fight
@@ -103,19 +102,19 @@ export const rockPaperScissorsRouter = createTRPCRouter({
       }),
     )
     .subscription(({ input }) => {
-      return observable<GetEmittedEvents<RockPaperScissorsMatch>>((emit) => {
+      return observable<RockPaperScissorsPlayerEvents>((emit) => {
         const match = FightHandler.instance.getGame(input.fightId)?.instance;
-        if (!match || !match.players.includes(input.userId)) {
+        if (!match || match.getPlayer(input.userId)) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Match not found",
           });
         }
 
-        function onMessage(data: AnyGameEvent) {
+        function onMessage(data: RockPaperScissorsPlayerEvents) {
           emit.next(data);
         }
-        match.on("event", onMessage);
+        match.on(`player-${input.userId}`, onMessage);
         match.allEvents.forEach(onMessage);
 
         match.once("destroy", () => {
@@ -123,7 +122,7 @@ export const rockPaperScissorsRouter = createTRPCRouter({
         });
 
         return () => {
-          match.off("event", onMessage);
+          match.off(`player-${input.userId}`, onMessage);
         };
       });
     }),
