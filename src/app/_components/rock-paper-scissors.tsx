@@ -35,7 +35,7 @@ export default function RockPaperScissorsGame({
         setData(data);
 
         switch (data.state) {
-          case ''
+          case '':
         }
       },
       enabled: Boolean(user),

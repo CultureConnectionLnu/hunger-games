@@ -1,9 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { env } from "~/env";
+import type { GenericEventEmitter } from "~/lib/event-emitter";
 import { db, type DB } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
 import type { BaseGame } from "./core/base-game";
+import type { GeneralGameEvents, ServerEventsOnly } from "./core/game-state";
 import { RockPaperScissorsMatch } from "./games/rock-paper-scissors";
 
 // todo: remove force delete from here or only have it here
@@ -15,11 +17,11 @@ const knownGames = {
   "rock-paper-scissors": RockPaperScissorsMatch,
 } satisfies Record<
   string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  new (fightId: string, players: string[]) => BaseGame<any, any, any, any>
+  new (fightId: string, playerIds: string[]) => AnyGame
 >;
 
-type AnyGame = InstanceType<(typeof knownGames)[keyof typeof knownGames]>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyGame = Pick<BaseGame<GeneralGameEvents, any, any>, 'destroy' | 'fightId'> & GenericEventEmitter<ServerEventsOnly<GeneralGameEvents>>;
 
 const globalForFightHandler = globalThis as unknown as {
   fightHandler: FightHandler | undefined;
@@ -120,7 +122,7 @@ export class FightHandler {
     try {
       const winner = await new Promise<string>((resolve, reject) => {
         game.once("game-ended", (event) => {
-          resolve(event.winner);
+          resolve(event.data.winner);
         });
         game.once("destroy", () => {
           reject(new Error("Game destroyed before it ended"));

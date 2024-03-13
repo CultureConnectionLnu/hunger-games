@@ -1,10 +1,6 @@
-import { GenericEventEmitter } from "~/lib/event-emitter";
+import type { GenericEventEmitter } from "~/lib/event-emitter";
 import { PlayerState } from "./player-state";
-import {
-  type GetTimerEvents,
-  TimeoutCounter,
-  type TimerEvent,
-} from "./timeout-counter";
+import { TimeoutCounter, type TimerEvent } from "./timeout-counter";
 
 export type GameConfig = {
   startTimeoutInSeconds: number;
@@ -12,69 +8,155 @@ export type GameConfig = {
   forceStopInSeconds: number;
 };
 
-type GeneralGameEvents = {
-  "player-joined-readying": {
-    joined: string[];
-    ready: string[];
-  };
-  "start-timer": TimerEvent;
-  "disconnect-timer": TimerEvent;
-  "all-player-ready": undefined;
-  "game-in-progress": undefined;
-  "game-ended": {
-    winner: string;
-  };
-  "game-halted": {
-    disconnected: string[];
-  };
-  "game-resume": {
-    lastEvent: EmitEvent;
-  };
-  canceled: {
-    reason: "start-timeout" | "disconnect-timeout" | "force-stop";
+export type EventTemplate<
+  Events extends Record<string, unknown>,
+  PlayerStates extends string,
+  ServerEvents extends keyof Events = never,
+  PlayerEvents extends keyof Events = keyof Events,
+> = CombineIfNotNever<
+  IfNotNever<
+    PlayerEvents,
+    ToPlayerEvent<Pick<Events, PlayerEvents>, PlayerStates>,
+    never
+  >,
+  IfNotNever<ServerEvents, ToServerEvent<Pick<Events, ServerEvents>>, never>
+>;
+
+/**
+ * TODO:
+ * The combine here is wrong, it does not combine the fightId and state information back into the type.
+ * instead of manyally stitching it together like this, it should use the `EventTemplate` as well.
+ * then insert the types accordingly
+ */
+
+export type CombineEvents<T, K> = ServerEventsOnly<T> &
+  ServerEventsOnly<K> &
+  Record<`player-${string}`, ToPlayerEventData<T> | ToPlayerEventData<K>>;
+
+type IfNotNever<Condition, True, False> = [Condition] extends [never]
+  ? False
+  : True;
+type CombineIfNotNever<T, K> = IfNotNever<
+  T,
+  IfNotNever<K, K & T, T>,
+  IfNotNever<K, K, never>
+>;
+type ToServerEvent<T> = {
+  [Key in keyof T]: {
+    data: T[Key];
+    fightId: string;
   };
 };
 
-type TimerEvents = GetTimerEvents<GeneralGameEvents>;
-
-export type ToEvent<T> = {
-  [Key in keyof T]: {
-    event: Key;
-    data: T[Key];
-  };
-}[keyof T];
-type EmitEvent = ToEvent<GeneralGameEvents>;
-
-export type ToPlayerEvent<T, States> = {
-  [Key in keyof T]: {
+type ToPlayerEvent<T, States> = {
+  [Key in keyof T as `player-${string}`]: {
     event: Key;
     data: T[Key];
     fightId: string;
     state: States;
   };
-}[keyof T];
-export type PlayerEvent = ToPlayerEvent<
-  GeneralGameEvents,
-  PlayerState["state"]
+};
+
+type ToUnion<T> = T[keyof T];
+type ReduceToEventAndData<T> = {
+  [Key in keyof T]: T[Key] extends { data: infer Data }
+    ? {
+        event: Key;
+        data: Data;
+      }
+    : never;
+};
+type ReduceToEvent<T> = T extends {
+  event: infer Event;
+  data: infer Data;
+}
+  ? {
+      event: Event;
+      data: Data;
+    }
+  : never;
+
+export type PlayerEventsOnly<T> = {
+  [Key in keyof T as Key extends `player-${string}` ? Key : never]: T[Key];
+};
+export type ServerEventsOnly<T> = {
+  [Key in keyof T as Key extends `player-${string}` ? never : Key]: T[Key];
+};
+
+export type ToPlayerEventData<T> = ReduceToEvent<ToUnion<PlayerEventsOnly<T>>>;
+export type ToServerEventData<T> = ToUnion<
+  ReduceToEventAndData<ServerEventsOnly<T>>
+>;
+export type ToEventData<T> = ToPlayerEventData<T> | ToServerEventData<T>;
+
+type FilterForTimeEvents<T> = T extends { data: TimerEvent; event: infer Event }
+  ? Event
+  : never;
+export type GetTimerEvents<T> = ToUnion<{
+  [Key in keyof T as FilterForTimeEvents<T[Key]> extends never
+    ? never
+    : Key]: FilterForTimeEvents<T[Key]>;
+}>;
+
+export type GeneralGameEvents = EventTemplate<
+  {
+    "player-joined-readying": {
+      joined: string[];
+      ready: string[];
+    };
+    "start-timer": TimerEvent;
+    "disconnect-timer": TimerEvent;
+    "all-player-ready": undefined;
+    "game-in-progress": undefined;
+    "game-ended": {
+      winner: string;
+    };
+    "game-halted": {
+      disconnected: string[];
+    };
+    "game-resume": {
+      lastEvent: ToEventData<GeneralGameEvents>;
+    };
+    canceled: {
+      reason: "start-timeout" | "disconnect-timeout" | "force-stop";
+    };
+    destroy: undefined;
+  },
+  PlayerState["state"],
+  | "canceled"
+  | "all-player-ready"
+  | "game-in-progress"
+  | "game-ended"
+  | "destroy",
+  | "player-joined-readying"
+  | "start-timer"
+  | "disconnect-timer"
+  | "all-player-ready"
+  | "game-in-progress"
+  | "game-ended"
+  | "game-halted"
+  | "game-resume"
+  | "canceled"
 >;
 
-export type AllGameStateEvents = Record<`player-${string}`, PlayerEvent> &
-  Pick<
-    GeneralGameEvents,
-    (typeof GameState)["nonPlayerSpecificEvents"][number]
-  > & {
-    destroy: undefined;
-  };
-
-export class GameState extends GenericEventEmitter<AllGameStateEvents> {
+export class GameState {
   public static nonPlayerSpecificEvents = [
     "canceled",
     "all-player-ready",
     "game-in-progress",
     "game-ended",
   ] as const;
-
-  private eventHistory: EmitEvent[] = [];
+  public static playerSpecificEvents = [
+    "player-joined-readying",
+    "start-timer",
+    "disconnect-timer",
+    "all-player-ready",
+    "game-in-progress",
+    "game-ended",
+    "game-halted",
+    "game-resume",
+    "canceled",
+  ];
   private disconnectedPlayers = new Set<string>();
   private players;
 
@@ -82,26 +164,22 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
   private forceTimeout;
   private disconnectedTimeout?: TimeoutCounter;
 
-  get allEvents() {
-    return [...this.eventHistory];
-  }
+  private getEventBeforeHalted(player: string) {
+    const history = this.eventHistory[player];
+    if (!history) return undefined;
 
-  get currentState() {
-    return this.eventHistory[this.eventHistory.length - 1]?.event;
-  }
-
-  private get eventBeforeHalted() {
-    return [...this.eventHistory].reverse().find((state) => {
+    return [...history].reverse().find((state) => {
       state.event !== "game-halted";
     });
   }
 
   constructor(
     private readonly config: GameConfig,
+    private emitter: GenericEventEmitter<GeneralGameEvents>,
+    private eventHistory: Record<string, ToEventData<GeneralGameEvents>[]>,
     public readonly fightId: string,
     playerIds: string[],
   ) {
-    super();
     this.players = new Map<string, PlayerState>();
     playerIds.forEach((id) => {
       const player = new PlayerState(id);
@@ -113,9 +191,10 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
 
     this.forceTimeout = new TimeoutCounter(config.forceStopInSeconds);
     // todo: introduce cancel in case of a win
-    this.forceTimeout.on("timeout", () => {
-      this.emit("canceled", {
-        reason: "force-stop",
+    this.forceTimeout.once("timeout", () => {
+      this.emitter.emit("canceled", {
+        data: { reason: "force-stop" },
+        fightId: this.fightId,
       });
     });
   }
@@ -134,7 +213,7 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
 
   startGame() {
     this.players.forEach((x) => x.gameStart());
-    this.emitGameEvent({
+    this.emitEvent({
       event: "game-in-progress",
       data: undefined,
     });
@@ -142,7 +221,7 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
 
   endGame(winner: string) {
     this.assertPlayer(winner);
-    this.emitGameEvent({
+    this.emitEvent({
       event: "game-ended",
       data: {
         winner,
@@ -157,33 +236,68 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
     this.disconnectedTimeout?.cancel();
 
     // reset state
-    this.eventHistory = [];
     this.disconnectedPlayers.clear();
 
     // reset listeners
-    this.emit("destroy", undefined);
-    this.removeAllListeners();
+    this.emitter.emit("destroy", {
+      data: undefined,
+      fightId: this.fightId,
+    });
   }
 
-  private emitGameEvent(event: EmitEvent) {
-    this.eventHistory.push(event);
-
-    if (
-      event.event === GameState.nonPlayerSpecificEvents[0] ||
-      event.event === GameState.nonPlayerSpecificEvents[1] ||
-      event.event === GameState.nonPlayerSpecificEvents[2] ||
-      event.event === GameState.nonPlayerSpecificEvents[3]
-    ) {
-      this.emit(event.event, event.data);
+  emitEvent(event: ToEventData<GeneralGameEvents>, player?: string) {
+    if (this.isServerEvent(event)) {
+      this.addToEventHistory(event);
+      this.emitter.emit(event.event, {
+        data: event.data,
+        fightId: this.fightId,
+      });
+      return;
     }
 
-    this.players.forEach((x) =>
-      this.emit(`player-${x.id}`, {
-        ...event,
-        fightId: this.fightId,
-        state: x.state,
-      }),
-    );
+    if (this.isPlayerEvent(event)) {
+      this.addToEventHistory(event, player);
+      if (player) {
+        this.emitter.emit(`player-${player}`, {
+          ...event,
+          fightId: this.fightId,
+          state: this.players.get(player)!.state,
+        });
+      } else {
+        this.players.forEach((x) =>
+          this.emitter.emit(`player-${x.id}`, {
+            ...event,
+            fightId: this.fightId,
+            state: x.state,
+          }),
+        );
+      }
+    }
+  }
+
+  private isPlayerEvent(
+    event: ToEventData<GeneralGameEvents>,
+  ): event is ToPlayerEventData<GeneralGameEvents> {
+    return GameState.playerSpecificEvents.includes(event.event);
+  }
+
+  private isServerEvent(
+    event: ToEventData<GeneralGameEvents>,
+  ): event is ToServerEventData<GeneralGameEvents> {
+    return GameState.nonPlayerSpecificEvents.includes(event.event);
+  }
+
+  private addToEventHistory(
+    event: ToEventData<GeneralGameEvents>,
+    player?: string,
+  ) {
+    if (!player) {
+      this.players.forEach((x) => {
+        this.eventHistory[x.id]?.push(event);
+      });
+    } else {
+      this.eventHistory[player]?.push(event);
+    }
   }
 
   private setupPlayerListeners(player: PlayerState) {
@@ -197,7 +311,7 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
   }
 
   private emitJoiningPlayingUpdate() {
-    this.emitGameEvent({
+    this.emitEvent({
       event: "player-joined-readying",
       data: {
         joined: [...this.players.values()]
@@ -210,7 +324,7 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
     });
     if ([...this.players.values()].every((x) => x.state === "ready")) {
       // all players joined, so the start timeout is over
-      this.emitGameEvent({
+      this.emitEvent({
         event: "all-player-ready",
         data: undefined,
       });
@@ -221,7 +335,7 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
   private handleConnectDisconnect(player: PlayerState) {
     player.on("disconnect", ({ id }) => {
       this.disconnectedPlayers.add(id);
-      this.emitGameEvent({
+      this.emitEvent({
         event: "game-halted",
         data: {
           disconnected: [...this.disconnectedPlayers],
@@ -236,7 +350,7 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
     player.on("reconnect", ({ id }) => {
       this.disconnectedPlayers.delete(id);
       if (this.disconnectedPlayers.size !== 0) {
-        this.emitGameEvent({
+        this.emitEvent({
           event: "game-halted",
           data: {
             disconnected: [...this.disconnectedPlayers],
@@ -244,12 +358,17 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
         });
         return;
       }
-      this.emitGameEvent({
-        event: "game-resume",
-        data: {
-          // must exist, because a connection itself already produces an event
-          lastEvent: this.eventBeforeHalted!,
-        },
+
+      this.players.forEach((x) => {
+        this.emitEvent(
+          {
+            event: "game-resume",
+            data: {
+              lastEvent: this.getEventBeforeHalted(x.id)!,
+            },
+          },
+          x.id,
+        );
       });
 
       this.disconnectedTimeout?.cancel();
@@ -276,11 +395,11 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
 
   private setupTimeoutCounter(
     timeout: TimeoutCounter,
-    countdownEvent: TimerEvents,
-    cancelReason: GeneralGameEvents["canceled"]["reason"],
+    countdownEvent: GetTimerEvents<GeneralGameEvents>,
+    cancelReason: GeneralGameEvents["canceled"]["data"]["reason"],
   ) {
     timeout.once("timeout", () => {
-      this.emitGameEvent({
+      this.emitEvent({
         event: "canceled",
         data: {
           reason: cancelReason,
@@ -289,7 +408,7 @@ export class GameState extends GenericEventEmitter<AllGameStateEvents> {
     });
 
     timeout.on("countdown", (e) => {
-      this.emitGameEvent({
+      this.emitEvent({
         event: countdownEvent,
         data: e,
       });

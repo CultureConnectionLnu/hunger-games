@@ -36,7 +36,7 @@ export class TypedEventEmitter {
 export class GenericEventEmitter<TEvents extends Record<string, any>> {
   private emitter = new EventEmitter();
 
-  protected emit<TEventName extends keyof TEvents>(
+  emit<TEventName extends keyof TEvents>(
     eventName: TEventName & string,
     eventArg: TEvents[TEventName],
   ) {

@@ -2,9 +2,13 @@
 import { z } from "zod";
 import { env } from "~/env";
 import { GenericEventEmitter } from "~/lib/event-emitter";
-import type { ToEvent, ToPlayerEvent } from "../core/game-state";
-import { TimeoutCounter } from "../core/timeout-counter";
 import { BaseGame } from "../core/base-game";
+import type {
+  CombineEvents,
+  EventTemplate,
+  GeneralGameEvents,
+} from "../core/game-state";
+import { TimeoutCounter } from "../core/timeout-counter";
 
 export const rockPaperScissorsItemsSchema = z.enum([
   "rock",
@@ -52,34 +56,42 @@ type GameEvaluation = {
   beats: PlayerChooseItem[];
 };
 
-type RockPaperScissorsEvents = {
-  // for all player at once
-  "enable-choose": undefined;
-  // for the player that already chose
-  "show-waiting": {
-    doneChoosing: string[];
-  };
-  "show-result": {
-    anotherRound: boolean;
-    winner: string[];
-    looser: string[];
-    draw: boolean;
-  };
-  "choose-timer": {
-    startTimeUnix: number;
-    timeoutAfterSeconds: number;
-    secondsLeft: number;
-  };
-  "next-round-timer": {
-    startTimeUnix: number;
-    timeoutAfterSeconds: number;
-    secondsLeft: number;
-  };
-};
-export type RockPaperScissorsPlayerEvents = ToPlayerEvent<
-  RockPaperScissorsEvents,
-  RockPaperScissorsPlayer["state"]
-> ;
+export type RockPaperScissorsEvents = CombineEvents<
+  EventTemplate<
+    {
+      // for all player at once
+      "enable-choose": undefined;
+      // for the player that already chose
+      "show-waiting": {
+        doneChoosing: string[];
+      };
+      "show-result": {
+        anotherRound: boolean;
+        winner: string[];
+        looser: string[];
+        draw: boolean;
+      };
+      "choose-timer": {
+        startTimeUnix: number;
+        timeoutAfterSeconds: number;
+        secondsLeft: number;
+      };
+      "next-round-timer": {
+        startTimeUnix: number;
+        timeoutAfterSeconds: number;
+        secondsLeft: number;
+      };
+    },
+    RockPaperScissorsPlayer["state"],
+    never,
+    | "enable-choose"
+    | "show-waiting"
+    | "show-result"
+    | "choose-timer"
+    | "next-round-timer"
+  >,
+  GeneralGameEvents
+>;
 
 class RockPaperScissorsPlayer extends GenericEventEmitter<{
   chosen: {
@@ -131,11 +143,18 @@ class RockPaperScissorsPlayer extends GenericEventEmitter<{
 }
 
 export class RockPaperScissorsMatch extends BaseGame<
-  Record<`player-${string}`, RockPaperScissorsPlayerEvents>,
+  RockPaperScissorsEvents,
   RockPaperScissorsPlayer["state"],
-  ToEvent<RockPaperScissorsEvents>,
   typeof RockPaperScissorsPlayer
 > {
+  protected playerSpecificEvents = [
+    "enable-choose",
+    "show-waiting",
+    "show-result",
+    "choose-timer",
+    "next-round-timer",
+  ];
+  protected nonPlayerSpecificEvents = [];
   private winners: string[] = [];
   private nextRoundTimeout?: TimeoutCounter;
   private chooseTimeout?: TimeoutCounter;
@@ -148,7 +167,7 @@ export class RockPaperScissorsMatch extends BaseGame<
         const doneChoosing = [...this.players.values()]
           .filter((x) => x.state === "chosen")
           .map((x) => x.id);
-        this.emitGameEvent(
+        this.emitEvent(
           {
             event: "show-waiting",
             data: { doneChoosing },
@@ -176,7 +195,7 @@ export class RockPaperScissorsMatch extends BaseGame<
   }
 
   protected startGame() {
-    this.emitGameEvent({
+    this.emitEvent({
       event: "enable-choose",
       data: undefined,
     });
@@ -191,7 +210,7 @@ export class RockPaperScissorsMatch extends BaseGame<
       this.evaluateState();
     });
     this.chooseTimeout.on("countdown", (e) => {
-      this.emitGameEvent({
+      this.emitEvent({
         event: "choose-timer",
         data: e,
       });
@@ -208,7 +227,7 @@ export class RockPaperScissorsMatch extends BaseGame<
       this.startGame();
     });
     this.nextRoundTimeout.on("countdown", (e) => {
-      this.emitGameEvent({
+      this.emitEvent({
         event: "next-round-timer",
         data: e,
       });
@@ -222,7 +241,7 @@ export class RockPaperScissorsMatch extends BaseGame<
     ];
     const result = this.findWinner(player1, player2);
     if (result.draw) {
-      this.emitGameEvent({
+      this.emitEvent({
         event: "show-result",
         data: {
           anotherRound: true,
@@ -237,7 +256,7 @@ export class RockPaperScissorsMatch extends BaseGame<
 
     this.winners.push(result.winner);
     const overAllWinner = this.getWinner();
-    this.emitGameEvent({
+    this.emitEvent({
       event: "show-result",
       data: {
         anotherRound: !overAllWinner,

@@ -4,11 +4,12 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { FightHandler } from "../../logic/fight";
-import {
-  type RockPaperScissorsPlayerEvents,
-  rockPaperScissorsItemsSchema
-} from "../../logic/games/rock-paper-scissors";
+import { type RockPaperScissorsEvents, rockPaperScissorsItemsSchema } from "../../logic/games/rock-paper-scissors";
 import { inFightProcedure } from "../fight";
+import type { PlayerEventsOnly } from "../../logic/core/game-state";
+
+type ToUnion<T> = T[keyof T];
+type RockPaperScissorsPlayerEvents = ToUnion<PlayerEventsOnly<RockPaperScissorsEvents>>
 
 /**
  * makes sure the user is actually in a rock-paper-scissors fight
@@ -115,9 +116,10 @@ export const rockPaperScissorsRouter = createTRPCRouter({
           emit.next(data);
         }
         match.on(`player-${input.userId}`, onMessage);
-        match.allEvents.forEach(onMessage);
+        match.getEventHistory(input.userId).forEach(onMessage);
 
         match.once("destroy", () => {
+          console.log('destroyed');
           emit.complete();
         });
 
