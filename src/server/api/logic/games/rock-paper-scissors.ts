@@ -145,7 +145,6 @@ class RockPaperScissorsPlayer extends GenericEventEmitter<{
 export class RockPaperScissorsMatch extends BaseGame<
   // @ts-ignore
   RockPaperScissorsEvents,
-  RockPaperScissorsPlayer["state"],
   typeof RockPaperScissorsPlayer
 > {
   protected playerSpecificEvents = [

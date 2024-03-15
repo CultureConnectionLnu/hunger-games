@@ -8,6 +8,9 @@ export type GameConfig = {
   forceStopInSeconds: number;
 };
 
+/**
+ * create typed events for the game
+ */
 export type EventTemplate<
   Events extends Record<string, unknown>,
   PlayerStates extends string,
@@ -22,6 +25,9 @@ export type EventTemplate<
   IfNotNever<ServerEvents, ToServerEvent<Pick<Events, ServerEvents>>, never>
 >;
 
+/**
+ * correctly combine multiple events
+ */
 export type CombineEvents<T, K> = ServerEventsOnly<T> &
   ServerEventsOnly<K> &
   Record<`player-${string}`, ToFullPlayerEventData<T> | ToFullPlayerEventData<K>>;
@@ -95,6 +101,8 @@ export type ToServerEventData<T> = ToUnion<
   ReduceToEventAndData<ServerEventsOnly<T>>
 >;
 export type ToEventData<T> = ToPlayerEventData<T> | ToServerEventData<T>;
+
+export type GetPlayerStateFromEvents<T> = ToFullPlayerEventData<T>['state']
 
 type FilterForTimeEvents<T> = T extends { data: TimerEvent; event: infer Event }
   ? Event

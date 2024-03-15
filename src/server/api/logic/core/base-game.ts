@@ -1,6 +1,7 @@
 import { GenericEventEmitter } from "~/lib/event-emitter";
 import {
   GameState,
+  type GetPlayerStateFromEvents,
   type GameConfig,
   type GeneralGameEvents,
   type ToEventData,
@@ -16,8 +17,7 @@ export type Player<State> = {
 
 export abstract class BaseGame<
   Events extends GeneralGameEvents,
-  States,
-  PlayerClass extends new (id: string) => Player<States>,
+  PlayerClass extends new (id: string) => Player<GetPlayerStateFromEvents<Events>>,
 > extends GenericEventEmitter<Events> {
   private readonly gameState;
   protected players;
