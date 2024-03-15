@@ -22,16 +22,9 @@ export type EventTemplate<
   IfNotNever<ServerEvents, ToServerEvent<Pick<Events, ServerEvents>>, never>
 >;
 
-/**
- * TODO:
- * The combine here is wrong, it does not combine the fightId and state information back into the type.
- * instead of manyally stitching it together like this, it should use the `EventTemplate` as well.
- * then insert the types accordingly
- */
-
 export type CombineEvents<T, K> = ServerEventsOnly<T> &
   ServerEventsOnly<K> &
-  Record<`player-${string}`, ToPlayerEventData<T> | ToPlayerEventData<K>>;
+  Record<`player-${string}`, ToFullPlayerEventData<T> | ToFullPlayerEventData<K>>;
 
 type IfNotNever<Condition, True, False> = [Condition] extends [never]
   ? False
@@ -75,6 +68,19 @@ type ReduceToEvent<T> = T extends {
       data: Data;
     }
   : never;
+type FullPlayerData<T> = T extends {
+  event: infer Event;
+  data: infer Data;
+  state: infer State;
+  fightId: infer FightId;
+}
+  ? {
+      event: Event;
+      data: Data;
+      state: State;
+      fightId: FightId;
+    }
+  : never;
 
 export type PlayerEventsOnly<T> = {
   [Key in keyof T as Key extends `player-${string}` ? Key : never]: T[Key];
@@ -83,6 +89,7 @@ export type ServerEventsOnly<T> = {
   [Key in keyof T as Key extends `player-${string}` ? never : Key]: T[Key];
 };
 
+type ToFullPlayerEventData<T> = FullPlayerData<ToUnion<PlayerEventsOnly<T>>>
 export type ToPlayerEventData<T> = ReduceToEvent<ToUnion<PlayerEventsOnly<T>>>;
 export type ToServerEventData<T> = ToUnion<
   ReduceToEventAndData<ServerEventsOnly<T>>
