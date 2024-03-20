@@ -1,97 +1,9 @@
 /* eslint-disable @typescript-eslint/ban-ts-comment */
-import { z } from "zod";
-import { env } from "~/env";
 import { GenericEventEmitter } from "~/lib/event-emitter";
 import { BaseGame } from "../core/base-game";
-import type {
-  CombineEvents,
-  EventTemplate,
-  GeneralGameEvents,
-} from "../core/game-state";
 import { TimeoutCounter } from "../core/timeout-counter";
 
-export const rockPaperScissorsItemsSchema = z.enum([
-  "rock",
-  "paper",
-  "scissors",
-]);
 
-const GameConfig = {
-  get startTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 30 : Number.POSITIVE_INFINITY;
-  },
-  get disconnectTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 60 * 60 : Number.POSITIVE_INFINITY;
-  },
-  get forceStopInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 1000 * 60 * 60 : Number.POSITIVE_INFINITY;
-  },
-  get chooseTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 30 : Number.POSITIVE_INFINITY;
-  },
-  get nextRoundTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 30 : 10;
-  },
-  bestOf: 3,
-  evaluation: [
-    {
-      item: "rock",
-      beats: ["scissors"],
-    },
-    {
-      item: "scissors",
-      beats: ["paper"],
-    },
-    {
-      item: "paper",
-      beats: ["rock"],
-    },
-  ] as GameEvaluation[],
-} as const;
-
-type PlayerChooseItem = z.infer<typeof rockPaperScissorsItemsSchema>;
-
-type GameEvaluation = {
-  item: PlayerChooseItem;
-  beats: PlayerChooseItem[];
-};
-
-export type RockPaperScissorsEvents = CombineEvents<
-  EventTemplate<
-    {
-      // for all player at once
-      "enable-choose": undefined;
-      // for the player that already chose
-      "show-waiting": {
-        doneChoosing: string[];
-      };
-      "show-result": {
-        anotherRound: boolean;
-        winner: string[];
-        looser: string[];
-        draw: boolean;
-      };
-      "choose-timer": {
-        startTimeUnix: number;
-        timeoutAfterSeconds: number;
-        secondsLeft: number;
-      };
-      "next-round-timer": {
-        startTimeUnix: number;
-        timeoutAfterSeconds: number;
-        secondsLeft: number;
-      };
-    },
-    RockPaperScissorsPlayer["state"],
-    never,
-    | "enable-choose"
-    | "show-waiting"
-    | "show-result"
-    | "choose-timer"
-    | "next-round-timer"
-  >,
-  GeneralGameEvents
->;
 
 class RockPaperScissorsPlayer extends GenericEventEmitter<{
   chosen: {

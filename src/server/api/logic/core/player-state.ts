@@ -55,4 +55,8 @@ export class PlayerState extends GenericEventEmitter<{
   gameStart() {
     this.generalState = "in-game";
   }
+
+  destroy() {
+    this.removeAllListeners();
+  }
 }

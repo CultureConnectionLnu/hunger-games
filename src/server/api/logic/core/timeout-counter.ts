@@ -6,9 +6,9 @@ export type TimerEvent = {
   secondsLeft: number;
 };
 
-export type GetTimerEvents<T> = keyof {
-  [Key in keyof T as T[Key] extends TimerEvent ? Key : never]: Key;
-};
+// export type GetTimerEvents<T> = keyof {
+//   [Key in keyof T as T[Key] extends TimerEvent ? Key : never]: Key;
+// };
 
 export class TimeoutCounter extends GenericEventEmitter<{
   start: void;
