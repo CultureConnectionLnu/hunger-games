@@ -1,41 +1,116 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-import { GenericEventEmitter } from "~/lib/event-emitter";
-import { BaseGame } from "../core/base-game";
+import { z } from "zod";
+import { env } from "~/env";
+import { BaseGameState, type GeneralGameEvents } from "../core/base-game-state";
+import { BasePlayerState } from "../core/base-player-state";
+import type { EventTemplate, ToEventData } from "../core/types";
 import { TimeoutCounter } from "../core/timeout-counter";
 
+export const rockPaperScissorsItemsSchema = z.enum([
+  "rock",
+  "paper",
+  "scissors",
+]);
 
+const GameConfig = {
+  get startTimeoutInSeconds() {
+    return env.FEATURE_GAME_TIMEOUT ? 30 : Number.POSITIVE_INFINITY;
+  },
+  get disconnectTimeoutInSeconds() {
+    return env.FEATURE_GAME_TIMEOUT ? 60 * 60 : Number.POSITIVE_INFINITY;
+  },
+  get forceStopInSeconds() {
+    return env.FEATURE_GAME_TIMEOUT ? 1000 * 60 * 60 : Number.POSITIVE_INFINITY;
+  },
+  get chooseTimeoutInSeconds() {
+    return env.FEATURE_GAME_TIMEOUT ? 30 : Number.POSITIVE_INFINITY;
+  },
+  get nextRoundTimeoutInSeconds() {
+    return env.FEATURE_GAME_TIMEOUT ? 30 : 10;
+  },
+  bestOf: 3,
+  evaluation: [
+    {
+      item: "rock",
+      beats: ["scissors"],
+    },
+    {
+      item: "scissors",
+      beats: ["paper"],
+    },
+    {
+      item: "paper",
+      beats: ["rock"],
+    },
+  ] as GameEvaluation[],
+} as const;
 
-class RockPaperScissorsPlayer extends GenericEventEmitter<{
+type PlayerChooseItem = z.infer<typeof rockPaperScissorsItemsSchema>;
+type GameEvaluation = {
+  item: PlayerChooseItem;
+  beats: PlayerChooseItem[];
+};
+
+export type RockPaperScissorsEvents = EventTemplate<
+  {
+    // for all player at once
+    "enable-choose": undefined;
+    // for the player that already chose
+    "show-waiting": {
+      doneChoosing: string[];
+    };
+    "show-result": {
+      anotherRound: boolean;
+      winner: string[];
+      looser: string[];
+      draw: boolean;
+    };
+    "choose-timer": {
+      startTimeUnix: number;
+      timeoutAfterSeconds: number;
+      secondsLeft: number;
+    };
+    "next-round-timer": {
+      startTimeUnix: number;
+      timeoutAfterSeconds: number;
+      secondsLeft: number;
+    };
+  },
+  RpsPlayer["gameState"],
+  never,
+  | "enable-choose"
+  | "show-waiting"
+  | "show-result"
+  | "choose-timer"
+  | "next-round-timer"
+>;
+
+class RpsPlayer extends BasePlayerState<{
   chosen: {
     id: string;
     item: PlayerChooseItem;
   };
 }> {
-  private generalState: "none" | "start-choose" | "chosen" = "none";
+  private gameSpecificState: "none" | "start-choose" | "chosen" = "none";
   private item?: PlayerChooseItem;
 
-  get state() {
-    return this.generalState;
+  get gameState() {
+    return this.gameSpecificState;
   }
 
   get selectedItem() {
     return this.item;
   }
 
-  constructor(public readonly id: string) {
-    super();
-  }
-
   enableChoose() {
-    this.generalState = "start-choose";
+    this.gameSpecificState = "start-choose";
   }
 
   choose(item: PlayerChooseItem) {
-    if (this.generalState !== "start-choose") {
+    if (this.gameSpecificState !== "start-choose") {
       throw new Error(`Player can't choose right now`);
     }
 
-    this.generalState = "chosen";
+    this.gameSpecificState = "chosen";
     this.item = item;
     this.emit("chosen", {
       id: this.id,
@@ -44,40 +119,42 @@ class RockPaperScissorsPlayer extends GenericEventEmitter<{
   }
 
   reset() {
-    this.generalState = "none";
+    this.gameSpecificState = "none";
     this.item = undefined;
-  }
-
-  destroy() {
-    this.reset();
-    this.removeAllListeners();
   }
 }
 
-export class RockPaperScissorsMatch extends BaseGame<
-  // @ts-ignore
-  RockPaperScissorsEvents,
-  typeof RockPaperScissorsPlayer
-> {
-  protected playerSpecificEvents = [
-    "enable-choose",
-    "show-waiting",
-    "show-result",
-    "choose-timer",
-    "next-round-timer",
-  ];
-  protected nonPlayerSpecificEvents = [];
+export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
+  protected readonly eventHistory: Record<
+    string,
+    (ToEventData<GeneralGameEvents> | ToEventData<RockPaperScissorsEvents>)[]
+  > = {};
+  protected readonly players = new Map<string, RpsPlayer>();
   private winners: string[] = [];
   private nextRoundTimeout?: TimeoutCounter;
   private chooseTimeout?: TimeoutCounter;
 
   constructor(fightId: string, playerIds: string[]) {
-    super(GameConfig, RockPaperScissorsPlayer, fightId, playerIds);
+    super(
+      GameConfig,
+      fightId,
+      [
+        "enable-choose",
+        "show-waiting",
+        "show-result",
+        "choose-timer",
+        "next-round-timer",
+      ],
+      [],
+    );
+    playerIds.forEach((id) => {
+      const player = new RpsPlayer(id);
+      this.players.set(id, player);
+      this.eventHistory[id] = [];
 
-    this.players.forEach((player) => {
       player.on("chosen", (e) => {
         const doneChoosing = [...this.players.values()]
-          .filter((x) => x.state === "chosen")
+          .filter((x) => x.gameState === "chosen")
           .map((x) => x.id);
         this.emitEvent(
           {
@@ -88,30 +165,39 @@ export class RockPaperScissorsMatch extends BaseGame<
         );
         if (doneChoosing.length !== this.players.size) return;
 
-        // todo figure out the winner
         this.evaluateState();
       });
     });
   }
 
-  playerChoose(playerId: string, choice: PlayerChooseItem) {
-    this.assertGameIsRunning();
-    const player = this.assertPlayer(playerId);
-    player.choose(choice);
+  getPlayer(id: string) {
+    return this.players.get(id);
   }
 
-  protected resetState() {
-    // reset timers
-    this.nextRoundTimeout?.cancel();
-    this.chooseTimeout?.cancel();
+  assertPlayer(id: string) {
+    const player = this.getPlayer(id);
+    if (!player) {
+      throw new Error("Player is not part of the game");
+    }
+    return player;
   }
 
-  protected startGame() {
+  startGame(): void {
     this.emitEvent({
       event: "enable-choose",
       data: undefined,
     });
     this.setupChooseTimeout();
+  }
+
+  playerChoose(playerId: string, choice: PlayerChooseItem) {
+    this.assertGameIsRunning();
+    this.assertPlayer(playerId).choose(choice);
+  }
+
+  protected resetState() {
+    this.nextRoundTimeout?.cancel();
+    this.chooseTimeout?.cancel();
   }
 
   private setupChooseTimeout() {
@@ -148,8 +234,8 @@ export class RockPaperScissorsMatch extends BaseGame<
 
   private evaluateState() {
     const [player1, player2] = [...this.players.values()] as [
-      RockPaperScissorsPlayer,
-      RockPaperScissorsPlayer,
+      RpsPlayer,
+      RpsPlayer,
     ];
     const result = this.findWinner(player1, player2);
     if (result.draw) {
@@ -201,8 +287,8 @@ export class RockPaperScissorsMatch extends BaseGame<
   }
 
   private findWinner(
-    firstPlayer: RockPaperScissorsPlayer,
-    secondPlayer: RockPaperScissorsPlayer,
+    firstPlayer: RpsPlayer,
+    secondPlayer: RpsPlayer,
   ) {
     if (firstPlayer.selectedItem === undefined) {
       return {

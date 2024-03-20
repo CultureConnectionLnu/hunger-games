@@ -18,13 +18,6 @@ export type EventTemplate<
   IfNotNever<ServerEvents, ToServerEvent<Pick<Events, ServerEvents>>, never>
 >;
 
-export type CombineEvents<T, K> = ServerEventsOnly<T> &
-  ServerEventsOnly<K> &
-  Record<
-    `player-${string}`,
-    ToFullPlayerEventData<T> | ToFullPlayerEventData<K>
-  >;
-
 /**
  * get only the data that should be passed into the internal emit event function
  */
@@ -84,19 +77,3 @@ type PlayerEventsOnly<T> = {
 type ServerEventsOnly<T> = {
   [Key in keyof T as Key extends `player-${string}` ? never : Key]: T[Key];
 };
-
-type FullPlayerData<T> = T extends {
-  event: infer Event;
-  data: infer Data;
-  state: infer State;
-  fightId: infer FightId;
-}
-  ? {
-      event: Event;
-      data: Data;
-      state: State;
-      fightId: FightId;
-    }
-  : never;
-
-type ToFullPlayerEventData<T> = FullPlayerData<ToUnion<PlayerEventsOnly<T>>>;

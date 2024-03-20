@@ -1,12 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
 import { env } from "~/env";
-import type { GenericEventEmitter } from "~/lib/event-emitter";
 import { db, type DB } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
-import type { BaseGame } from "./core/base-game";
-import type { GeneralGameEvents, ServerEventsOnly } from "./core/game-state";
-import { RockPaperScissorsMatch } from "./games/rock-paper-scissors";
+import { RpsGame } from "./games/rock-paper-scissors";
 
 // todo: remove force delete from here or only have it here
 
@@ -14,14 +11,10 @@ import { RockPaperScissorsMatch } from "./games/rock-paper-scissors";
  * insert a new entry for each game added
  */
 const knownGames = {
-  "rock-paper-scissors": RockPaperScissorsMatch,
-} satisfies Record<
-  string,
-  new (fightId: string, playerIds: string[]) => AnyGame
->;
+  "rock-paper-scissors": RpsGame,
+}
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyGame = Pick<BaseGame<GeneralGameEvents, any, any>, 'destroy' | 'fightId'> & GenericEventEmitter<ServerEventsOnly<GeneralGameEvents>>;
+type AnyGame = InstanceType<(typeof knownGames)[keyof typeof knownGames]>;
 
 const globalForFightHandler = globalThis as unknown as {
   fightHandler: FightHandler | undefined;
