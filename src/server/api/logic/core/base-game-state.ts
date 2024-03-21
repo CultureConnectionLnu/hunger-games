@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import {
@@ -10,9 +12,8 @@ import { TimeoutCounter, type TimerEvent } from "./timeout-counter";
 import type {
   EventTemplate,
   GetTimerEvents,
-  ToEventData,
-  ToPlayerEventData,
-  ToServerEventData,
+  OnlyPlayerEvents,
+  ToEventData
 } from "./types";
 
 export type GameConfig = {
@@ -38,7 +39,10 @@ export type GeneralGameEvents = EventTemplate<
       disconnected: string[];
     };
     "game-resume": {
-      lastEvent: ToEventData<GeneralGameEvents>;
+      lastEvent: {
+        event: string;
+        data: unknown;
+      };
     };
     canceled: {
       reason: "start-timeout" | "disconnect-timeout" | "force-stop";
@@ -93,21 +97,33 @@ export abstract class BaseGameState<
     return this.gameRunning;
   }
 
-  private getEventBeforeHalted(player: string) {
+  private getEventBeforeHalted(
+    player: string,
+  ):
+    | undefined
+    | (OnlyPlayerEvents<GeneralGameEvents> | OnlyPlayerEvents<SubEvents>) {
     this.assertInitialized();
     const history = this.eventHistory[player];
     if (!history) return undefined;
 
     for (let index = history.length; index >= 0; index--) {
-      const state = history[index];
-      if (!!state && state.event !== "game-halted") return state;
+      /**
+       * As there is a fully unknown generic included as return value for this function
+       * it's impossible for typescript to determine the correct type.
+       *
+       * By casting it to only the known type, we can at least write the code without any errors.
+       * But it is technically not the correct type and therefore unsafe code.
+       */
+      const state = history[index] as OnlyPlayerEvents<GeneralGameEvents>;
+      if (!state) continue;
+      if (state.event !== "game-halted") return state;
     }
   }
 
   protected abstract players: Map<string, BasePlayerState>;
   protected abstract eventHistory: Record<
     string,
-    (ToEventData<GeneralGameEvents> | ToEventData<SubEvents>)[]
+    (OnlyPlayerEvents<GeneralGameEvents> | OnlyPlayerEvents<SubEvents>)[]
   >;
 
   constructor(
@@ -122,7 +138,7 @@ export abstract class BaseGameState<
   protected abstract getPlayer(id: string): BasePlayerState | undefined;
   protected abstract assertPlayer(id: string): BasePlayerState;
   protected abstract startGame(): void;
-    protected abstract resetState() :void;
+  protected abstract resetState(): void;
 
   init() {
     this.initialized = true;
@@ -173,51 +189,48 @@ export abstract class BaseGameState<
     });
   }
 
-  protected emitEvent(event: ToEventData<GeneralGameEvents>, player?: string): void;
-  protected emitEvent(event: ToEventData<SubEvents>, player?: string): void;
-  protected emitEvent(event: any, playerId?: string) {
+  protected emitEvent(
+    eventData: ToEventData<GeneralGameEvents>,
+    player?: string,
+  ): void;
+  protected emitEvent(eventData: ToEventData<SubEvents>, player?: string): void;
+  protected emitEvent(eventData: any, playerId?: string) {
     /**
-     * this is a bit of a hack, but it's the only way to make sure that the event is correctly typed
+     * Overloading the function is the only way to type it correctly for both the current class
+     * and its children.
+     * 
+     * This entire class is not typesafe and uses any a lot.
+     * Because one of the generics is not known at this point, it's impossible to type it correctly.
      */
 
-    if (this.isServerEvent(event)) {
-      this.addToEventHistory(event as any);
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      this.emit(event.event, {
-        data: event.data,
+    if (this.isServerEvent(eventData)) {
+      const event = {
+        ...eventData,
         fightId: this.fightId,
-      });
+      };
+      this.emit(eventData.event, event);
       return;
     }
 
-    if (this.isPlayerEvent(event)) {
-      this.addToEventHistory(event as any, playerId);
-
-      // TODO: figure out how to determine which player state to send with the event
-      // this will require another abstract function for sure
-      // alternatively:
-      // store events within the player instead of recreating it here.
-      // this would also remove the need for `addToEventHistory`
-
+    if (this.isPlayerEvent(eventData)) {
       if (playerId) {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        this.emit(`player-${playerId}`, {
-          ...event,
+        const event = {
+          ...eventData,
           fightId: this.fightId,
-          state: this.players.get(playerId)!.state,
-        });
+          state: this.getPlayer(playerId)!.state,
+        };
+        this.addToEventHistory(event, playerId);
+        this.emit(`player-${playerId}`, event);
       } else {
-        this.players.forEach((player) =>
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          this.emit(`player-${player.id}`, {
-            ...event,
+        this.players.forEach((player) => {
+          const event = {
+            ...eventData,
             fightId: this.fightId,
             state: player.state,
-          }),
-        );
+          };
+          this.addToEventHistory(event, player.id);
+          this.emit(`player-${player.id}`, event);
+        });
       }
     }
   }
@@ -248,17 +261,8 @@ export abstract class BaseGameState<
     }
   }
 
-  private addToEventHistory(
-    event: ToEventData<GeneralGameEvents | SubEvents>,
-    player?: string,
-  ) {
-    if (player) {
-      this.eventHistory[player]?.push(event);
-    } else {
-      this.players.forEach((x) => {
-        this.eventHistory[x.id]?.push(event);
-      });
-    }
+  private addToEventHistory(event: any, player: string) {
+    this.eventHistory[player]?.push(event);
   }
 
   private assertInitialized() {
@@ -404,26 +408,17 @@ export abstract class BaseGameState<
     });
   }
 
-  // TODO: maybe remove the complex types as they are not used at all
-  private isPlayerEvent(
-    event: ToEventData<GeneralGameEvents> | ToEventData<SubEvents>,
-  ): event is
-    | ToPlayerEventData<GeneralGameEvents>
-    | ToPlayerEventData<SubEvents> {
+  private isPlayerEvent(event: { event: string }) {
     return (
-      BaseGameState.playerSpecificEvents.includes(event.event as string) ||
-      this.playerSpecificEvents.includes(event.event as string)
+      BaseGameState.playerSpecificEvents.includes(event.event) ||
+      this.playerSpecificEvents.includes(event.event)
     );
   }
 
-  private isServerEvent(
-    event: ToEventData<GeneralGameEvents> | ToEventData<SubEvents>,
-  ): event is
-    | ToServerEventData<GeneralGameEvents>
-    | ToServerEventData<SubEvents> {
+  private isServerEvent(event: { event: string }) {
     return (
-      BaseGameState.serverSpecificEvents.includes(event.event as string) ||
-      this.serverSpecificEvents.includes(event.event as string)
+      BaseGameState.serverSpecificEvents.includes(event.event) ||
+      this.serverSpecificEvents.includes(event.event)
     );
   }
 }

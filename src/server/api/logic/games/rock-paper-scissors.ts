@@ -2,8 +2,8 @@ import { z } from "zod";
 import { env } from "~/env";
 import { BaseGameState, type GeneralGameEvents } from "../core/base-game-state";
 import { BasePlayerState } from "../core/base-player-state";
-import type { EventTemplate, ToEventData } from "../core/types";
 import { TimeoutCounter } from "../core/timeout-counter";
+import type { EventTemplate, OnlyPlayerEvents } from "../core/types";
 
 export const rockPaperScissorsItemsSchema = z.enum([
   "rock",
@@ -127,7 +127,7 @@ class RpsPlayer extends BasePlayerState<{
 export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
   protected readonly eventHistory: Record<
     string,
-    (ToEventData<GeneralGameEvents> | ToEventData<RockPaperScissorsEvents>)[]
+    (OnlyPlayerEvents<GeneralGameEvents> | OnlyPlayerEvents<RockPaperScissorsEvents>)[]
   > = {};
   protected readonly players = new Map<string, RpsPlayer>();
   private winners: string[] = [];

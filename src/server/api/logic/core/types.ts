@@ -12,10 +12,10 @@ export type EventTemplate<
 > = CombineIfNotNever<
   IfNotNever<
     PlayerEvents,
-    ToPlayerEvent<Pick<Events, PlayerEvents>, PlayerStates>,
+    CreatePlayerEvent<Pick<Events, PlayerEvents>, PlayerStates>,
     never
   >,
-  IfNotNever<ServerEvents, ToServerEvent<Pick<Events, ServerEvents>>, never>
+  IfNotNever<ServerEvents, CreateServerEvent<Pick<Events, ServerEvents>>, never>
 >;
 
 /**
@@ -27,6 +27,8 @@ export type ToServerEventData<T> = ToUnion<
   ReduceToEventAndData<ServerEventsOnly<T>>
 >;
 
+export type OnlyPlayerEvents<T> = ToUnion<PlayerEventsOnly<T>>;
+
 export type GetTimerEvents<T> = ToUnion<{
   [Key in keyof T as FilterForTimeEvents<T[Key]> extends never
     ? never
@@ -37,14 +39,14 @@ type FilterForTimeEvents<T> = T extends { data: TimerEvent; event: infer Event }
   ? Event
   : never;
 
-type ToServerEvent<T> = {
+type CreateServerEvent<T> = {
   [Key in keyof T]: {
     data: T[Key];
     fightId: string;
   };
 };
 
-type ToPlayerEvent<T, States> = {
+type CreatePlayerEvent<T, States> = {
   [Key in keyof T as `player-${string}`]: {
     event: Key;
     data: T[Key];
