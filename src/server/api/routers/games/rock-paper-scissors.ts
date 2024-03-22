@@ -10,8 +10,11 @@ import {
 } from "../../logic/games/rock-paper-scissors";
 import { inFightProcedure } from "../fight";
 import type { OnlyPlayerEvents } from "../../logic/core/types";
+import { GeneralGameEvents } from "../../logic/core/base-game-state";
 
-type RockPaperScissorsPlayerEvents = OnlyPlayerEvents<RockPaperScissorsEvents>;
+type RockPaperScissorsPlayerEvents =
+  | OnlyPlayerEvents<RockPaperScissorsEvents>
+  | OnlyPlayerEvents<GeneralGameEvents>;
 
 /**
  * makes sure the user is actually in a rock-paper-scissors fight
@@ -114,13 +117,13 @@ export const rockPaperScissorsRouter = createTRPCRouter({
           });
         }
 
-        const onMessage = (data: RockPaperScissorsPlayerEvents)=> {
+        const onMessage = (data: RockPaperScissorsPlayerEvents) => {
           emit.next(data);
-        }
+        };
         match.on(`player-${input.userId}`, onMessage);
-        (match
-          .getEventHistory(input.userId) as RockPaperScissorsPlayerEvents[])
-          .forEach(onMessage);
+        (
+          match.getEventHistory(input.userId) as RockPaperScissorsPlayerEvents[]
+        ).forEach(onMessage);
 
         match.once("destroy", () => {
           console.log("destroyed");

@@ -4,9 +4,8 @@ import { useState } from "react";
 import { FaSpinner } from "react-icons/fa";
 import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
-import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
+import type { RouterOutputs } from "~/trpc/shared";
 
-type ActionOptions = RouterInputs["rockPaperScissors"]["choose"];
 type ServerEvent =
   RouterOutputs["rockPaperScissors"]["onAction"] extends Observable<
     infer R,
@@ -15,7 +14,14 @@ type ServerEvent =
     ? R
     : never;
 
-type Views = "joining" | "joined" | "ready" | "choose" | "result" | "end";
+type ExtractSpecificView<T> = T extends { specific: infer R } ? R : never;
+type SpecificView = ExtractSpecificView<ServerEvent["view"]>;
+
+type ExtractSpecificEvent<
+  Events,
+  Name extends ServerEvent["event"],
+> = Events extends { event: Name } ? Events : never;
+type ShowResultEvent = ExtractSpecificEvent<ServerEvent, "show-result">;
 
 export default function RockPaperScissorsGame({
   params,
@@ -23,19 +29,31 @@ export default function RockPaperScissorsGame({
   params: { fightId: string };
 }) {
   const { user } = useUser();
-  const [events, setEvents] = useState<ServerEvent[]>([]);
-  const [view, setView] = useState<Views>("joining");
+  const [specificView, setSpecificView] = useState<SpecificView>("none");
   const [data, setData] = useState<ServerEvent>();
+  const [timeLeft, setTimeLeft] = useState<number | undefined>(undefined);
+
   api.rockPaperScissors.onAction.useSubscription(
     { fightId: params.fightId, userId: user?.id ?? "" },
     {
       onData(data) {
         console.log(data);
-        setEvents((prev) => [...prev, data]);
-        setData(data);
 
-        switch (data.state) {
-          case '':
+        // todo: move timer handling into a component
+        // it should allow to show up to two timers at the same time
+        switch (data.event) {
+          case "start-timer":
+          case "choose-timer":
+          case "disconnect-timer":
+          case "next-round-timer":
+            const time = data.data.secondsLeft;
+            setTimeLeft(time === 0 ? undefined : time);
+            break;
+          default:
+            setData(data);
+            if ("specific" in data.view) {
+              setSpecificView(data.view.specific);
+            }
         }
       },
       enabled: Boolean(user),
@@ -43,54 +61,62 @@ export default function RockPaperScissorsGame({
   );
   const { isLoading: joining } = api.rockPaperScissors.join.useQuery();
 
-  if (joining) return <LoadingScreen />;
+  if (joining || !data) return <LoadingScreen params={{ title: "Joining" }} />;
 
-  console.log("events", events);
+  // todo: move into lobby component
+  // todo: introduce game pause screen in lobby component
+  switch (data.view.general) {
+    case "none":
+      return <LoadingScreen params={{ title: "Joining" }} />;
+    case "joined":
+      return <ReadyScreen params={{ timeLeft: timeLeft ?? 0 }} />;
+    case "ready":
+      return <WaitForOtherPlayer params={{ timeLeft: timeLeft ?? 0 }} />;
+    case "game-ended":
+      // todo: make nicer
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      const youWon = data.data.winner === user.id;
+      return <EndScreen params={{ youWon }} />;
+  }
 
   return (
     <div>
-      <Header params={{ wins: 0, countdown: 20 }} />
-      <ViewContainer params={{ view }} />
+      <Header params={{ wins: 0, countdown: timeLeft }} />
+      <ViewContainer
+        params={{
+          view: specificView,
+          result:
+            data.event === "show-result"
+              ? {
+                  anotherRound: data.data.anotherRound,
+                  draw: data.data.draw,
+                  youWon: data.data.winner[0] === user!.id,
+                }
+              : undefined,
+        }}
+      />
     </div>
   );
 }
 
-function ViewContainer({ params }: { params: { view: Views } }) {
-  switch (params.view) {
-    case "joining":
-      return <LoadingScreen />;
-    case "joined":
-      // todo: pass time left
-      return <ReadyScreen params={{ timeLeft: 10 }} />;
-    case "ready":
-      return <p>Wait for start</p>;
-    case "choose":
-      return <SelectionContainer />;
-    case "result":
-      return <p>Result</p>;
-    case "end":
-      return <p>End</p>;
-      1;
-    default:
-      break;
-  }
-}
+// todo: move components below into lobby
 
-function LoadingScreen() {
+function LoadingScreen({ params }: { params: { title: string } }) {
   return (
     <p>
-      Joining
+      {params.title}
       <FaSpinner className="animate-spin" />
     </p>
   );
 }
 
-function Header({ params }: { params: { wins: number; countdown: number } }) {
+function Header({ params }: { params: { wins: number; countdown?: number } }) {
   return (
     <div>
       <h1>Rock Paper Scissors</h1>
       <p>Your wins: {params.wins}</p>
-      <p>Seconds left: {params.countdown}</p>
+      {params.countdown ? <p>Seconds left: {params.countdown}</p> : <></>}
     </div>
   );
 }
@@ -106,6 +132,52 @@ function ReadyScreen({ params }: { params: { timeLeft: number } }) {
       </Button>
     </div>
   );
+}
+
+function WaitForOtherPlayer({ params }: { params: { timeLeft: number } }) {
+  return (
+    <div>
+      <p>Wait for other player to join</p>
+      <p>Time left {params.timeLeft}</p>
+    </div>
+  );
+}
+
+function EndScreen({ params }: { params: { youWon: boolean } }) {
+  return (
+    <div>
+      <p>{params.youWon ? "You won" : "You lost"}</p>
+    </div>
+  );
+}
+
+// components below stay in this file
+
+function ViewContainer({
+  params,
+}: {
+  params: {
+    view: SpecificView;
+    result?: { anotherRound: boolean; draw: boolean; youWon: boolean };
+  };
+}) {
+  switch (params.view) {
+    case "none":
+      return <></>;
+    case "start-choose":
+      return <SelectionContainer />;
+    case "chosen":
+      return "wait for other party to choose";
+    case "show-result":
+      const { anotherRound, draw, youWon } = params.result!;
+      return (
+        <div>
+          <h1>Result</h1>
+          <p>{draw ? "Draw" : youWon ? "You won" : "You lost"}</p>
+          {anotherRound ? <p>Next round coming up</p> : <></>}
+        </div>
+      );
+  }
 }
 
 function SelectionContainer() {

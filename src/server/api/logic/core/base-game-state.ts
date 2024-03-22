@@ -13,7 +13,8 @@ import type {
   EventTemplate,
   GetTimerEvents,
   OnlyPlayerEvents,
-  ToEventData
+  ToEventData,
+  UnspecificPlayerEventData,
 } from "./types";
 
 export type GameConfig = {
@@ -49,7 +50,7 @@ export type GeneralGameEvents = EventTemplate<
     };
     destroy: undefined;
   },
-  BasePlayerState["state"],
+  { general: BasePlayerState["generalView"] },
   | "canceled"
   | "all-player-ready"
   | "game-in-progress"
@@ -163,6 +164,8 @@ export abstract class BaseGameState<
   endGame(winner: string) {
     this.assertInitialized();
     this.assertPlayer(winner);
+
+    this.players.forEach((x) => x.gameEnd());
     this.emitEvent({
       event: "game-ended",
       data: {
@@ -198,12 +201,13 @@ export abstract class BaseGameState<
     /**
      * Overloading the function is the only way to type it correctly for both the current class
      * and its children.
-     * 
+     *
      * This entire class is not typesafe and uses any a lot.
      * Because one of the generics is not known at this point, it's impossible to type it correctly.
      */
 
     if (this.isServerEvent(eventData)) {
+      console.log("emit server event", eventData);
       const event = {
         ...eventData,
         fightId: this.fightId,
@@ -213,24 +217,14 @@ export abstract class BaseGameState<
     }
 
     if (this.isPlayerEvent(eventData)) {
+      console.log("emit player event", playerId, eventData);
       if (playerId) {
-        const event = {
-          ...eventData,
-          fightId: this.fightId,
-          state: this.getPlayer(playerId)!.state,
-        };
-        this.addToEventHistory(event, playerId);
-        this.emit(`player-${playerId}`, event);
+        const player = this.getPlayer(playerId)!;
+        this.emitPlayerEvent(eventData, player);
       } else {
-        this.players.forEach((player) => {
-          const event = {
-            ...eventData,
-            fightId: this.fightId,
-            state: player.state,
-          };
-          this.addToEventHistory(event, player.id);
-          this.emit(`player-${player.id}`, event);
-        });
+        this.players.forEach((player) =>
+          this.emitPlayerEvent(eventData, player),
+        );
       }
     }
   }
@@ -259,6 +253,20 @@ export abstract class BaseGameState<
     if (!this.gameRunning) {
       throw new Error(`The actual game has not yet started`);
     }
+  }
+
+  private emitPlayerEvent(eventData: any, player: BasePlayerState) {
+    const event = {
+      event: eventData.event,
+      data: eventData.data,
+      fightId: this.fightId,
+      view: {
+        general: player.generalView,
+        specific: player.specificView,
+      },
+    } satisfies UnspecificPlayerEventData;
+    this.addToEventHistory(event, player.id);
+    this.emit(`player-${player.id}`, event);
   }
 
   private addToEventHistory(event: any, player: string) {
@@ -299,14 +307,14 @@ export abstract class BaseGameState<
       event: "player-joined-readying",
       data: {
         joined: [...this.players.values()]
-          .filter((x) => x.state === "joined")
+          .filter((x) => x.generalView === "joined")
           .map((x) => x.id),
         ready: [...this.players.values()]
-          .filter((x) => x.state === "ready")
+          .filter((x) => x.generalView === "ready")
           .map((x) => x.id),
       },
     });
-    if ([...this.players.values()].every((x) => x.state === "ready")) {
+    if ([...this.players.values()].every((x) => x.generalView === "ready")) {
       // all players joined, so the start timeout is over
       this.emitEvent({
         event: "all-player-ready",

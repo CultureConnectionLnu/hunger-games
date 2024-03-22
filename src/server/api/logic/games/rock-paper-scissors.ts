@@ -75,7 +75,10 @@ export type RockPaperScissorsEvents = EventTemplate<
       secondsLeft: number;
     };
   },
-  RpsPlayer["gameState"],
+  {
+    general: BasePlayerState["generalView"];
+    specific: RpsPlayer["specificView"];
+  },
   never,
   | "enable-choose"
   | "show-waiting"
@@ -90,10 +93,10 @@ class RpsPlayer extends BasePlayerState<{
     item: PlayerChooseItem;
   };
 }> {
-  private gameSpecificState: "none" | "start-choose" | "chosen" = "none";
+  private gameSpecificState: "none" | "start-choose" | "chosen" | "show-result" = "none";
   private item?: PlayerChooseItem;
 
-  get gameState() {
+  get specificView() {
     return this.gameSpecificState;
   }
 
@@ -118,8 +121,8 @@ class RpsPlayer extends BasePlayerState<{
     });
   }
 
-  reset() {
-    this.gameSpecificState = "none";
+  showResult() {
+    this.gameSpecificState = "show-result";
     this.item = undefined;
   }
 }
@@ -127,7 +130,10 @@ class RpsPlayer extends BasePlayerState<{
 export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
   protected readonly eventHistory: Record<
     string,
-    (OnlyPlayerEvents<GeneralGameEvents> | OnlyPlayerEvents<RockPaperScissorsEvents>)[]
+    (
+      | OnlyPlayerEvents<GeneralGameEvents>
+      | OnlyPlayerEvents<RockPaperScissorsEvents>
+    )[]
   > = {};
   protected readonly players = new Map<string, RpsPlayer>();
   private winners: string[] = [];
@@ -154,7 +160,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
 
       player.on("chosen", (e) => {
         const doneChoosing = [...this.players.values()]
-          .filter((x) => x.gameState === "chosen")
+          .filter((x) => x.specificView === "chosen")
           .map((x) => x.id);
         this.emitEvent(
           {
@@ -238,6 +244,11 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
       RpsPlayer,
     ];
     const result = this.findWinner(player1, player2);
+
+    // make sure the correct view state for players is set
+    player1.showResult();
+    player2.showResult();
+
     if (result.draw) {
       this.emitEvent({
         event: "show-result",
@@ -286,10 +297,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
     return Object.entries(winCount).find(([, count]) => count >= winsNeeded);
   }
 
-  private findWinner(
-    firstPlayer: RpsPlayer,
-    secondPlayer: RpsPlayer,
-  ) {
+  private findWinner(firstPlayer: RpsPlayer, secondPlayer: RpsPlayer) {
     if (firstPlayer.selectedItem === undefined) {
       return {
         winner: secondPlayer.id,
