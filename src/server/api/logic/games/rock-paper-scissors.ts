@@ -93,7 +93,11 @@ class RpsPlayer extends BasePlayerState<{
     item: PlayerChooseItem;
   };
 }> {
-  private gameSpecificState: "none" | "start-choose" | "chosen" | "show-result" = "none";
+  private gameSpecificState:
+    | "none"
+    | "start-choose"
+    | "chosen"
+    | "show-result" = "none";
   private item?: PlayerChooseItem;
 
   get specificView() {
@@ -174,6 +178,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
         this.evaluateState();
       });
     });
+    this.init();
   }
 
   getPlayer(id: string) {

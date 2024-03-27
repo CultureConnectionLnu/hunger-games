@@ -217,7 +217,6 @@ export abstract class BaseGameState<
         fightId: this.fightId,
       };
       this.emit(eventData.event, event);
-      return;
     }
 
     if (this.isPlayerEvent(eventData)) {
@@ -286,6 +285,10 @@ export abstract class BaseGameState<
 
   private setupGameStartListener() {
     this.once("all-player-ready", () => {
+      setTimeout(() => {
+      /**
+       * make sure that all the synchronous events are done before starting the game
+       */
       this.gameRunning = true;
       this.players.forEach((x) => x.gameStart());
       this.emitEvent({
@@ -293,6 +296,8 @@ export abstract class BaseGameState<
         data: undefined,
       });
       this.startGame();
+
+      })
     });
   }
 

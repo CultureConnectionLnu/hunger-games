@@ -179,7 +179,15 @@ class GameHandler {
     );
     game.once("game-ended", () => {
       clearTimeout(timeout);
-      game.destroy();
+      setTimeout(() => {
+        /**
+         * make sure all the synchronous event listener are processed
+         * before the game is destroyed.
+         *
+         * queueMacroTask
+         */
+        game.destroy();
+      });
     });
     game.once("destroy", () => {
       clearTimeout(timeout);

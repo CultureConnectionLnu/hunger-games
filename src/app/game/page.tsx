@@ -10,7 +10,7 @@ import LoadingScreen from "../_components/util/loading-spinner";
 import { useTimers } from "../_context/timer";
 import type { RouterOutputs } from "~/trpc/shared";
 import type { Observable } from "@trpc/server/observable";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Timer } from "../_components/util/timer";
 import RockPaperScissorsGame from "../_components/games/rock-paper-scissors";
 
@@ -25,30 +25,26 @@ type WinnerEvent = GetWinnerEvent<ServerEvent>;
 export default function CurrentGame() {
   const { user } = useUser();
   const { isLoading: timerLoading, updateTimer } = useTimers();
-  const [currentFight, setCurrentFight] = useState<
-    RouterOutputs["fight"]["currentFight"] | undefined
-  >(undefined);
 
-  useEffect(() => {
-    const { data, isLoading } = api.fight.currentFight.useQuery();
-    if (!isLoading) {
-      setCurrentFight(data);
-    }
-  }, []);
+  const { data: currentFight, isLoading: currentFightLoading } =
+    api.fight.currentFight.useQuery(undefined, {
+      staleTime: Infinity,
+      refetchOnMount: "always",
+    });
 
-  if (currentFight === undefined || timerLoading) {
+  if (currentFightLoading || timerLoading) {
     return <LoadingScreen params={{ title: "Loading fight" }} />;
   }
 
-  if (currentFight.success === false || user == null) {
+  if (currentFight!.success === false || user == null) {
     return <NoFightOngoing />;
   }
 
   return (
     <JoiningGame
       params={{
-        gameName: currentFight.fight.game,
-        fightId: currentFight.fight.fightId,
+        gameName: currentFight!.fight.game,
+        fightId: currentFight!.fight.fightId,
         updateTimer,
         userId: user.id,
       }}
@@ -66,12 +62,10 @@ function JoiningGame({
     updateTimer: (label: string, secondsLeft: number) => void;
   };
 }) {
-  const [joining, setJoining] = useState(true);
-  useEffect(() => {
-    const { isLoading } = api.fight.join.useQuery();
-    setJoining(isLoading);
-  }, []);
-
+  const { isLoading: joining } = api.fight.join.useQuery(undefined, {
+    staleTime: Infinity,
+    refetchOnMount: "always",
+  });
   if (joining) {
     return <LoadingScreen params={{ title: "Joining Game" }} />;
   }
@@ -90,6 +84,7 @@ function GameLobby({
   };
 }) {
   const [lastEvent, setLastEvent] = useState<ServerEvent>();
+
   api.fight.onAction.useSubscription(params, {
     onData(data) {
       switch (data.event) {
@@ -102,10 +97,10 @@ function GameLobby({
       }
     },
   });
-
   if (!lastEvent) {
     return <LoadingScreen params={{ title: "Joining Game" }} />;
   }
+  console.log(lastEvent);
 
   // Render Lobby
   switch (lastEvent.view.general) {
@@ -114,7 +109,7 @@ function GameLobby({
     case "joined":
       return <ReadyScreen params={params} />;
     case "ready":
-      return <WaitForOtherPlayer />;
+      return <WaitForOtherPlayer params={params} />;
     case "game-ended":
       const data = lastEvent.data as WinnerEvent["data"];
       return <EndScreen params={{ ...data, you: params.userId }} />;
@@ -171,12 +166,12 @@ function ReadyScreen({ params }: { params: { gameName: string } }) {
   );
 }
 
-function WaitForOtherPlayer() {
+function WaitForOtherPlayer({ params }: { params: { gameName: string } }) {
   return (
     <Card className="flex h-screen flex-col items-center justify-center p-4 md:p-6">
       <CardContent className="space-y-4 text-center">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold">Bumper Cars</h1>
+          <h1 className="text-3xl font-bold">{params.gameName}</h1>
         </div>
         <div className="space-y-2"></div>
         <div className="flex flex-col items-center space-y-2 text-center">

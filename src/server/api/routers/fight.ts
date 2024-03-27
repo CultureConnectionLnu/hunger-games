@@ -170,6 +170,12 @@ export const fightRouter = createTRPCRouter({
         const onMessage = (data: BaseGamePlayerEvents) => {
           //todo: emit event in a way that this filtering is not needed
           if (!BaseGameState.playerSpecificEvents.includes(data.event)) return;
+          if(data.event === 'player-joined-readying'){
+            // @ts-expect-error i know
+            const allReady = [...match.players.values()].every(x => x.generalView === 'ready')
+            // @ts-expect-error i know
+            console.log(allReady,[...match.players.values()])
+          }
           emit.next(data);
         };
         match.on(`player-${input.userId}`, onMessage);
@@ -177,7 +183,6 @@ export const fightRouter = createTRPCRouter({
         match.getEventHistory(input.userId).forEach(onMessage);
 
         match.once("destroy", () => {
-          console.log("destroyed");
           emit.complete();
         });
 

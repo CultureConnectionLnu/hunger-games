@@ -79,7 +79,6 @@ export const rockPaperScissorsRouter = createTRPCRouter({
         ).forEach(onMessage);
 
         match.once("destroy", () => {
-          console.log("destroyed");
           emit.complete();
         });
 
