@@ -8,7 +8,8 @@ await import("./src/env.js");
 const config = {
   output: "standalone",
   experimental: {
-    instrumentationHook: true,
+    // info: enabling this feature breaks the build with drizzle orm
+    // instrumentationHook: true,
   },
 };
 
