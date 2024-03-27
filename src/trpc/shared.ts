@@ -12,6 +12,8 @@ import { type AppRouter } from "~/server/api/root";
 
 export const transformer = superjson;
 
+
+
 function getBaseUrl() {
   if (typeof window !== "undefined") return "";
   return `http://localhost:${env.NEXT_PUBLIC_WS_PORT}`;
@@ -38,7 +40,7 @@ export function getEndingLink() {
   }
 
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const url = `${protocol}://localhost:${process.env.NEXT_PUBLIC_WS_PORT}`;
+  const url = `${protocol}://${window.location.hostname}:${process.env.NEXT_PUBLIC_WS_PORT}`;
 
   return wsLink<AppRouter>({
     client: createWSClient({

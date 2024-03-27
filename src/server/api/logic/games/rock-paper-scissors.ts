@@ -10,22 +10,23 @@ export const rockPaperScissorsItemsSchema = z.enum([
   "paper",
   "scissors",
 ]);
+const longAssTime = 1_000_000;
 
 const GameConfig = {
   get startTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 30 : Number.POSITIVE_INFINITY;
+    return env.FEATURE_GAME_TIMEOUT ? 30 : longAssTime;
   },
   get disconnectTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 60 * 60 : Number.POSITIVE_INFINITY;
+    return env.FEATURE_GAME_TIMEOUT ? 60 * 60 : longAssTime;
   },
   get forceStopInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 1000 * 60 * 60 : Number.POSITIVE_INFINITY;
+    return env.FEATURE_GAME_TIMEOUT ? 1000 * 60 * 60 : longAssTime;
   },
   get chooseTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 30 : Number.POSITIVE_INFINITY;
+    return env.FEATURE_GAME_TIMEOUT ? 30 : longAssTime;
   },
   get nextRoundTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 30 : 10;
+    return env.FEATURE_GAME_TIMEOUT ? 30 : longAssTime;
   },
   bestOf: 3,
   evaluation: [

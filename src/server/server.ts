@@ -2,7 +2,10 @@ import next from "next";
 import { createServer } from "node:http";
 import { parse } from "node:url";
 
+import { isNull } from "drizzle-orm";
 import { env } from "~/env";
+import { db } from "./db";
+import { fight } from "./db/schema";
 import { bootstrapWS } from "./wssServer";
 
 const port = parseInt(env.PORT);
@@ -26,4 +29,24 @@ void app.prepare().then(() => {
       dev ? "development" : env.NEXT_PUBLIC_NODE_ENV
     }`,
   );
+
+  logFeaturesFlags();
+
+  void removeNotFinishedFights().then((x) => {
+    if (x.count === 0) return;
+
+    console.log(
+      "Deleted dangling fights upon startup of server. count: ",
+      x.count,
+    );
+  });
 });
+
+async function removeNotFinishedFights() {
+  return db.delete(fight).where(isNull(fight.winner));
+}
+
+function logFeaturesFlags() {
+  console.log("Feature Flags:");
+  console.log("  FEATURE_GAME_TIMEOUT", env.FEATURE_GAME_TIMEOUT);
+}

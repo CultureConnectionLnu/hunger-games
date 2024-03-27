@@ -143,11 +143,13 @@ type KnownGamesMap = {
   };
 }[keyof typeof knownGames];
 
+const longAssTime = 1_000_000;
+
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();
   private readonly forceDeleteGameTimeout = env.FEATURE_GAME_TIMEOUT
     ? 1000 * 60 * 60
-    : Number.POSITIVE_INFINITY;
+    : longAssTime;
 
   public getGame(fightId: string) {
     return this.runningGames.get(fightId);
