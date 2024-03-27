@@ -8,7 +8,7 @@ import {
 } from "~/server/api/trpc";
 import { FightHandler } from "../logic/fight";
 import {
-  BaseGamePlayerEvents,
+  type BaseGamePlayerEvents,
   BaseGameState,
 } from "../logic/core/base-game-state";
 import { randomUUID } from "crypto";
@@ -126,9 +126,12 @@ export const fightRouter = createTRPCRouter({
 
   currentFight: userProcedure.query(async ({ ctx }) => {
     try {
-      return await FightHandler.instance.getCurrentFight(ctx.user.clerkId);
+      return {
+        fight: await FightHandler.instance.getCurrentFight(ctx.user.clerkId),
+        success: true,
+      } as const;
     } catch (error) {
-      return undefined;
+      return { success: false } as const;
     }
   }),
 
@@ -158,19 +161,20 @@ export const fightRouter = createTRPCRouter({
         const match = FightHandler.instance.getGame(input.fightId)?.instance as
           | BaseGameState
           | undefined;
-        if (!match || match.getPlayer(input.userId)) {
+        if (match?.getPlayer(input.userId) === undefined) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Match not found",
           });
         }
         const onMessage = (data: BaseGamePlayerEvents) => {
+          //todo: emit event in a way that this filtering is not needed
+          if (!BaseGameState.playerSpecificEvents.includes(data.event)) return;
           emit.next(data);
         };
-        match.on(`player-${input.userId}`, (data) => {
-          if (!BaseGameState.playerSpecificEvents.includes(data.event)) return;
-          onMessage(data);
-        });
+        match.on(`player-${input.userId}`, onMessage);
+        // replay events
+        match.getEventHistory(input.userId).forEach(onMessage);
 
         match.once("destroy", () => {
           console.log("destroyed");

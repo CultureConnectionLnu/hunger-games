@@ -133,7 +133,7 @@ export abstract class BaseGameState<
   constructor(
     private readonly config: GameConfig,
     public readonly fightId: string,
-    private readonly playerSpecificEvents: string[],
+    public readonly playerSpecificEvents: string[],
     private readonly serverSpecificEvents: string[],
   ) {
     super();

@@ -10,7 +10,7 @@ import LoadingScreen from "../_components/util/loading-spinner";
 import { useTimers } from "../_context/timer";
 import type { RouterOutputs } from "~/trpc/shared";
 import type { Observable } from "@trpc/server/observable";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Timer } from "../_components/util/timer";
 import RockPaperScissorsGame from "../_components/games/rock-paper-scissors";
 
@@ -22,48 +22,89 @@ type ServerEvent =
 type GetWinnerEvent<T> = T extends { event: "game-ended" } ? T : never;
 type WinnerEvent = GetWinnerEvent<ServerEvent>;
 
-export default function Lobby() {
+export default function CurrentGame() {
   const { user } = useUser();
   const { isLoading: timerLoading, updateTimer } = useTimers();
-  const [lastEvent, setLastEvent] = useState<ServerEvent>();
+  const [currentFight, setCurrentFight] = useState<
+    RouterOutputs["fight"]["currentFight"] | undefined
+  >(undefined);
 
-  const { data: currentFight, isLoading: currentFightLoading } =
-    api.fight.currentFight.useQuery();
-  const { isLoading: joining } = api.fight.join.useQuery();
+  useEffect(() => {
+    const { data, isLoading } = api.fight.currentFight.useQuery();
+    if (!isLoading) {
+      setCurrentFight(data);
+    }
+  }, []);
 
-  api.fight.onAction.useSubscription(
-    {
-      fightId: currentFight?.fightId ?? "",
-      userId: user?.id ?? "",
-    },
-    {
-      onData(data) {
-        switch (data.event) {
-          case "start-timer":
-          case "disconnect-timer":
-            updateTimer!(data.event, data.data.secondsLeft);
-            break;
-          default:
-            setLastEvent(data);
-        }
-      },
-      enabled: Boolean(user) && Boolean(currentFight) && !timerLoading,
-    },
-  );
-
-  if (
-    (currentFightLoading === false && currentFight === undefined) ||
-    user == null
-  ) {
-    return <NoFightOngoing />;
-  }
-
-  if (currentFightLoading) {
+  if (currentFight === undefined || timerLoading) {
     return <LoadingScreen params={{ title: "Loading fight" }} />;
   }
 
-  if (!lastEvent || joining) {
-    return <LoadingScreen params={{ title: "Connecting to fight" }} />;
+  if (currentFight.success === false || user == null) {
+    return <NoFightOngoing />;
+  }
+
+  return (
+    <JoiningGame
+      params={{
+        gameName: currentFight.fight.game,
+        fightId: currentFight.fight.fightId,
+        updateTimer,
+        userId: user.id,
+      }}
+    />
+  );
+}
+
+function JoiningGame({
+  params,
+}: {
+  params: {
+    gameName: string;
+    fightId: string;
+    userId: string;
+    updateTimer: (label: string, secondsLeft: number) => void;
+  };
+}) {
+  const [joining, setJoining] = useState(true);
+  useEffect(() => {
+    const { isLoading } = api.fight.join.useQuery();
+    setJoining(isLoading);
+  }, []);
+
+  if (joining) {
+    return <LoadingScreen params={{ title: "Joining Game" }} />;
+  }
+
+  return <GameLobby params={params} />;
+}
+
+function GameLobby({
+  params,
+}: {
+  params: {
+    gameName: string;
+    fightId: string;
+    userId: string;
+    updateTimer: (label: string, secondsLeft: number) => void;
+  };
+}) {
+  const [lastEvent, setLastEvent] = useState<ServerEvent>();
+  api.fight.onAction.useSubscription(params, {
+    onData(data) {
+      switch (data.event) {
+        case "start-timer":
+        case "disconnect-timer":
+          params.updateTimer(data.event, data.data.secondsLeft);
+          break;
+        default:
+          setLastEvent(data);
+      }
+    },
+  });
+
+  if (!lastEvent) {
+    return <LoadingScreen params={{ title: "Joining Game" }} />;
   }
 
   // Render Lobby
@@ -71,25 +112,21 @@ export default function Lobby() {
     case "none":
       return <LoadingScreen params={{ title: "Joining" }} />;
     case "joined":
-      return <ReadyScreen params={{ gameName: currentFight!.game }} />;
+      return <ReadyScreen params={params} />;
     case "ready":
       return <WaitForOtherPlayer />;
     case "game-ended":
       const data = lastEvent.data as WinnerEvent["data"];
-      return <EndScreen params={{ ...data, you: user.id }} />;
+      return <EndScreen params={{ ...data, you: params.userId }} />;
     // todo: add game-halted view
   }
 
   // Render Game
-  switch (currentFight!.game) {
+  switch (params.gameName) {
     case "rock-paper-scissors":
-      return (
-        <RockPaperScissorsGame
-          params={{ fightId: currentFight!.fightId, userId: user.id }}
-        />
-      );
+      return <RockPaperScissorsGame params={params} />;
     default:
-      return `Selected game is not implemented: ${currentFight!.game}`;
+      return `Selected game is not implemented: ${params.gameName}`;
   }
 }
 
