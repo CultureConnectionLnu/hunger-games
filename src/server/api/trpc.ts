@@ -86,6 +86,7 @@ export async function createCommonContext(opts: {
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async () => {
+  // HACK to get clerk working with web socket
   const { auth } = await clerkModule;
   const session = auth();
   return createCommonContext({
