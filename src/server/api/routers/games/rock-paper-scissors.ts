@@ -8,9 +8,9 @@ import {
   type RockPaperScissorsEvents,
   rockPaperScissorsItemsSchema,
 } from "../../logic/games/rock-paper-scissors";
-import { inFightProcedure } from "../fight";
+import { catchMatchError, inFightProcedure } from "../fight";
 import type { OnlyPlayerEvents } from "../../logic/core/types";
-import { GeneralGameEvents } from "../../logic/core/base-game-state";
+import type { GeneralGameEvents } from "../../logic/core/base-game-state";
 
 type RockPaperScissorsPlayerEvents =
   | OnlyPlayerEvents<RockPaperScissorsEvents>
@@ -27,19 +27,7 @@ const rockPaperScissorsProcedure = inFightProcedure.use(({ ctx, next }) => {
     });
   }
 
-  const currentGame = ctx.fightHandler.getGame(ctx.currentFight.fightId);
-  if (!currentGame) {
-    // TODO: introduce delete action for the invalid fight
-    console.error(
-      `Could not find the fight with id '${ctx.currentFight.fightId}' in the GameHandler`,
-    );
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Could not find your match, even though it should exist",
-    });
-  }
-
-  if (currentGame.type !== "rock-paper-scissors") {
+  if (ctx.game.type !== "rock-paper-scissors") {
     // TODO: introduce delete action for the invalid fight
     console.error(
       `The fight with id '${ctx.currentFight.fightId}' is not of type 'rock-paper-scissors', even though it is supposed to be.`,
@@ -52,45 +40,12 @@ const rockPaperScissorsProcedure = inFightProcedure.use(({ ctx, next }) => {
   return next({
     ctx: {
       ...ctx,
-      currentGame: currentGame.instance,
+      currentGame: ctx.game.instance,
     },
   });
 });
 
-function catchMatchError(fn: () => void) {
-  try {
-    fn();
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new TRPCError({
-        code: "BAD_REQUEST",
-        message: error.message,
-      });
-    }
-    const errorId = randomUUID();
-    console.error("Error id: " + errorId, error);
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message:
-        "Could not interact with rock paper scissors match. For more details, check the logs with error id: " +
-        errorId,
-    });
-  }
-}
-
 export const rockPaperScissorsRouter = createTRPCRouter({
-  join: rockPaperScissorsProcedure.query(({ ctx }) => {
-    catchMatchError(() => {
-      ctx.currentGame.playerJoin(ctx.user.clerkId);
-    });
-    return true;
-  }),
-  ready: rockPaperScissorsProcedure.mutation(({ ctx }) => {
-    catchMatchError(() => {
-      ctx.currentGame.playerReady(ctx.user.clerkId);
-    });
-    return true;
-  }),
   choose: rockPaperScissorsProcedure
     .input(rockPaperScissorsItemsSchema)
     .mutation(({ ctx, input }) => {

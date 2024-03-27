@@ -7,6 +7,11 @@ import {
   userProcedure,
 } from "~/server/api/trpc";
 import { FightHandler } from "../logic/fight";
+import {
+  BaseGamePlayerEvents,
+  BaseGameState,
+} from "../logic/core/base-game-state";
+import { randomUUID } from "crypto";
 
 const messageSchema = z.object({
   fightId: z.string().uuid(),
@@ -28,14 +33,52 @@ declare module "~/lib/event-emitter" {
  * makes sure that a user is in a fight
  */
 export const inFightProcedure = userProcedure.use(async ({ ctx, next }) => {
+  const currentFight = await FightHandler.instance.getCurrentFight(
+    ctx.user.clerkId,
+  );
+
+  const game = FightHandler.instance.getGame(currentFight.fightId);
+  if (!game) {
+    // TODO: introduce delete action for the invalid fight
+    console.error(
+      `Could not find the fight with id '${currentFight.fightId}' in the GameHandler`,
+    );
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Could not find your match, even though it should exist",
+    });
+  }
+
   return next({
     ctx: {
       ...ctx,
-      currentFight: await FightHandler.instance.getCurrentFight(ctx.user.clerkId),
+      currentFight,
+      game,
       fightHandler: FightHandler.instance,
     },
   });
 });
+
+export function catchMatchError(fn: () => void) {
+  try {
+    fn();
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: error.message,
+      });
+    }
+    const errorId = randomUUID();
+    console.error("Error id: " + errorId, error);
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message:
+        "Could not interact with rock paper scissors match. For more details, check the logs with error id: " +
+        errorId,
+    });
+  }
+}
 
 export const fightRouter = createTRPCRouter({
   create: userProcedure
@@ -79,6 +122,65 @@ export const fightRouter = createTRPCRouter({
       return {
         id: newFight.id,
       };
+    }),
+
+  currentFight: userProcedure.query(async ({ ctx }) => {
+    try {
+      return await FightHandler.instance.getCurrentFight(ctx.user.clerkId);
+    } catch (error) {
+      return undefined;
+    }
+  }),
+
+  join: inFightProcedure.query(({ ctx }) => {
+    catchMatchError(() => {
+      ctx.game.instance.playerJoin(ctx.user.clerkId);
+    });
+    return true;
+  }),
+
+  ready: inFightProcedure.mutation(({ ctx }) => {
+    catchMatchError(() => {
+      ctx.game.instance.playerReady(ctx.user.clerkId);
+    });
+    return true;
+  }),
+
+  onAction: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        fightId: z.string().uuid(),
+      }),
+    )
+    .subscription(({ input }) => {
+      return observable<BaseGamePlayerEvents>((emit) => {
+        const match = FightHandler.instance.getGame(input.fightId)?.instance as
+          | BaseGameState
+          | undefined;
+        if (!match || match.getPlayer(input.userId)) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Match not found",
+          });
+        }
+        const onMessage = (data: BaseGamePlayerEvents) => {
+          emit.next(data);
+        };
+        match.on(`player-${input.userId}`, (data) => {
+          if (!BaseGameState.playerSpecificEvents.includes(data.event)) return;
+          onMessage(data);
+        });
+
+        match.once("destroy", () => {
+          console.log("destroyed");
+          emit.complete();
+        });
+
+        return () => {
+          match.off(`player-${input.userId}`, onMessage);
+        };
+      });
     }),
 
   canJoin: userProcedure

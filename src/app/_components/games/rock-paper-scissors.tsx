@@ -1,10 +1,11 @@
-import { useUser } from "@clerk/nextjs";
 import type { Observable } from "@trpc/server/observable";
 import { useState } from "react";
 import { FaSpinner } from "react-icons/fa";
-import { Button } from "~/components/ui/button";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
+import LoadingScreen from "../util/loading-spinner";
+import { useTimers } from "~/app/_context/timer";
+import { Timer } from "../util/timer";
 
 type ServerEvent =
   RouterOutputs["rockPaperScissors"]["onAction"] extends Observable<
@@ -26,72 +27,47 @@ type ShowResultEvent = ExtractSpecificEvent<ServerEvent, "show-result">;
 export default function RockPaperScissorsGame({
   params,
 }: {
-  params: { fightId: string };
+  params: { fightId: string; userId: string };
 }) {
-  const { user } = useUser();
-  const [specificView, setSpecificView] = useState<SpecificView>("none");
-  const [data, setData] = useState<ServerEvent>();
-  const [timeLeft, setTimeLeft] = useState<number | undefined>(undefined);
+  const { isLoading, updateTimer } = useTimers();
+  const [view, setView] = useState<SpecificView>("none");
+  const [lastEvent, setLastEvent] = useState<ServerEvent>();
 
-  api.rockPaperScissors.onAction.useSubscription(
-    { fightId: params.fightId, userId: user?.id ?? "" },
-    {
-      onData(data) {
-        console.log(data);
+  api.rockPaperScissors.onAction.useSubscription(params, {
+    onData(data) {
+      console.log(data);
 
-        // todo: move timer handling into a component
-        // it should allow to show up to two timers at the same time
-        switch (data.event) {
-          case "start-timer":
-          case "choose-timer":
-          case "disconnect-timer":
-          case "next-round-timer":
-            const time = data.data.secondsLeft;
-            setTimeLeft(time === 0 ? undefined : time);
-            break;
-          default:
-            setData(data);
-            if ("specific" in data.view) {
-              setSpecificView(data.view.specific);
-            }
-        }
-      },
-      enabled: Boolean(user),
+      // todo: move timer handling into a component
+      // it should allow to show up to two timers at the same time
+      switch (data.event) {
+        case "choose-timer":
+        case "next-round-timer":
+          updateTimer!(data.event, data.data.secondsLeft);
+          break;
+        default:
+          setLastEvent(data);
+          if ("specific" in data.view) {
+            setView(data.view.specific);
+          }
+      }
     },
-  );
-  const { isLoading: joining } = api.rockPaperScissors.join.useQuery();
+    enabled: !isLoading,
+  });
 
-  if (joining || !data) return <LoadingScreen params={{ title: "Joining" }} />;
-
-  // todo: move into lobby component
-  // todo: introduce game pause screen in lobby component
-  switch (data.view.general) {
-    case "none":
-      return <LoadingScreen params={{ title: "Joining" }} />;
-    case "joined":
-      return <ReadyScreen params={{ timeLeft: timeLeft ?? 0 }} />;
-    case "ready":
-      return <WaitForOtherPlayer params={{ timeLeft: timeLeft ?? 0 }} />;
-    case "game-ended":
-      // todo: make nicer
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      const youWon = data.data.winner === user.id;
-      return <EndScreen params={{ youWon }} />;
-  }
+  if (!lastEvent) return <LoadingScreen params={{ title: "Loading Game" }} />;
 
   return (
     <div>
-      <Header params={{ wins: 0, countdown: timeLeft }} />
+      <Header />
       <ViewContainer
         params={{
-          view: specificView,
+          view: view,
           result:
-            data.event === "show-result"
+            lastEvent.event === "show-result"
               ? {
-                  anotherRound: data.data.anotherRound,
-                  draw: data.data.draw,
-                  youWon: data.data.winner[0] === user!.id,
+                  anotherRound: lastEvent.data.anotherRound,
+                  draw: lastEvent.data.draw,
+                  youWon: lastEvent.data.winner[0] === params.userId,
                 }
               : undefined,
         }}
@@ -100,53 +76,12 @@ export default function RockPaperScissorsGame({
   );
 }
 
-// todo: move components below into lobby
-
-function LoadingScreen({ params }: { params: { title: string } }) {
-  return (
-    <p>
-      {params.title}
-      <FaSpinner className="animate-spin" />
-    </p>
-  );
-}
-
-function Header({ params }: { params: { wins: number; countdown?: number } }) {
+function Header() {
   return (
     <div>
       <h1>Rock Paper Scissors</h1>
-      <p>Your wins: {params.wins}</p>
-      {params.countdown ? <p>Seconds left: {params.countdown}</p> : <></>}
-    </div>
-  );
-}
-
-function ReadyScreen({ params }: { params: { timeLeft: number } }) {
-  const ready = api.rockPaperScissors.ready.useMutation();
-  return (
-    <div>
-      <p>Ready to play?</p>
-      <p>Time left {params.timeLeft}</p>
-      <Button onClick={() => ready.mutate()}>
-        Ready {ready.isLoading ? <FaSpinner className="animate-spin" /> : <></>}
-      </Button>
-    </div>
-  );
-}
-
-function WaitForOtherPlayer({ params }: { params: { timeLeft: number } }) {
-  return (
-    <div>
-      <p>Wait for other player to join</p>
-      <p>Time left {params.timeLeft}</p>
-    </div>
-  );
-}
-
-function EndScreen({ params }: { params: { youWon: boolean } }) {
-  return (
-    <div>
-      <p>{params.youWon ? "You won" : "You lost"}</p>
+      <Timer params={{ id: "choose-timer", label: "Time to choose" }} />
+      <Timer params={{ id: "next-round-timer", label: "Game continues in" }} />
     </div>
   );
 }

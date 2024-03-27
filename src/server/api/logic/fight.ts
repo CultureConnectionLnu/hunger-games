@@ -12,7 +12,7 @@ import { RpsGame } from "./games/rock-paper-scissors";
  */
 const knownGames = {
   "rock-paper-scissors": RpsGame,
-}
+};
 
 type AnyGame = InstanceType<(typeof knownGames)[keyof typeof knownGames]>;
 
@@ -115,7 +115,7 @@ export class FightHandler {
     try {
       const winner = await new Promise<string>((resolve, reject) => {
         game.once("game-ended", (event) => {
-          resolve(event.data.winner);
+          resolve(event.data.winnerId);
         });
         game.once("destroy", () => {
           reject(new Error("Game destroyed before it ended"));

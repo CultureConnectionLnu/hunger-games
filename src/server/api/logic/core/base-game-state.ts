@@ -34,7 +34,8 @@ export type GeneralGameEvents = EventTemplate<
     "all-player-ready": undefined;
     "game-in-progress": undefined;
     "game-ended": {
-      winner: string;
+      winnerId: string;
+      looserId: string;
     };
     "game-halted": {
       disconnected: string[];
@@ -66,6 +67,8 @@ export type GeneralGameEvents = EventTemplate<
   | "game-resume"
   | "canceled"
 >;
+
+export type BaseGamePlayerEvents = OnlyPlayerEvents<GeneralGameEvents>;
 
 export abstract class BaseGameState<
   SubEvents extends BaseEvent = DefaultEvents,
@@ -136,7 +139,7 @@ export abstract class BaseGameState<
     super();
   }
 
-  protected abstract getPlayer(id: string): BasePlayerState | undefined;
+  public abstract getPlayer(id: string): BasePlayerState | undefined;
   protected abstract assertPlayer(id: string): BasePlayerState;
   protected abstract startGame(): void;
   protected abstract resetState(): void;
@@ -169,7 +172,8 @@ export abstract class BaseGameState<
     this.emitEvent({
       event: "game-ended",
       data: {
-        winner,
+        winnerId: winner,
+        looserId: [...this.players.values()].find((x) => x.id !== winner)!.id,
       },
     });
   }
