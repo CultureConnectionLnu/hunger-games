@@ -12,7 +12,9 @@
     "start:docker": "tsx src/server/server.ts",
     "lint": "next lint",
     "lint-non-code-files": "prettier --check \"**/*.{json,yaml,yml,md}\"",
-    "format-non-code-files": "prettier --write \"**/*.{json,yaml,yml,md}\""
+    "format-non-code-files": "prettier --write \"**/*.{json,yaml,yml,md}\"",
+    "test": "dotenv cross-env NODE_ENV=development vitest run",
+    "test:watch": "dotenv cross-env NODE_ENV=development vitest"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^0.3.6",
@@ -65,7 +67,8 @@
     "prettier": "^3.1.0",
     "prettier-plugin-tailwindcss": "^0.5.7",
     "tailwindcss": "^3.3.5",
-    "typescript": "^5.1.6"
+    "typescript": "^5.1.6",
+    "vitest": "^1.4.0"
   },
   "ct3aMetadata": {
     "initVersion": "7.26.0"
