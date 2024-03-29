@@ -6,9 +6,48 @@ export type TimerEvent = {
   secondsLeft: number;
 };
 
-// export type GetTimerEvents<T> = keyof {
-//   [Key in keyof T as T[Key] extends TimerEvent ? Key : never]: Key;
-// };
+const defaultTimeFunctions = {
+  setTimeout: setTimeout as (
+    callback: (args: void) => void,
+    ms?: number,
+  ) => NodeJS.Timeout,
+  clearTimeout: clearTimeout,
+  setInterval: setInterval,
+  clearInterval: clearInterval,
+};
+
+export class TimeFunctions {
+  private static _instance: TimeFunctions;
+  static get instance() {
+    if (!TimeFunctions._instance) {
+      TimeFunctions._instance = new TimeFunctions();
+    }
+    return TimeFunctions._instance;
+  }
+
+  private funcs = defaultTimeFunctions;
+
+  get setTimeout() {
+    return this.funcs.setTimeout;
+  }
+  get clearTimeout() {
+    return this.funcs.clearTimeout;
+  }
+  get setInterval() {
+    return this.funcs.setInterval;
+  }
+  get clearInterval() {
+    return this.funcs.clearInterval;
+  }
+
+  public mock(funcs: Partial<typeof defaultTimeFunctions>) {
+    this.funcs = { ...defaultTimeFunctions, ...funcs };
+  }
+
+  public useReal() {
+    this.funcs = defaultTimeFunctions;
+  }
+}
 
 export class TimeoutCounter extends GenericEventEmitter<{
   start: void;
@@ -30,12 +69,12 @@ export class TimeoutCounter extends GenericEventEmitter<{
     this.startTimeUnix = Date.now();
     this.secondsCounter = 0;
 
-    this.timeout = setTimeout(() => {
+    this.timeout = TimeFunctions.instance.setTimeout(() => {
       this.emit("timeout", undefined);
       this.cleanup();
     }, 1000 * timeoutAfterSeconds);
 
-    this.interval = setInterval(() => {
+    this.interval = TimeFunctions.instance.setInterval(() => {
       // one second passed
       this.secondsCounter++;
       this.emitCountdown();
@@ -55,8 +94,8 @@ export class TimeoutCounter extends GenericEventEmitter<{
   }
 
   private cleanup() {
-    clearTimeout(this.timeout);
-    clearInterval(this.interval);
+    TimeFunctions.instance.clearTimeout(this.timeout);
+    TimeFunctions.instance.clearInterval(this.interval);
     this.timeout = undefined;
     this.interval = undefined;
     this.removeAllListeners();

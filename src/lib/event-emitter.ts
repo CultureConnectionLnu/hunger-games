@@ -35,11 +35,11 @@ export class TypedEventEmitter {
 }
 
 export type BaseEvent = Record<string, any>;
-export type DefaultEvents = {}
+export type DefaultEvents = {};
 
 export class GenericEventEmitter<
   FirstLevelEvents extends BaseEvent,
-  SecondLevelEvents extends BaseEvent = DefaultEvents
+  SecondLevelEvents extends BaseEvent = DefaultEvents,
 > {
   private emitter = new EventEmitter();
 
@@ -103,6 +103,14 @@ export class GenericEventEmitter<
     handler: (eventArg: any) => void,
   ): this {
     this.emitter.off(eventName, handler);
+    return this;
+  }
+
+  removeListener<TEventName extends string>(
+    eventName: TEventName,
+    handler: (eventArg: any) => void,
+  ): this {
+    this.emitter.removeListener(eventName, handler);
     return this;
   }
 

@@ -149,17 +149,14 @@ export abstract class BaseGameState<
     this.players.forEach((player) => {
       this.setupPlayerListeners(player);
     });
-    this.startTimeout = new TimeoutCounter(this.config.startTimeoutInSeconds);
-    this.setupStartTimeout();
-
     this.forceTimeout = new TimeoutCounter(this.config.forceStopInSeconds);
     // todo: introduce cancel in case of a win
     this.forceTimeout.once("timeout", () => {
-      this.emit("canceled", {
-        data: { reason: "force-stop" },
-        fightId: this.fightId,
-      });
+      this.forceStop();
     });
+
+    this.startTimeout = new TimeoutCounter(this.config.startTimeoutInSeconds);
+    this.setupStartTimeout();
 
     this.setupGameStartListener();
   }
@@ -212,11 +209,12 @@ export abstract class BaseGameState<
 
     if (this.isServerEvent(eventData)) {
       console.log("emit server event", eventData);
-      const event = {
-        ...eventData,
+      const { event: _, ...data } = eventData;
+      const serverEvent = {
+        ...data,
         fightId: this.fightId,
       };
-      this.emit(eventData.event, event);
+      this.emit(eventData.event, serverEvent);
     }
 
     if (this.isPlayerEvent(eventData)) {
@@ -258,6 +256,13 @@ export abstract class BaseGameState<
     }
   }
 
+  private forceStop() {
+    this.emit("canceled", {
+      data: { reason: "force-stop" },
+      fightId: this.fightId,
+    });
+  }
+
   private emitPlayerEvent(eventData: any, player: BasePlayerState) {
     const event = {
       event: eventData.event,
@@ -286,18 +291,17 @@ export abstract class BaseGameState<
   private setupGameStartListener() {
     this.once("all-player-ready", () => {
       setTimeout(() => {
-      /**
-       * make sure that all the synchronous events are done before starting the game
-       */
-      this.gameRunning = true;
-      this.players.forEach((x) => x.gameStart());
-      this.emitEvent({
-        event: "game-in-progress",
-        data: undefined,
+        /**
+         * make sure that all the synchronous events are done before starting the game
+         */
+        this.gameRunning = true;
+        this.players.forEach((x) => x.gameStart());
+        this.emitEvent({
+          event: "game-in-progress",
+          data: undefined,
+        });
+        this.startGame();
       });
-      this.startGame();
-
-      })
     });
   }
 
@@ -334,6 +338,8 @@ export abstract class BaseGameState<
   }
 
   private handleConnectDisconnect(player: BasePlayerState) {
+    let cancelEvent: (() => void) | undefined = undefined;
+
     player.on("disconnect", ({ id }) => {
       this.disconnectedPlayers.add(id);
       this.emitEvent({
@@ -346,6 +352,19 @@ export abstract class BaseGameState<
         this.config.disconnectTimeoutInSeconds,
       );
       this.setupDisconnectTimeout();
+
+      cancelEvent = () => {
+        if (this.disconnectedPlayers.size === 2) {
+          this.forceStop();
+          return;
+        }
+
+        const winner = [...this.players.values()].find(
+          (x) => !this.disconnectedPlayers.has(x.id),
+        )!.id;
+        this.endGame(winner);
+      };
+      this.once("canceled", cancelEvent);
     });
 
     player.on("reconnect", ({ id }) => {
@@ -379,6 +398,11 @@ export abstract class BaseGameState<
 
       this.disconnectedTimeout?.cancel();
       this.disconnectedTimeout = undefined;
+
+      if (cancelEvent) {
+        this.removeListener("canceled", cancelEvent);
+        cancelEvent = undefined;
+      }
     });
   }
 

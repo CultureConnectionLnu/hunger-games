@@ -111,6 +111,10 @@ export class FightHandler {
     return this.gameHandler.getGame(fightId);
   }
 
+  public defineNextGameType(type: keyof typeof knownGames) {
+    this.gameHandler.defineNextGameType(type);
+  }
+
   private async registerEndListener(game: AnyGame) {
     try {
       const winner = await new Promise<string>((resolve, reject) => {
@@ -151,11 +155,19 @@ class GameHandler {
     ? 1000 * 60 * 60
     : longAssTime;
 
+  private nextGameType?: keyof typeof knownGames;
+
   public getGame(fightId: string) {
     return this.runningGames.get(fightId);
   }
 
   public getRandomGameType() {
+    if (this.nextGameType) {
+      const gameType = this.nextGameType;
+      this.nextGameType = undefined;
+      return gameType;
+    }
+
     const allOptions = Object.keys(knownGames) as (keyof typeof knownGames)[];
     const randomIndex = Math.floor(Math.random() * allOptions.length);
     return allOptions[randomIndex]!;
@@ -171,6 +183,10 @@ class GameHandler {
     this.registerCleanup(game);
 
     return game;
+  }
+
+  defineNextGameType(type: keyof typeof knownGames) {
+    this.nextGameType = type;
   }
 
   private registerCleanup(game: AnyGame) {

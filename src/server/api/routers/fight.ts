@@ -180,8 +180,11 @@ export const fightRouter = createTRPCRouter({
           emit.complete();
         });
 
+        match.playerConnect(input.userId);
+
         return () => {
           match.off(`player-${input.userId}`, onMessage);
+          match.playerDisconnect(input.userId);
         };
       });
     }),
