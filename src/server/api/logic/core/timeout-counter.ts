@@ -6,50 +6,57 @@ export type TimerEvent = {
   secondsLeft: number;
 };
 
-const defaultTimeFunctions = {
-  setTimeout: setTimeout as (
-    callback: (args: void) => void,
-    ms?: number,
-  ) => NodeJS.Timeout,
-  clearTimeout: clearTimeout,
-  setInterval: setInterval,
-  clearInterval: clearInterval,
+export type Timer = GenericEventEmitter<{
+  start: void;
+  countdown: {
+    startTimeUnix: number;
+    timeoutAfterSeconds: number;
+    secondsLeft: number;
+  };
+  timeout: void;
+  canceled: void;
+}> & {
+  readonly name: string;
+  cancel: () => void;
 };
 
-export class TimeFunctions {
-  private static _instance: TimeFunctions;
+export class TimerFactory {
+  private static _instance: TimerFactory;
   static get instance() {
-    if (!TimeFunctions._instance) {
-      TimeFunctions._instance = new TimeFunctions();
+    if (!TimerFactory._instance) {
+      TimerFactory._instance = new TimerFactory();
     }
-    return TimeFunctions._instance;
+    return TimerFactory._instance;
   }
 
-  private funcs = defaultTimeFunctions;
+  private clazz: new (
+    timeout: number,
+    name: string,
+  ) => Timer = AutomaticTimer;
 
-  get setTimeout() {
-    return this.funcs.setTimeout;
-  }
-  get clearTimeout() {
-    return this.funcs.clearTimeout;
-  }
-  get setInterval() {
-    return this.funcs.setInterval;
-  }
-  get clearInterval() {
-    return this.funcs.clearInterval;
+  public manualLookup: ManualTimer[] = [];
+
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  private constructor() {}
+
+  public create(timeoutAfterSeconds: number, name: string) {
+    const timeout = new this.clazz(timeoutAfterSeconds, name);
+    if (timeout instanceof ManualTimer) {
+      this.manualLookup.push(timeout);
+    }
+    return timeout;
   }
 
-  public mock(funcs: Partial<typeof defaultTimeFunctions>) {
-    this.funcs = { ...defaultTimeFunctions, ...funcs };
+  public useManual() {
+    this.clazz = ManualTimer;
   }
-
-  public useReal() {
-    this.funcs = defaultTimeFunctions;
+  public useAutomatic() {
+    this.clazz = AutomaticTimer;
+    this.manualLookup = [];
   }
 }
 
-export class TimeoutCounter extends GenericEventEmitter<{
+class AutomaticTimer extends GenericEventEmitter<{
   start: void;
   countdown: {
     startTimeUnix: number;
@@ -64,17 +71,20 @@ export class TimeoutCounter extends GenericEventEmitter<{
   private timeout?;
   private interval?;
 
-  constructor(public readonly timeoutAfterSeconds: number) {
+  constructor(
+    public readonly timeoutAfterSeconds: number,
+    public readonly name: string,
+  ) {
     super();
     this.startTimeUnix = Date.now();
     this.secondsCounter = 0;
 
-    this.timeout = TimeFunctions.instance.setTimeout(() => {
+    this.timeout = setTimeout(() => {
       this.emit("timeout", undefined);
       this.cleanup();
     }, 1000 * timeoutAfterSeconds);
 
-    this.interval = TimeFunctions.instance.setInterval(() => {
+    this.interval = setInterval(() => {
       // one second passed
       this.secondsCounter++;
       this.emitCountdown();
@@ -94,10 +104,64 @@ export class TimeoutCounter extends GenericEventEmitter<{
   }
 
   private cleanup() {
-    TimeFunctions.instance.clearTimeout(this.timeout);
-    TimeFunctions.instance.clearInterval(this.interval);
+    clearTimeout(this.timeout);
+    clearInterval(this.interval);
     this.timeout = undefined;
     this.interval = undefined;
+    this.removeAllListeners();
+  }
+
+  private emitCountdown() {
+    this.emit("countdown", {
+      startTimeUnix: this.startTimeUnix,
+      timeoutAfterSeconds: this.timeoutAfterSeconds,
+      secondsLeft: this.timeoutAfterSeconds - this.secondsCounter,
+    });
+  }
+}
+
+class ManualTimer extends GenericEventEmitter<{
+  start: void;
+  countdown: {
+    startTimeUnix: number;
+    timeoutAfterSeconds: number;
+    secondsLeft: number;
+  };
+  timeout: void;
+  canceled: void;
+}> {
+  private startTimeUnix;
+  private secondsCounter;
+
+  constructor(
+    public readonly timeoutAfterSeconds: number,
+    public readonly name: string,
+  ) {
+    super();
+    this.startTimeUnix = Date.now();
+    this.secondsCounter = 0;
+    void Promise.resolve().then(() => {
+      // make sure that it is not emitted immediately
+      this.emit("start", undefined);
+      this.emitCountdown();
+    });
+  }
+
+  public cancel() {
+    this.emit("canceled", undefined);
+    this.cleanup();
+  }
+
+  public emitTimeout() {
+    this.emit("timeout", undefined);
+  }
+
+  public emitNextSecond() {
+    this.secondsCounter++;
+    this.emitCountdown();
+  }
+
+  private cleanup() {
     this.removeAllListeners();
   }
 

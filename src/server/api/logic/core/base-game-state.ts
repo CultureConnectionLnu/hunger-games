@@ -8,7 +8,7 @@ import {
   type DefaultEvents,
 } from "~/lib/event-emitter";
 import type { BasePlayerState } from "./base-player-state";
-import { TimeoutCounter, type TimerEvent } from "./timeout-counter";
+import { TimerFactory, type TimerEvent, type Timer } from "./timeout-counter";
 import type {
   EventTemplate,
   GetTimerEvents,
@@ -91,9 +91,9 @@ export abstract class BaseGameState<
     "canceled",
   ];
   private readonly disconnectedPlayers = new Set<string>();
-  private startTimeout?: TimeoutCounter;
-  private forceTimeout?: TimeoutCounter;
-  private disconnectedTimeout?: TimeoutCounter;
+  private startTimeout?: Timer;
+  private forceTimeout?: Timer;
+  private disconnectedTimeout?: Timer;
   private initialized = false;
   private gameRunning = false;
 
@@ -149,13 +149,19 @@ export abstract class BaseGameState<
     this.players.forEach((player) => {
       this.setupPlayerListeners(player);
     });
-    this.forceTimeout = new TimeoutCounter(this.config.forceStopInSeconds);
+    this.forceTimeout = TimerFactory.instance.create(
+      this.config.forceStopInSeconds,
+      "force-game-end",
+    );
     // todo: introduce cancel in case of a win
     this.forceTimeout.once("timeout", () => {
       this.forceStop();
     });
 
-    this.startTimeout = new TimeoutCounter(this.config.startTimeoutInSeconds);
+    this.startTimeout = TimerFactory.instance.create(
+      this.config.startTimeoutInSeconds,
+      "start-game",
+    );
     this.setupStartTimeout();
 
     this.setupGameStartListener();
@@ -348,8 +354,9 @@ export abstract class BaseGameState<
           disconnected: [...this.disconnectedPlayers],
         },
       });
-      this.disconnectedTimeout = new TimeoutCounter(
+      this.disconnectedTimeout = TimerFactory.instance.create(
         this.config.disconnectTimeoutInSeconds,
+        "player-disconnect",
       );
       this.setupDisconnectTimeout();
 
@@ -428,7 +435,7 @@ export abstract class BaseGameState<
   }
 
   private setupTimeoutCounter(
-    timeout: TimeoutCounter,
+    timeout: Timer,
     countdownEvent: GetTimerEvents<GeneralGameEvents>,
     cancelReason: GeneralGameEvents["canceled"]["data"]["reason"],
   ) {

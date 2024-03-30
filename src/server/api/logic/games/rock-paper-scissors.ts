@@ -2,7 +2,7 @@ import { z } from "zod";
 import { env } from "~/env";
 import { BaseGameState, type GeneralGameEvents } from "../core/base-game-state";
 import { BasePlayerState } from "../core/base-player-state";
-import { TimeoutCounter } from "../core/timeout-counter";
+import { TimerFactory, type Timer } from "../core/timeout-counter";
 import type { EventTemplate, OnlyPlayerEvents } from "../core/types";
 
 export const rockPaperScissorsItemsSchema = z.enum([
@@ -142,8 +142,8 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
   > = {};
   protected readonly players = new Map<string, RpsPlayer>();
   private winners: string[] = [];
-  private nextRoundTimeout?: TimeoutCounter;
-  private chooseTimeout?: TimeoutCounter;
+  private nextRoundTimeout?: Timer;
+  private chooseTimeout?: Timer;
 
   constructor(fightId: string, playerIds: string[]) {
     super(
@@ -213,7 +213,10 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
   }
 
   private setupChooseTimeout() {
-    this.chooseTimeout = new TimeoutCounter(GameConfig.chooseTimeoutInSeconds);
+    this.chooseTimeout = TimerFactory.instance.create(
+      GameConfig.chooseTimeoutInSeconds,
+      "choose-item",
+    );
 
     // todo: check if all timer events can be aligned
     this.chooseTimeout.once("timeout", () => {
@@ -228,8 +231,9 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
   }
 
   private setupNextRoundTimeout() {
-    this.nextRoundTimeout = new TimeoutCounter(
+    this.nextRoundTimeout = TimerFactory.instance.create(
       GameConfig.nextRoundTimeoutInSeconds,
+      "next-round",
     );
 
     // todo: check if all timer events can be aligned

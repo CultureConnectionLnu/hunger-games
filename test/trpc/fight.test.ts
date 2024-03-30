@@ -1,43 +1,28 @@
 import type { Unsubscribable } from "@trpc/server/observable";
-import { desc, eq, inArray } from "drizzle-orm";
-import {
-  afterAll,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-  type Mock,
-} from "vitest";
+import { eq } from "drizzle-orm";
+import { describe, expect, it, vi } from "vitest";
 import { TypedEventEmitter } from "~/lib/event-emitter";
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game-state";
-import { TimeFunctions } from "~/server/api/logic/core/timeout-counter";
 import { FightHandler } from "~/server/api/logic/fight";
 
 import { appRouter } from "~/server/api/root";
 import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
-import { fight, users } from "~/server/db/schema";
+import { fight } from "~/server/db/schema";
+import {
+  expectEventEmitted,
+  expectNotEvenEmitted,
+  getLastEventOf,
+  useManualTimer,
+  provideTestUsers,
+  runAllMacroTasks,
+  getManualTimer,
+  useAutomaticTimer,
+} from "./utils";
+import { createFactory } from "react";
 
 describe("Fight", () => {
-  beforeAll(async () => {
-    await db.insert(users).values([
-      {
-        clerkId: "test_user_1",
-        role: "user",
-      },
-      {
-        clerkId: "test_user_2",
-        role: "user",
-      },
-    ]);
-  });
-
-  afterAll(async () => {
-    await db
-      .delete(users)
-      .where(inArray(users.clerkId, ["test_user_1", "test_user_2"]));
-  });
+  provideTestUsers();
 
   describe("currentFight", () => {
     it("should not find a match for current user", async () => {
@@ -64,26 +49,18 @@ describe("Fight", () => {
   describe("BaseGame", () => {
     describe("Before game start", () => {
       it("should emit that a player joined", () =>
-        testFight(
-          async ({
-            createGame,
-            join,
-            connect,
+        testFight(async ({ createGame, join, connect, firstListener }) => {
+          await createGame();
+
+          await join("test_user_1");
+          await connect("test_user_1");
+
+          const event = getLastEventOf(
             firstListener,
-            getLastEventOf,
-          }) => {
-            await createGame();
-
-            await join("test_user_1");
-            await connect("test_user_1");
-
-            const event = getLastEventOf(
-              firstListener,
-              "player-joined-readying",
-            )!;
-            expect(event.data.joined).toContain("test_user_1");
-          },
-        ));
+            "player-joined-readying",
+          )!;
+          expect(event.data.joined).toContain("test_user_1");
+        }));
 
       it("should emit that all players joined", () =>
         testFight(
@@ -93,7 +70,6 @@ describe("Fight", () => {
             connect,
             firstListener,
             secondListener,
-            getLastEventOf,
           }) => {
             await createGame();
 
@@ -115,14 +91,7 @@ describe("Fight", () => {
 
       it("should emit that player is ready", () =>
         testFight(
-          async ({
-            createGame,
-            join,
-            ready,
-            connect,
-            firstListener,
-            getLastEventOf,
-          }) => {
+          async ({ createGame, join, ready, connect, firstListener }) => {
             await createGame();
 
             await join("test_user_1");
@@ -140,15 +109,7 @@ describe("Fight", () => {
 
       it("should emit that all players are ready", () =>
         testFight(
-          async ({
-            createGame,
-            join,
-            ready,
-            connect,
-            firstListener,
-            getLastEventOf,
-            expectEventEmitted,
-          }) => {
+          async ({ createGame, join, ready, connect, firstListener }) => {
             await createGame();
 
             await join("test_user_1");
@@ -171,31 +132,17 @@ describe("Fight", () => {
     });
 
     it("should start the game", () =>
-      testFight(
-        async ({
-          startGame,
-          runAllMacroTasks,
-          firstListener,
-          expectEventEmitted,
-        }) => {
-          await startGame();
+      testFight(async ({ startGame, firstListener }) => {
+        await startGame();
 
-          await runAllMacroTasks();
+        await runAllMacroTasks();
 
-          expectEventEmitted(firstListener, "game-in-progress");
-        },
-      ));
+        expectEventEmitted(firstListener, "game-in-progress");
+      }));
 
     it("should pause the game when a player disconnects", () =>
       testFight(
-        async ({
-          startGame,
-          disconnect,
-          firstListener,
-          secondListener,
-          getLastEventOf,
-          expectEventEmitted,
-        }) => {
+        async ({ startGame, disconnect, firstListener, secondListener }) => {
           await startGame();
           disconnect("test_user_1");
 
@@ -212,7 +159,6 @@ describe("Fight", () => {
           disconnect,
           firstListener,
           secondListener,
-          expectEventEmitted,
         }) => {
           await startGame();
           disconnect("test_user_1");
@@ -223,16 +169,27 @@ describe("Fight", () => {
         },
       ));
 
+    it("should cleanup the game when destroyed", () =>
+      testFight(async ({ startGame, getGame }) => {
+        await startGame();
+        const game = getGame();
+        const fightId = game.fightId;
+
+        game.destroy();
+        await runAllMacroTasks();
+
+        expect(FightHandler.instance.getGame(fightId)).toBeUndefined();
+      }));
+
     describe("Timeout", () => {
       it("should end the game when no player joins", () =>
-        testFight(async ({ createGame, getGame }) => {
-          const timeoutMock = await mockSetTimeout(() => createGame());
-          const forceEndTimeout = timeoutMock.getFirst();
+        testFight(async ({ createGame, getGame, timer }) => {
+          await createGame();
           const game = getGame();
           const listener = vi.fn();
           game.on("canceled", listener);
 
-          forceEndTimeout();
+          timer.getFirstByName("force-game-end").emitTimeout();
 
           expect(listener).toHaveBeenCalledWith({
             data: {
@@ -243,9 +200,8 @@ describe("Fight", () => {
         }));
 
       it("should cancel the game if only one player joins", () =>
-        testFight(async ({ createGame, getGame, join, connect }) => {
-          const timeoutMock = await mockSetTimeout(() => createGame());
-          const startTimeout = timeoutMock.getLast();
+        testFight(async ({ createGame, getGame, join, connect, timer }) => {
+          await createGame();
           const game = getGame();
           const listener = vi.fn();
           game.on("canceled", listener);
@@ -253,7 +209,7 @@ describe("Fight", () => {
           await join("test_user_1");
           await connect("test_user_1");
 
-          startTimeout();
+          timer.getFirstByName("start-game").emitTimeout();
 
           expect(listener).toHaveBeenCalledWith({
             data: {
@@ -264,34 +220,33 @@ describe("Fight", () => {
         }));
 
       it("should cancel the game if only one player is ready", () =>
-        testFight(async ({ createGame, getGame, join, ready, connect }) => {
-          const timeoutMock = await mockSetTimeout(() => createGame());
-          const startTimeout = timeoutMock.getLast();
+        testFight(
+          async ({ createGame, getGame, join, ready, connect, timer }) => {
+            await createGame();
 
-          const game = getGame();
-          const listener = vi.fn();
-          game.on("canceled", listener);
+            const game = getGame();
+            const listener = vi.fn();
+            game.on("canceled", listener);
 
-          await join("test_user_1");
-          await connect("test_user_1");
-          await ready("test_user_1");
+            await join("test_user_1");
+            await connect("test_user_1");
+            await ready("test_user_1");
 
-          startTimeout();
+            timer.getFirstByName("start-game").emitTimeout();
 
-          expect(listener).toHaveBeenCalledWith({
-            data: {
-              reason: "start-timeout",
-            },
-            fightId: game.fightId,
-          });
-        }));
+            expect(listener).toHaveBeenCalledWith({
+              data: {
+                reason: "start-timeout",
+              },
+              fightId: game.fightId,
+            });
+          },
+        ));
 
       it("should cancel the game if someone disconnected before the game started", () =>
         testFight(
-          async ({ createGame, getGame, join, connect, disconnect }) => {
-            const timeoutMock = await mockSetTimeout(() => createGame());
-            const startTimeout = timeoutMock.getLast();
-
+          async ({ createGame, getGame, join, connect, disconnect, timer }) => {
+            await createGame();
             const game = getGame();
             const listener = vi.fn();
             game.on("canceled", listener);
@@ -302,7 +257,7 @@ describe("Fight", () => {
             await connect("test_user_2");
             disconnect("test_user_1");
 
-            startTimeout();
+            timer.getFirstByName("start-game").emitTimeout();
 
             expect(listener).toHaveBeenCalledWith({
               data: {
@@ -315,24 +270,14 @@ describe("Fight", () => {
 
       it("should end the game if a player is disconnected for to long", () =>
         testFight(
-          async ({
-            startGame,
-            getGame,
-            disconnect,
-            getLastEventOf,
-            firstListener,
-          }) => {
+          async ({ startGame, getGame, disconnect, firstListener, timer }) => {
             await startGame();
             const game = getGame();
             const cancelListener = vi.fn();
             game.on("canceled", cancelListener);
 
-            const timeoutMock = await mockSetTimeout(() =>
-              disconnect("test_user_2"),
-            );
-            const disconnectTimerEnd = timeoutMock.getFirst();
-
-            disconnectTimerEnd();
+            disconnect("test_user_2");
+            timer.getFirstByName("player-disconnect").emitTimeout();
 
             expect(cancelListener).toHaveBeenCalledWith({
               data: {
@@ -350,24 +295,14 @@ describe("Fight", () => {
 
       it("should end the game if a player is disconnected for to long", () =>
         testFight(
-          async ({
-            startGame,
-            getGame,
-            disconnect,
-            getLastEventOf,
-            firstListener,
-          }) => {
+          async ({ startGame, getGame, disconnect, firstListener, timer }) => {
             await startGame();
             const game = getGame();
             const cancelListener = vi.fn();
             game.on("canceled", cancelListener);
 
-            const timeoutMock = await mockSetTimeout(() =>
-              disconnect("test_user_2"),
-            );
-            const disconnectTimerEnd = timeoutMock.getFirst();
-
-            disconnectTimerEnd();
+            disconnect("test_user_2");
+            timer.getFirstByName("player-disconnect").emitTimeout();
 
             expect(cancelListener).toHaveBeenCalledWith({
               data: {
@@ -385,25 +320,15 @@ describe("Fight", () => {
 
       it("should end the game if all player are disconnected for to long", () =>
         testFight(
-          async ({
-            startGame,
-            getGame,
-            disconnect,
-            expectNotEvenEmitted,
-            firstListener,
-          }) => {
+          async ({ startGame, getGame, disconnect, firstListener, timer }) => {
             await startGame();
             const game = getGame();
             const cancelListener = vi.fn();
             game.on("canceled", cancelListener);
 
-            const timeoutMock = await mockSetTimeout(() => {
-              disconnect("test_user_2");
-              disconnect("test_user_1");
-            });
-            const disconnectTimerEnd = timeoutMock.getFirst();
-
-            disconnectTimerEnd();
+            disconnect("test_user_2");
+            disconnect("test_user_1");
+            timer.getFirstByName("player-disconnect").emitTimeout();
 
             expect(cancelListener).toHaveBeenLastCalledWith({
               data: {
@@ -418,37 +343,11 @@ describe("Fight", () => {
   });
 });
 
-function mockSetTimeout(fn: () => void | Promise<void>) {
-  const timeOut = vi.fn<[() => void, number], void>();
-  TimeFunctions.instance.mock({
-    // @ts-expect-error it is a mock, so it is fine
-    setTimeout: timeOut,
-  });
-  const result = fn();
-
-  const getFirst = () => timeOut.mock.calls[0]![0];
-  const getLast = () => timeOut.mock.calls[timeOut.mock.calls.length - 1]![0];
-  const getAll = () => timeOut.mock.calls.map(([fn]) => fn);
-
-  const mock = {
-    getFirst,
-    getLast,
-    getAll,
-  };
-
-  if (result instanceof Promise) {
-    return result.then(() => {
-      TimeFunctions.instance.useReal();
-      return mock;
-    });
-  }
-  TimeFunctions.instance.useReal();
-  return Promise.resolve().then(() => mock);
-}
-
 async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useManualTimer();
   const args = await setupTest();
 
   return await test(args)
@@ -456,6 +355,7 @@ async function testFight(
     .catch((error: Error) => ({ pass: false, error }) as const)
     .then(async (x) => {
       const id = args.getFightId();
+      useAutomaticTimer();
       if (id === undefined) return x;
 
       // finish the game properly before deleting
@@ -543,56 +443,6 @@ async function setupTest() {
     await ready("test_user_2");
   };
 
-  type FilterByEvent<T, Key> = T extends { event: Key } ? T : never;
-
-  const getEventsOf = <Key extends BaseGamePlayerEvents["event"]>(
-    listener: Mock<[BaseGamePlayerEvents], void>,
-    event: Key,
-  ) => {
-    return listener.mock.calls
-      .map(([args]) => args)
-      .filter((args) => args.event === event) as FilterByEvent<
-      BaseGamePlayerEvents,
-      Key
-    >[];
-  };
-
-  const getLastEventOf = <Key extends BaseGamePlayerEvents["event"]>(
-    listener: Mock<[BaseGamePlayerEvents], void>,
-    event: Key,
-  ) => {
-    const events = getEventsOf(listener, event);
-    return events[events.length - 1];
-  };
-
-  const expectEventEmitted = <Key extends BaseGamePlayerEvents["event"]>(
-    listener: Mock<[BaseGamePlayerEvents], void>,
-    event: Key,
-  ) => {
-    const events = getEventsOf(listener, event);
-    if (events.length === 0) {
-      throw new Error(`Expected event ${event} to be emitted but it was not`);
-    }
-  };
-
-  const expectNotEvenEmitted = <Key extends BaseGamePlayerEvents["event"]>(
-    listener: Mock<[BaseGamePlayerEvents], void>,
-    event: Key,
-  ) => {
-    const events = getEventsOf(listener, event);
-    if (events.length !== 0) {
-      throw new Error(
-        `Expected event ${event} not to be emitted but it was: ${events.length}`,
-      );
-    }
-  };
-
-  const runAllMacroTasks = async () => {
-    return new Promise((resolve) => {
-      setTimeout(resolve, 0);
-    });
-  };
-
   return {
     callers,
     getFightId: () => state.fightId,
@@ -603,12 +453,8 @@ async function setupTest() {
     join,
     ready,
     startGame,
-    runAllMacroTasks,
+    timer: getManualTimer(),
     firstListener,
     secondListener,
-    getEventsOf,
-    getLastEventOf,
-    expectNotEvenEmitted,
-    expectEventEmitted,
   };
 }
