@@ -52,11 +52,23 @@ export function getManualTimer() {
   };
   const getAll = () => TimerFactory.instance.manualLookup;
 
+  const simulateNormalTimeout = async (
+    timer: ReturnType<typeof getFirstByName>,
+  ) => {
+    for (let i = 0; i < timer.timeoutAfterSeconds; i++) {
+      timer.emitNextSecond();
+      await runAllMacroTasks();
+    }
+    timer.emitTimeout();
+    await runAllMacroTasks();
+  };
+
   return {
     getAll,
     getByName,
     getFirstByName,
     getLastByName,
+    simulateNormalTimeout,
   };
 }
 

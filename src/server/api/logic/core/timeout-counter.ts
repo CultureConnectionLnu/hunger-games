@@ -29,10 +29,7 @@ export class TimerFactory {
     return TimerFactory._instance;
   }
 
-  private clazz: new (
-    timeout: number,
-    name: string,
-  ) => Timer = AutomaticTimer;
+  private clazz: new (timeout: number, name: string) => Timer = AutomaticTimer;
 
   public manualLookup: ManualTimer[] = [];
 
@@ -56,71 +53,7 @@ export class TimerFactory {
   }
 }
 
-class AutomaticTimer extends GenericEventEmitter<{
-  start: void;
-  countdown: {
-    startTimeUnix: number;
-    timeoutAfterSeconds: number;
-    secondsLeft: number;
-  };
-  timeout: void;
-  canceled: void;
-}> {
-  private startTimeUnix;
-  private secondsCounter;
-  private timeout?;
-  private interval?;
-
-  constructor(
-    public readonly timeoutAfterSeconds: number,
-    public readonly name: string,
-  ) {
-    super();
-    this.startTimeUnix = Date.now();
-    this.secondsCounter = 0;
-
-    this.timeout = setTimeout(() => {
-      this.emit("timeout", undefined);
-      this.cleanup();
-    }, 1000 * timeoutAfterSeconds);
-
-    this.interval = setInterval(() => {
-      // one second passed
-      this.secondsCounter++;
-      this.emitCountdown();
-    }, 1000);
-
-    void Promise.resolve().then(() => {
-      // make sure that it is not emitted immediately
-      this.emit("start", undefined);
-      this.emitCountdown();
-    });
-  }
-
-  public cancel() {
-    if (!this.timeout) return;
-    this.emit("canceled", undefined);
-    this.cleanup();
-  }
-
-  private cleanup() {
-    clearTimeout(this.timeout);
-    clearInterval(this.interval);
-    this.timeout = undefined;
-    this.interval = undefined;
-    this.removeAllListeners();
-  }
-
-  private emitCountdown() {
-    this.emit("countdown", {
-      startTimeUnix: this.startTimeUnix,
-      timeoutAfterSeconds: this.timeoutAfterSeconds,
-      secondsLeft: this.timeoutAfterSeconds - this.secondsCounter,
-    });
-  }
-}
-
-class ManualTimer extends GenericEventEmitter<{
+abstract class TimerLogic extends GenericEventEmitter<{
   start: void;
   countdown: {
     startTimeUnix: number;
@@ -133,7 +66,7 @@ class ManualTimer extends GenericEventEmitter<{
   private startTimeUnix;
   private secondsCounter;
   private cancelWasCalled = false;
-  
+
   public get isCanceled() {
     return this.cancelWasCalled;
   }
@@ -154,6 +87,8 @@ class ManualTimer extends GenericEventEmitter<{
 
   public cancel() {
     this.emit("canceled", undefined);
+    this.secondsCounter = this.timeoutAfterSeconds;
+    this.emitCountdown();
     this.cleanup();
     this.cancelWasCalled = true;
   }
@@ -167,9 +102,7 @@ class ManualTimer extends GenericEventEmitter<{
     this.emitCountdown();
   }
 
-  private cleanup() {
-    this.removeAllListeners();
-  }
+  protected abstract cleanup(): void;
 
   private emitCountdown() {
     this.emit("countdown", {
@@ -177,5 +110,35 @@ class ManualTimer extends GenericEventEmitter<{
       timeoutAfterSeconds: this.timeoutAfterSeconds,
       secondsLeft: this.timeoutAfterSeconds - this.secondsCounter,
     });
+  }
+}
+
+class AutomaticTimer extends TimerLogic {
+  private timeout?;
+  private interval?;
+
+  constructor(timeoutAfterSeconds: number, name: string) {
+    super(timeoutAfterSeconds, name);
+
+    this.timeout = setTimeout(
+      () => this.emitTimeout(),
+      1000 * timeoutAfterSeconds,
+    );
+
+    this.interval = setInterval(() => this.emitNextSecond(), 1000);
+  }
+
+  protected cleanup() {
+    clearTimeout(this.timeout);
+    clearInterval(this.interval);
+    this.timeout = undefined;
+    this.interval = undefined;
+    this.removeAllListeners();
+  }
+}
+
+class ManualTimer extends TimerLogic {
+  protected cleanup() {
+    this.removeAllListeners();
   }
 }

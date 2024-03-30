@@ -14,7 +14,7 @@ const longAssTime = 1_000_000;
 
 const GameConfig = {
   get startTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 15 : longAssTime;
+    return env.FEATURE_GAME_TIMEOUT ? 30 : longAssTime;
   },
   get disconnectTimeoutInSeconds() {
     return env.FEATURE_GAME_TIMEOUT ? 60 * 60 : longAssTime;
@@ -27,7 +27,7 @@ const GameConfig = {
   },
   get nextRoundTimeoutInSeconds() {
     // should not be affected by the feature flag
-    return 30;
+    return 5;
   },
   bestOf: 3,
   evaluation: [
