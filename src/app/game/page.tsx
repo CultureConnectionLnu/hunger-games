@@ -4,7 +4,13 @@ import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { FaGamepad, FaSpinner } from "react-icons/fa";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
 import { api } from "~/trpc/react";
 import LoadingScreen from "../_components/util/loading-spinner";
 import { useTimers } from "../_context/timer";
@@ -197,73 +203,76 @@ function EndScreen({
   }
 
   return (
-    <Card className="mx-auto max-w-sm">
-      <CardContent className="grid items-center justify-center gap-6 px-4 pb-6 md:px-6">
-        <div className="space-y-2 text-center">
-          <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
-            Game Over
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 md:text-xl/relaxed lg:text-base/relaxed">
+    <div>
+      <Link className="mx-auto" href="/match">
+        <Button variant="outline">Return to QrCode</Button>
+      </Link>
+      <Card className="mx-auto max-w-sm">
+        <CardHeader>
+          <CardTitle>Game Over</CardTitle>
+          <CardDescription>
             The game has ended. Here are the results.
-          </p>
-        </div>
-        <div className="grid w-full max-w-sm gap-2">
-          <div
-            className={
-              "grid grid-cols-2 items-center gap-2" + params.winnerId ===
-              params.you
-                ? " bg-green-100"
-                : ""
-            }
-          >
-            <div className="flex items-center gap-2">
-              <div className="grid gap-0.5">
-                <p className="text-sm font-medium">Player 1</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {winnerName}
-                </p>
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid items-center justify-center gap-6 px-4 pb-6 md:px-6">
+          <div className="grid w-full max-w-sm gap-2">
+            <div
+              className={
+                "grid grid-cols-2 items-center gap-2" + params.winnerId ===
+                params.you
+                  ? " bg-green-100"
+                  : ""
+              }
+            >
+              <div className="flex items-center gap-2">
+                <div className="grid gap-0.5">
+                  <p className="text-sm font-medium">Player 1</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {winnerName}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <div className="grid gap-0.5">
+                  <p className="text-right text-sm font-medium text-green-500">
+                    Winner
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    +10 XP
+                    {/* todo: calculate points */}
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2">
-              <div className="grid gap-0.5">
-                <p className="text-right text-sm font-medium text-green-500">
-                  Winner
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  +10 XP
-                  {/* todo: calculate points */}
-                </p>
+            <div
+              className={
+                "grid grid-cols-2 items-center gap-2" + params.looserId ===
+                params.you
+                  ? " bg-red-100"
+                  : ""
+              }
+            >
+              <div className="flex items-center gap-2">
+                <div className="grid gap-0.5">
+                  <p className="text-sm font-medium">Player 2</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {looserName}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <div className="grid gap-0.5">
+                  <p className="text-right text-sm font-medium">Loser</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    -5 XP
+                    {/* todo: calculate points */}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-          <div
-            className={
-              "grid grid-cols-2 items-center gap-2" + params.looserId ===
-              params.you
-                ? " bg-red-100"
-                : ""
-            }
-          >
-            <div className="flex items-center gap-2">
-              <div className="grid gap-0.5">
-                <p className="text-sm font-medium">Player 2</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {looserName}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center justify-end gap-2">
-              <div className="grid gap-0.5">
-                <p className="text-right text-sm font-medium">Loser</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  -5 XP
-                  {/* todo: calculate points */}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
