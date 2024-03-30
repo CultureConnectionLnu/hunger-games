@@ -308,6 +308,16 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
   }
 
   private findWinner(firstPlayer: RpsPlayer, secondPlayer: RpsPlayer) {
+    if (
+      firstPlayer.selectedItem === undefined &&
+      secondPlayer.selectedItem === undefined
+    ) {
+      return {
+        winner: undefined,
+        looser: undefined,
+        draw: true,
+      } as const;
+    }
     if (firstPlayer.selectedItem === undefined) {
       return {
         winner: secondPlayer.id,

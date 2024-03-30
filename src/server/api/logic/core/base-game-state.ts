@@ -214,7 +214,6 @@ export abstract class BaseGameState<
      */
 
     if (this.isServerEvent(eventData)) {
-      console.log("emit server event", eventData);
       const { event: _, ...data } = eventData;
       const serverEvent = {
         ...data,
@@ -224,7 +223,6 @@ export abstract class BaseGameState<
     }
 
     if (this.isPlayerEvent(eventData)) {
-      console.log("emit player event", playerId, eventData);
       if (playerId) {
         const player = this.getPlayer(playerId)!;
         this.emitPlayerEvent(eventData, player);

@@ -11,32 +11,30 @@ import { fight } from "~/server/db/schema";
 import {
   expectEventEmitted,
   getLastEventOf,
-  useManualTimer,
-  provideTestUsers,
+  getManualTimer,
   runAllMacroTasks,
   useAutomaticTimer,
-  getManualTimer,
+  useManualTimer,
 } from "./utils";
 
-describe("Rock Paper Scissors", () => {
-  provideTestUsers();
+export const rpsTests = () =>
+  describe("Rock Paper Scissors", () => {
+    it("should be a draw if no one chooses", () =>
+      testFight(async ({ startGame, firstRpsListener, timer }) => {
+        await startGame();
 
-  it("should be a draw if no one chooses", () =>
-    testFight(async ({ startGame, firstRpsListener, timer }) => {
-      await startGame();
+        timer.getFirstByName("choose-item").emitTimeout();
 
-      timer.getFirstByName("choose-item").emitTimeout();
-
-      expectEventEmitted(firstRpsListener, "show-result");
-      const event = getLastEventOf(firstRpsListener, "show-result");
-      expect(event?.data).toEqual({
-        anotherRound: true,
-        winner: [],
-        looser: [],
-        draw: true,
-      });
-    }));
-});
+        expectEventEmitted(firstRpsListener, "show-result");
+        const event = getLastEventOf(firstRpsListener, "show-result");
+        expect(event?.data).toEqual({
+          anotherRound: true,
+          winner: [],
+          looser: [],
+          draw: true,
+        });
+      }));
+  });
 
 async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,

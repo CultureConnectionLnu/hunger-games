@@ -1,5 +1,5 @@
 import { inArray } from "drizzle-orm";
-import { type Mock, vi, beforeAll, afterAll } from "vitest";
+import { afterAll, beforeAll, type Mock } from "vitest";
 import { TimerFactory } from "~/server/api/logic/core/timeout-counter";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
