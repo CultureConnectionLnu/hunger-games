@@ -34,6 +34,126 @@ export const rpsTests = () =>
           draw: true,
         });
       }));
+
+    it("if only one player chooses, then he is the winner", () =>
+      testFight(async ({ startGame, firstRpsListener, timer, choose }) => {
+        await startGame();
+        await choose("test_user_1", "rock");
+
+        timer.getFirstByName("choose-item").emitTimeout();
+
+        expectEventEmitted(firstRpsListener, "show-result");
+        const event = getLastEventOf(firstRpsListener, "show-result");
+        expect(event?.data).toEqual({
+          anotherRound: true,
+          winner: ["test_user_1"],
+          looser: ["test_user_2"],
+          draw: false,
+        });
+      }));
+
+    it("if both player choose the same item, then it is a draw", () =>
+      testFight(async ({ startGame, firstRpsListener, timer, choose }) => {
+        await startGame();
+        await choose("test_user_1", "rock");
+        await choose("test_user_2", "rock");
+
+        timer.getFirstByName("choose-item").emitTimeout();
+
+        expectEventEmitted(firstRpsListener, "show-result");
+        const event = getLastEventOf(firstRpsListener, "show-result");
+        expect(event?.data).toEqual({
+          anotherRound: true,
+          winner: [],
+          looser: [],
+          draw: true,
+        });
+      }));
+
+    (
+      [
+        {
+          p1: "rock",
+          p2: "scissors",
+          winner: "test_user_1",
+          looser: "test_user_2",
+        },
+        {
+          p1: "scissors",
+          p2: "paper",
+          winner: "test_user_1",
+          looser: "test_user_2",
+        },
+        {
+          p1: "paper",
+          p2: "rock",
+          winner: "test_user_1",
+          looser: "test_user_2",
+        },
+        {
+          p1: "scissors",
+          p2: "rock",
+          winner: "test_user_2",
+          looser: "test_user_1",
+        },
+        {
+          p1: "paper",
+          p2: "scissors",
+          winner: "test_user_2",
+          looser: "test_user_1",
+        },
+        {
+          p1: "rock",
+          p2: "paper",
+          winner: "test_user_2",
+          looser: "test_user_1",
+        },
+      ] satisfies Array<{
+        p1: "rock" | "paper" | "scissors";
+        p2: "rock" | "paper" | "scissors";
+        winner: "test_user_1" | "test_user_2";
+        looser: "test_user_1" | "test_user_2";
+      }>
+    ).forEach((x) => {
+      it(`if player 1 chooses "${x.p1}" and player 2 chooses "${x.p2}", then ${x.winner} is the winner`, () =>
+        testFight(async ({ startGame, firstRpsListener, choose }) => {
+          await startGame();
+          await choose("test_user_1", x.p1);
+          await choose("test_user_2", x.p2);
+
+          expectEventEmitted(firstRpsListener, "show-result");
+          const event = getLastEventOf(firstRpsListener, "show-result");
+          expect(event?.data).toEqual({
+            anotherRound: true,
+            winner: [x.winner],
+            looser: [x.looser],
+            draw: false,
+          });
+        }));
+    });
+
+    it("if a player wins 3 times, then he is the overall winner", () =>
+      testFight(async ({ startGame, choose, timer, firstListener }) => {
+        await startGame();
+        await choose("test_user_1", "rock");
+        await choose("test_user_2", "scissors");
+        timer.getLastByName("next-round").emitTimeout();
+
+        await choose("test_user_1", "rock");
+        await choose("test_user_2", "scissors");
+        timer.getLastByName("next-round").emitTimeout();
+
+        await choose("test_user_1", "rock");
+        await choose("test_user_2", "scissors");
+        timer.getLastByName("next-round").emitTimeout();
+
+        expectEventEmitted(firstListener, "game-ended");
+        const event = getLastEventOf(firstListener, "game-ended");
+        expect(event?.data).toEqual({
+          winnerId: "test_user_1",
+          looserId: "test_user_2",
+        });
+      }));
   });
 
 async function testFight(
@@ -136,6 +256,7 @@ async function setupTest() {
   const startGame = async () => {
     await callers.test_user_1.fight.ready();
     await callers.test_user_2.fight.ready();
+    await runAllMacroTasks();
     await runAllMacroTasks();
   };
 

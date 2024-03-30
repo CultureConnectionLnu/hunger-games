@@ -199,6 +199,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
       event: "enable-choose",
       data: undefined,
     });
+    this.players.forEach((player) => player.enableChoose());
     this.setupChooseTimeout();
   }
 
@@ -302,7 +303,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
       {},
     );
 
-    const winsNeeded = Math.ceil(GameConfig.bestOf / 2);
+    const winsNeeded = Math.ceil(GameConfig.bestOf / 2) + GameConfig.bestOf % 2;
 
     return Object.entries(winCount).find(([, count]) => count >= winsNeeded);
   }
@@ -350,6 +351,18 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
       return {
         winner: firstPlayer.id,
         looser: secondPlayer.id,
+        draw: false,
+      } as const;
+    }
+
+    const secondPlayerBeats = GameConfig.evaluation.find(
+      (item) => item.item === secondPlayer.selectedItem,
+    )!.beats;
+
+    if (secondPlayerBeats.includes(firstPlayer.selectedItem)) {
+      return {
+        winner: secondPlayer.id,
+        looser: firstPlayer.id,
         draw: false,
       } as const;
     }
