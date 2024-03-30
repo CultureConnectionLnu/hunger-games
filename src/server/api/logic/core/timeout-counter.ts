@@ -132,6 +132,11 @@ class ManualTimer extends GenericEventEmitter<{
 }> {
   private startTimeUnix;
   private secondsCounter;
+  private cancelWasCalled = false;
+  
+  public get isCanceled() {
+    return this.cancelWasCalled;
+  }
 
   constructor(
     public readonly timeoutAfterSeconds: number,
@@ -150,6 +155,7 @@ class ManualTimer extends GenericEventEmitter<{
   public cancel() {
     this.emit("canceled", undefined);
     this.cleanup();
+    this.cancelWasCalled = true;
   }
 
   public emitTimeout() {

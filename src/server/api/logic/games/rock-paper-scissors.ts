@@ -14,7 +14,7 @@ const longAssTime = 1_000_000;
 
 const GameConfig = {
   get startTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 30 : longAssTime;
+    return env.FEATURE_GAME_TIMEOUT ? 15 : longAssTime;
   },
   get disconnectTimeoutInSeconds() {
     return env.FEATURE_GAME_TIMEOUT ? 60 * 60 : longAssTime;
@@ -23,10 +23,11 @@ const GameConfig = {
     return env.FEATURE_GAME_TIMEOUT ? 1000 * 60 * 60 : longAssTime;
   },
   get chooseTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 30 : longAssTime;
+    return env.FEATURE_GAME_TIMEOUT ? 5 : longAssTime;
   },
   get nextRoundTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 30 : longAssTime;
+    // should not be affected by the feature flag
+    return 30;
   },
   bestOf: 3,
   evaluation: [
@@ -176,6 +177,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
         );
         if (doneChoosing.length !== this.players.size) return;
 
+        this.chooseTimeout?.cancel()
         this.evaluateState();
       });
     });
@@ -195,11 +197,11 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
   }
 
   startGame(): void {
+    this.players.forEach((player) => player.enableChoose());
     this.emitEvent({
       event: "enable-choose",
       data: undefined,
     });
-    this.players.forEach((player) => player.enableChoose());
     this.setupChooseTimeout();
   }
 
