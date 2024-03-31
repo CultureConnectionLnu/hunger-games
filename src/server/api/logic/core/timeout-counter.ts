@@ -95,6 +95,7 @@ abstract class TimerLogic extends GenericEventEmitter<{
 
   public emitTimeout() {
     this.emit("timeout", undefined);
+    this.cleanup();
   }
 
   public emitNextSecond() {
@@ -120,9 +121,10 @@ class AutomaticTimer extends TimerLogic {
   constructor(timeoutAfterSeconds: number, name: string) {
     super(timeoutAfterSeconds, name);
 
+    const offsetToEnsureTimeoutAfterInterval = 50;
     this.timeout = setTimeout(
       () => this.emitTimeout(),
-      1000 * timeoutAfterSeconds,
+      1000 * timeoutAfterSeconds + offsetToEnsureTimeoutAfterInterval,
     );
 
     this.interval = setInterval(() => this.emitNextSecond(), 1000);

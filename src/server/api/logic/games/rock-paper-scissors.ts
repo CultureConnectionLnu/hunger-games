@@ -241,7 +241,9 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
 
     // todo: check if all timer events can be aligned
     this.nextRoundTimeout.once("timeout", () => {
-      this.startGame();
+      setTimeout(()=>{
+        this.startGame();
+      })
     });
     this.nextRoundTimeout.on("countdown", (e) => {
       this.emitEvent({

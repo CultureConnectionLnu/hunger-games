@@ -10,7 +10,8 @@ import {
 } from "../../logic/games/rock-paper-scissors";
 import { catchMatchError, inFightProcedure } from "../fight";
 
-export type RockPaperScissorsPlayerEvents = OnlyPlayerEvents<RockPaperScissorsEvents>;
+export type RockPaperScissorsPlayerEvents =
+  OnlyPlayerEvents<RockPaperScissorsEvents>;
 
 /**
  * makes sure the user is actually in a rock-paper-scissors fight
