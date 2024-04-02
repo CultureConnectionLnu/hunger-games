@@ -4,6 +4,7 @@ import { ClerkProvider, SignedIn } from "@clerk/nextjs";
 import { Inter } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
+import Header from "./_components/header";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -28,7 +29,8 @@ export default function RootLayout({
           <TRPCReactProvider>
             <SignedIn>
             </SignedIn>
-            <div style={{ width: 900 }}>{children}</div>
+            <Header />
+            <div>{children}</div>
           </TRPCReactProvider>
         </body>
       </html>
