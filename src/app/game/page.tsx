@@ -19,6 +19,8 @@ import type { Observable } from "@trpc/server/observable";
 import { useState } from "react";
 import { Timer } from "../_components/util/timer";
 import RockPaperScissorsGame from "../_components/games/rock-paper-scissors";
+import { Skeleton } from "~/components/ui/skeleton";
+import { RxCross2 } from "react-icons/rx";
 
 type ServerEvent =
   RouterOutputs["fight"]["onAction"] extends Observable<infer R, never>
@@ -29,7 +31,7 @@ type GetWinnerEvent<T> = T extends { event: "game-ended" } ? T : never;
 type WinnerEvent = GetWinnerEvent<ServerEvent>;
 
 export default function CurrentGame() {
-  const { user } = useUser();
+  const { user, isLoaded: userLoaded } = useUser();
   const { isLoading: timerLoading, updateTimer } = useTimers();
 
   const { data: currentFight, isLoading: currentFightLoading } =
@@ -38,8 +40,8 @@ export default function CurrentGame() {
       refetchOnMount: "always",
     });
 
-  if (currentFightLoading || timerLoading) {
-    return <LoadingScreen params={{ title: "Loading fight" }} />;
+  if (currentFightLoading || timerLoading || !userLoaded) {
+    return <GameLoadingScreen />;
   }
 
   if (currentFight!.success === false || user == null) {
@@ -58,6 +60,39 @@ export default function CurrentGame() {
   );
 }
 
+function GameLoadingScreen() {
+  return (
+    <>
+      <header className="flex h-14 w-full items-center justify-between px-4">
+        <div>{/* empty so that the next element is in the center */}</div>
+        <Skeleton className="h-4 w-1/2" />
+        <RxCross2 />
+      </header>
+      <main
+        className="flex flex-col justify-center px-4"
+        style={{
+          height: "calc(100vh - 56px)",
+        }}
+      >
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-center space-x-4">
+              <Skeleton className="h-8 w-3/4" />
+            </div>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center p-8">
+            <div className="space-y-4 text-center">
+              <Skeleton className="h-4 w-[300px]" />
+              <Skeleton className="h-4 w-[250px]" />
+              <Skeleton className="h-4 w-[200px]" />
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </>
+  );
+}
+
 function JoiningGame({
   params,
 }: {
@@ -73,7 +108,7 @@ function JoiningGame({
     refetchOnMount: "always",
   });
   if (joining) {
-    return <LoadingScreen params={{ title: "Joining Game" }} />;
+    return <GameLoadingScreen />;
   }
 
   return <GameLobby params={params} />;
