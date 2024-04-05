@@ -142,7 +142,7 @@ function NoFightOngoing() {
         <CardTitle>No ongoing fight</CardTitle>
       </CardHeader>
       <CardContent className="flex justify-center">
-        <Link className="mx-auto" href="/match">
+        <Link className="mx-auto" href="/qr-code">
           <Button variant="outline">Return to QrCode</Button>
         </Link>
       </CardContent>

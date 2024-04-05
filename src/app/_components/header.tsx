@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import {
   NavigationMenuLink,
@@ -24,138 +25,167 @@ import {
   MdQrCodeScanner,
   MdBarChart,
 } from "react-icons/md";
-
-
-/**
- * todos:
- * - include a big button at the top when a current match is going on, and the player is not in the match
- * - do not show the header when the player is in a match
- */
+import { api } from "~/trpc/react";
+import { usePathname } from "next/navigation";
 
 export default function Header() {
+  const { data } = api.fight.currentFight.useQuery();
+  const pathname = usePathname()
+
+  if(pathname.startsWith('/game')) {
+    return <></>
+  }
+
   return (
-    <header className="flex h-14 w-full items-center justify-between px-4">
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button className="rounded-md" size="icon" variant="ghost">
-            <MenuIcon className="h-6 w-6" />
-            <span className="sr-only">Toggle navigation menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent className="w-full" side="left">
-          <List>
-            <ListGroup>
-              <ListGroupHeader>General</ListGroupHeader>
-              <ListGroupContent>
-                <SheetClose asChild>
-                  <Link href="/">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdMap className="mr-2 h-4 w-4" />
-                      Overview
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="#">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdMenuBook className="mr-2 h-4 w-4" />
-                      Rules 🏗️
-                    </Button>
-                  </Link>
-                </SheetClose>
-              </ListGroupContent>
-            </ListGroup>
-
-            <ListGroup>
-              <ListGroupHeader>Current Game</ListGroupHeader>
-              <ListGroupContent>
-                <SheetClose asChild>
-                  <Link href="/qr-code">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdQrCode className="mr-2 h-4 w-4" />
-                      Qr-code
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="/scan">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdQrCodeScanner className="mr-2 h-4 w-4" />
-                      Scan
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="#">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdBarChart className="mr-2 h-4 w-4" />
-                      Dashboard 🏗️
-                    </Button>
-                  </Link>
-                </SheetClose>
-              </ListGroupContent>
-            </ListGroup>
-
-            <ListGroup>
-              <ListGroupHeader>Account</ListGroupHeader>
-              <SignedIn>
-                <ListGroupContent>
-                  <SheetClose asChild>
-                    <Link href="/profile">
-                      <Button variant="ghost" className="w-full justify-start">
-                        <MdManageAccounts className="mr-2 h-4 w-4" />
-                        Profile
-                      </Button>
-                    </Link>
-                  </SheetClose>
-                  <SheetClose asChild>
-                    <Link href="#">
-                      <Button variant="ghost" className="w-full justify-start">
-                        <MdSettings className="mr-2 h-4 w-4" />
-                        Settings 🏗️
-                      </Button>
-                    </Link>
-                  </SheetClose>
-                </ListGroupContent>
-              </SignedIn>
-              <SignedOut>
-                <ListGroupContent>
-                  <SignInButton>
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdLockOpen className="mr-2 h-4 w-4" />
-                      Sign In
-                    </Button>
-                  </SignInButton>
-                </ListGroupContent>
-              </SignedOut>
-            </ListGroup>
-          </List>
-        </SheetContent>
-      </Sheet>
-      {/* todo: insert sheet for the side navigation: contains profile for now, later also dashboard */}
-      <NavigationMenu>
-        <NavigationMenuList className="">
-          <NavigationMenuLink>
-            <Link
-              className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-              href="/qr-code"
-            >
-              Qr-Code
-            </Link>
-          </NavigationMenuLink>
-          <NavigationMenuLink>
-            <Link
-              className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-              href="/scan"
-            >
-              Scan
-            </Link>
-          </NavigationMenuLink>
-        </NavigationMenuList>
-      </NavigationMenu>
+    <header>
+      {data?.fight && <JoinRunningGame />}
+      <div className="flex h-14 w-full items-center justify-between px-4">
+        <SideBar />
+        <NavigationBar />
+      </div>
     </header>
   );
 }
+
+function JoinRunningGame() {
+  return (
+    <div className="h-36 w-full bg-red-400 text-center">
+      <Link href="/game">
+        <div className="flex w-full h-full items-center justify-center">
+          Back to current game
+        </div>
+      </Link>
+    </div>
+  );
+}
+
+function NavigationBar() {
+  return (
+    <NavigationMenu>
+      <NavigationMenuList className="">
+        <NavigationMenuLink>
+          <Link
+            className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+            href="/qr-code"
+          >
+            Qr-Code
+          </Link>
+        </NavigationMenuLink>
+        <NavigationMenuLink>
+          <Link
+            className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+            href="/scan"
+          >
+            Scan
+          </Link>
+        </NavigationMenuLink>
+      </NavigationMenuList>
+    </NavigationMenu>
+  );
+}
+
+function SideBar() {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button className="rounded-md" size="icon" variant="ghost">
+          <MenuIcon className="h-6 w-6" />
+          <span className="sr-only">Toggle navigation menu</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-full" side="left">
+        <List>
+          <ListGroup>
+            <ListGroupHeader>General</ListGroupHeader>
+            <ListGroupContent>
+              <SheetClose asChild>
+                <Link href="/">
+                  <Button variant="ghost" className="w-full justify-start">
+                    <MdMap className="mr-2 h-4 w-4" />
+                    Overview
+                  </Button>
+                </Link>
+              </SheetClose>
+              <SheetClose asChild>
+                <Link href="#">
+                  <Button variant="ghost" className="w-full justify-start">
+                    <MdMenuBook className="mr-2 h-4 w-4" />
+                    Rules 🏗️
+                  </Button>
+                </Link>
+              </SheetClose>
+            </ListGroupContent>
+          </ListGroup>
+
+          <ListGroup>
+            <ListGroupHeader>Current Game</ListGroupHeader>
+            <ListGroupContent>
+              <SheetClose asChild>
+                <Link href="/qr-code">
+                  <Button variant="ghost" className="w-full justify-start">
+                    <MdQrCode className="mr-2 h-4 w-4" />
+                    Qr-code
+                  </Button>
+                </Link>
+              </SheetClose>
+              <SheetClose asChild>
+                <Link href="/scan">
+                  <Button variant="ghost" className="w-full justify-start">
+                    <MdQrCodeScanner className="mr-2 h-4 w-4" />
+                    Scan
+                  </Button>
+                </Link>
+              </SheetClose>
+              <SheetClose asChild>
+                <Link href="#">
+                  <Button variant="ghost" className="w-full justify-start">
+                    <MdBarChart className="mr-2 h-4 w-4" />
+                    Dashboard 🏗️
+                  </Button>
+                </Link>
+              </SheetClose>
+            </ListGroupContent>
+          </ListGroup>
+
+          <ListGroup>
+            <ListGroupHeader>Account</ListGroupHeader>
+            <SignedIn>
+              <ListGroupContent>
+                <SheetClose asChild>
+                  <Link href="/profile">
+                    <Button variant="ghost" className="w-full justify-start">
+                      <MdManageAccounts className="mr-2 h-4 w-4" />
+                      Profile
+                    </Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link href="#">
+                    <Button variant="ghost" className="w-full justify-start">
+                      <MdSettings className="mr-2 h-4 w-4" />
+                      Settings 🏗️
+                    </Button>
+                  </Link>
+                </SheetClose>
+              </ListGroupContent>
+            </SignedIn>
+            <SignedOut>
+              <ListGroupContent>
+                <SignInButton>
+                  <Button variant="ghost" className="w-full justify-start">
+                    <MdLockOpen className="mr-2 h-4 w-4" />
+                    Sign In
+                  </Button>
+                </SignInButton>
+              </ListGroupContent>
+            </SignedOut>
+          </ListGroup>
+        </List>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function List({ children }: { children: React.ReactNode }) {
   return (
     <div className="pb-12">
@@ -181,10 +211,10 @@ function ListGroupContent({ children }: { children: React.ReactNode }) {
   return <div className="flex flex-col space-y-2">{children}</div>;
 }
 
-const MenuIcon = React.forwardRef<SVGElement, React.HTMLAttributes<SVGElement>>(
-  ({ ...props }) => (
+function MenuIcon({ className }: { className: string }) {
+  return (
     <svg
-      {...props}
+      className={className}
       xmlns="http://www.w3.org/2000/svg"
       width="24"
       height="24"
@@ -199,6 +229,5 @@ const MenuIcon = React.forwardRef<SVGElement, React.HTMLAttributes<SVGElement>>(
       <line x1="4" x2="20" y1="6" y2="6" />
       <line x1="4" x2="20" y1="18" y2="18" />
     </svg>
-  ),
-);
-MenuIcon.displayName = "MenuIcon";
+  );
+}
