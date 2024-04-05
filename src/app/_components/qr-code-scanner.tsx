@@ -9,25 +9,23 @@ export function QrCodeScanner() {
   const [navigationDone, setNavigationDone] = useState(false);
   return (
     // TODO: get rid of width here
-    <div style={{ width: 900 }}>
-      <QrReader
-        onResult={(result, error) => {
-          if (error) {
-            console.info(error);
-            return;
-          }
-          if (!result) {
-            return;
-          }
-          const url = result.getText();
-          if (!navigationDone && checkIfNavigationIsAllowed(url)) {
-            router.push(url);
-            setNavigationDone(true);
-          }
-        }}
-        constraints={{ facingMode: "environment" }}
-      />
-    </div>
+    <QrReader
+      onResult={(result, error) => {
+        if (error) {
+          console.info(error);
+          return;
+        }
+        if (!result) {
+          return;
+        }
+        const url = result.getText();
+        if (!navigationDone && checkIfNavigationIsAllowed(url)) {
+          router.push(url);
+          setNavigationDone(true);
+        }
+      }}
+      constraints={{ facingMode: "environment" }}
+    />
   );
 }
 

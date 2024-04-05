@@ -10,7 +10,7 @@ export default async function MatchOverviewPage() {
       <ForceRedirect />
       <h1>Match overview</h1>
       <StartMatch />
-      <QrCode route="/match" />
+      <QrCode route="/qr-code" />
       <Button>
         <Link href="/scan">Scan qr code</Link>
       </Button>

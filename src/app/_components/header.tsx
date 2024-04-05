@@ -6,25 +6,141 @@ import {
   NavigationMenu,
 } from "~/components/ui/navigation-menu";
 import { Button } from "~/components/ui/button";
-import { SheetTrigger, SheetContent, Sheet } from "~/components/ui/sheet";
+import {
+  SheetTrigger,
+  SheetContent,
+  Sheet,
+  SheetClose,
+} from "~/components/ui/sheet";
+import * as React from "react";
+import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
+import {
+  MdManageAccounts,
+  MdSettings,
+  MdMap,
+  MdLockOpen,
+  MdMenuBook,
+  MdQrCode,
+  MdQrCodeScanner,
+  MdBarChart,
+} from "react-icons/md";
+
+
+/**
+ * todos:
+ * - include a big button at the top when a current match is going on, and the player is not in the match
+ * - do not show the header when the player is in a match
+ */
 
 export default function Header() {
   return (
     <header className="flex h-14 w-full items-center justify-between px-4">
-      <div className="space-y-2">
-        <span className="block h-0.5 w-8 animate-pulse bg-gray-600"></span>
-        <span className="block h-0.5 w-8 animate-pulse bg-gray-600"></span>
-        <span className="block h-0.5 w-8 animate-pulse bg-gray-600"></span>
-      </div>
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button className="rounded-md" size="icon" variant="ghost">
+            <MenuIcon className="h-6 w-6" />
+            <span className="sr-only">Toggle navigation menu</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent className="w-full" side="left">
+          <List>
+            <ListGroup>
+              <ListGroupHeader>General</ListGroupHeader>
+              <ListGroupContent>
+                <SheetClose asChild>
+                  <Link href="/">
+                    <Button variant="ghost" className="w-full justify-start">
+                      <MdMap className="mr-2 h-4 w-4" />
+                      Overview
+                    </Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link href="#">
+                    <Button variant="ghost" className="w-full justify-start">
+                      <MdMenuBook className="mr-2 h-4 w-4" />
+                      Rules 🏗️
+                    </Button>
+                  </Link>
+                </SheetClose>
+              </ListGroupContent>
+            </ListGroup>
+
+            <ListGroup>
+              <ListGroupHeader>Current Game</ListGroupHeader>
+              <ListGroupContent>
+                <SheetClose asChild>
+                  <Link href="/qr-code">
+                    <Button variant="ghost" className="w-full justify-start">
+                      <MdQrCode className="mr-2 h-4 w-4" />
+                      Qr-code
+                    </Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link href="/scan">
+                    <Button variant="ghost" className="w-full justify-start">
+                      <MdQrCodeScanner className="mr-2 h-4 w-4" />
+                      Scan
+                    </Button>
+                  </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <Link href="#">
+                    <Button variant="ghost" className="w-full justify-start">
+                      <MdBarChart className="mr-2 h-4 w-4" />
+                      Dashboard 🏗️
+                    </Button>
+                  </Link>
+                </SheetClose>
+              </ListGroupContent>
+            </ListGroup>
+
+            <ListGroup>
+              <ListGroupHeader>Account</ListGroupHeader>
+              <SignedIn>
+                <ListGroupContent>
+                  <SheetClose asChild>
+                    <Link href="/profile">
+                      <Button variant="ghost" className="w-full justify-start">
+                        <MdManageAccounts className="mr-2 h-4 w-4" />
+                        Profile
+                      </Button>
+                    </Link>
+                  </SheetClose>
+                  <SheetClose asChild>
+                    <Link href="#">
+                      <Button variant="ghost" className="w-full justify-start">
+                        <MdSettings className="mr-2 h-4 w-4" />
+                        Settings 🏗️
+                      </Button>
+                    </Link>
+                  </SheetClose>
+                </ListGroupContent>
+              </SignedIn>
+              <SignedOut>
+                <ListGroupContent>
+                  <SignInButton>
+                    <Button variant="ghost" className="w-full justify-start">
+                      <MdLockOpen className="mr-2 h-4 w-4" />
+                      Sign In
+                    </Button>
+                  </SignInButton>
+                </ListGroupContent>
+              </SignedOut>
+            </ListGroup>
+          </List>
+        </SheetContent>
+      </Sheet>
       {/* todo: insert sheet for the side navigation: contains profile for now, later also dashboard */}
       <NavigationMenu>
         <NavigationMenuList className="">
           <NavigationMenuLink>
             <Link
               className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-              href="/"
+              href="/qr-code"
             >
-              Home
+              Qr-Code
             </Link>
           </NavigationMenuLink>
           <NavigationMenuLink>
@@ -40,90 +156,33 @@ export default function Header() {
     </header>
   );
 }
-
-export function Component() {
+function List({ children }: { children: React.ReactNode }) {
   return (
-    <header className="flex h-14 w-full shrink-0 items-center px-4">
-      <Link className="hidden md:flex" href="#">
-        <MountainIcon className="h-6 w-6" />
-        <span className="sr-only">Acme Inc</span>
-      </Link>
-      <NavigationMenu className="hidden flex-1 md:flex">
-        <NavigationMenuList className="justify-end">
-          <NavigationMenuLink asChild>
-            <Link
-              className="group inline-flex h-9 w-max items-center justify-center rounded-md px-4 text-sm font-medium"
-              href="#"
-            >
-              Home
-            </Link>
-          </NavigationMenuLink>
-          <NavigationMenuLink asChild>
-            <Link
-              className="group inline-flex h-9 w-max items-center justify-center rounded-md px-4 text-sm font-medium"
-              href="#"
-            >
-              Scan
-            </Link>
-          </NavigationMenuLink>
-        </NavigationMenuList>
-      </NavigationMenu>
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button className="rounded-md" size="icon" variant="ghost">
-            <MenuIcon className="h-6 w-6" />
-            <span className="sr-only">Toggle navigation menu</span>
-          </Button>
-        </SheetTrigger>
-        <SheetContent className="w-56" side="left">
-          <div className="flex h-14 items-center px-4">
-            <Link className="hidden md:flex" href="#">
-              <MountainIcon className="h-6 w-6" />
-              <span className="sr-only">Acme Inc</span>
-            </Link>
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button className="rounded-md" size="icon" variant="ghost">
-                  <MenuIcon className="h-6 w-6" />
-                  <span className="sr-only">Toggle navigation menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-56" side="left">
-                <div className="flex h-14 items-center px-4">
-                  <Link
-                    className="inline-flex h-9 items-center justify-center rounded-md bg-gray-900 px-4 text-sm font-medium text-gray-50"
-                    href="#"
-                  >
-                    Home
-                  </Link>
-                </div>
-                <div className="flex h-14 items-center px-4">
-                  <Link
-                    className="inline-flex h-9 items-center justify-start"
-                    href="#"
-                  >
-                    Scan
-                  </Link>
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
-          <div className="flex h-14 items-center px-4">
-            <Link
-              className="inline-flex h-9 items-center justify-start"
-              href="#"
-            >
-              Scan
-            </Link>
-          </div>
-        </SheetContent>
-      </Sheet>
-    </header>
+    <div className="pb-12">
+      {children}
+      <div className="space-y-4 py-4"></div>
+    </div>
   );
 }
 
-function MenuIcon(props) {
+function ListGroup({ children }: { children: React.ReactNode }) {
+  return <div className="px-3 py-2">{children}</div>;
+}
+
+function ListGroupHeader({ children }: { children: React.ReactNode }) {
   return (
+    <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+      {children}
+    </h2>
+  );
+}
+
+function ListGroupContent({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-col space-y-2">{children}</div>;
+}
+
+const MenuIcon = React.forwardRef<SVGElement, React.HTMLAttributes<SVGElement>>(
+  ({ ...props }) => (
     <svg
       {...props}
       xmlns="http://www.w3.org/2000/svg"
@@ -140,24 +199,6 @@ function MenuIcon(props) {
       <line x1="4" x2="20" y1="6" y2="6" />
       <line x1="4" x2="20" y1="18" y2="18" />
     </svg>
-  );
-}
-
-function MountainIcon(props) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m8 3 4 8 5-5 5 15H2L8 3z" />
-    </svg>
-  );
-}
+  ),
+);
+MenuIcon.displayName = "MenuIcon";
