@@ -26,6 +26,7 @@ export type GameConfig = {
 export type GeneralGameEvents = EventTemplate<
   {
     "player-joined-readying": {
+      opponent: string;
       joined: string[];
       ready: string[];
     };
@@ -320,16 +321,29 @@ export abstract class BaseGameState<
   }
 
   private emitJoiningPlayingUpdate() {
-    this.emitEvent({
-      event: "player-joined-readying",
-      data: {
-        joined: [...this.players.values()]
-          .filter((x) => x.generalView === "joined")
-          .map((x) => x.id),
-        ready: [...this.players.values()]
-          .filter((x) => x.generalView === "ready")
-          .map((x) => x.id),
-      },
+    const playerArray = [...this.players.values()];
+
+    const generalEventData = {
+      joined: playerArray
+        .filter((x) => x.generalView === "joined")
+        .map((x) => x.id),
+      ready: playerArray
+        .filter((x) => x.generalView === "ready")
+        .map((x) => x.id),
+    };
+    const playerIds = playerArray.map((x) => x.id);
+    playerIds.forEach((id) => {
+      const opponent = playerIds.find((x) => x !== id);
+      this.emitEvent(
+        {
+          event: "player-joined-readying",
+          data: {
+            opponent: opponent!,
+            ...generalEventData,
+          },
+        },
+        id,
+      );
     });
     if ([...this.players.values()].every((x) => x.generalView === "ready")) {
       // all players joined, so the start timeout is over

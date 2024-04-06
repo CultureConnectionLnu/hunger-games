@@ -4,11 +4,12 @@ import React, { createContext, useContext, useState } from "react";
 type Timer = {
   id: string;
   secondsLeft: number;
+  label: string;
 };
 
-type TimerCtxData = {
+export type TimerCtxData = {
   timers: Timer[];
-  updateTimer: (label: string, secondsLeft: number) => void;
+  updateTimer: (id: string, secondsLeft: number, label: string) => void;
 };
 
 type TimerCtx =
@@ -16,7 +17,7 @@ type TimerCtx =
   | ({ isLoading: false } & TimerCtxData);
 
 // Timer context
-const TimerContext = createContext<TimerCtx>({isLoading: true});
+const TimerContext = createContext<TimerCtx>({ isLoading: true });
 
 export const useTimers = () => useContext(TimerContext);
 
@@ -28,15 +29,18 @@ export default function TimerProvider({
 }) {
   const [timers, setTimers] = useState<Timer[]>([]);
 
-  const updateTimer = (label: string, secondsLeft: number) => {
-    if (timers.some((timer) => timer.id === label) === false) {
-      setTimers((prevTimers) => [...prevTimers, { id: label, secondsLeft }]);
+  const updateTimer = (id: string, secondsLeft: number, label: string) => {
+    if (timers.some((timer) => timer.id === id) === false) {
+      setTimers((prevTimers) => [
+        ...prevTimers,
+        { id: id, secondsLeft, label },
+      ]);
       return;
     }
     setTimers((prevTimers) =>
       prevTimers
         .map((timer) => {
-          if (timer.id === label) {
+          if (timer.id === id) {
             if (secondsLeft <= 0) return undefined;
             return { ...timer, secondsLeft };
           }

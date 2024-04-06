@@ -1,25 +1,11 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import Link from "next/link";
-import { FaGamepad, FaSpinner } from "react-icons/fa";
-import { Button } from "~/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
-import { api } from "~/trpc/react";
-import LoadingScreen from "../_components/util/loading-spinner";
-import { useTimers } from "../_context/timer";
-import type { RouterOutputs } from "~/trpc/shared";
 import type { Observable } from "@trpc/server/observable";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import React, { useState } from "react";
-import { Timer } from "../_components/util/timer";
-import RockPaperScissorsGame from "../_components/games/rock-paper-scissors";
-import { Skeleton } from "~/components/ui/skeleton";
+import { FaGamepad, FaSpinner } from "react-icons/fa";
 import { RxCross2 } from "react-icons/rx";
 import {
   AlertDialog,
@@ -32,15 +18,34 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
-import { useRouter } from "next/navigation";
+import { Button } from "~/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card";
+import { Skeleton } from "~/components/ui/skeleton";
+import { api } from "~/trpc/react";
+import type { RouterOutputs } from "~/trpc/shared";
+import RockPaperScissorsGame from "../_components/games/rock-paper-scissors";
+import LoadingScreen from "../_components/util/loading-spinner";
+import { Timer } from "../_components/util/timer";
+import { useTimers, type TimerCtxData } from "../_context/timer";
 
 type ServerEvent =
   RouterOutputs["fight"]["onAction"] extends Observable<infer R, never>
     ? R
     : never;
 
-type GetWinnerEvent<T> = T extends { event: "game-ended" } ? T : never;
-type WinnerEvent = GetWinnerEvent<ServerEvent>;
+type GetSpecificEvent<T, Event extends ServerEvent["event"]> = T extends {
+  event: Event;
+}
+  ? T
+  : never;
+type WinnerEvent = GetSpecificEvent<ServerEvent, "game-ended">;
+type JoinedEvent = GetSpecificEvent<ServerEvent, "player-joined-readying">;
 
 export default function CurrentGame() {
   const { user, isLoaded: userLoaded } = useUser();
@@ -79,7 +84,7 @@ function JoiningGame({
     gameName: string;
     fightId: string;
     userId: string;
-    updateTimer: (label: string, secondsLeft: number) => void;
+    updateTimer: TimerCtxData["updateTimer"];
   };
 }) {
   const { isLoading: joining } = api.fight.join.useQuery(undefined, {
@@ -100,7 +105,7 @@ function GameLobby({
     gameName: string;
     fightId: string;
     userId: string;
-    updateTimer: (label: string, secondsLeft: number) => void;
+    updateTimer: TimerCtxData["updateTimer"];
   };
 }) {
   const [lastEvent, setLastEvent] = useState<ServerEvent>();
@@ -109,8 +114,18 @@ function GameLobby({
     onData(data) {
       switch (data.event) {
         case "start-timer":
+          params.updateTimer(
+            data.event,
+            data.data.secondsLeft,
+            "Game start timeout",
+          );
+          break;
         case "disconnect-timer":
-          params.updateTimer(data.event, data.data.secondsLeft);
+          params.updateTimer(
+            data.event,
+            data.data.secondsLeft,
+            "Disconnect Timeout",
+          );
           break;
         default:
           setLastEvent(data);
@@ -129,10 +144,21 @@ function GameLobby({
       lobby = <LoadingScreen params={{ title: "Joining" }} />;
       break;
     case "joined":
-      lobby = <ReadyScreen params={params} />;
-      break;
     case "ready":
-      lobby = <WaitForOtherPlayer params={params} />;
+      const joinedData = lastEvent.data as JoinedEvent["data"];
+      const opponentId = joinedData.opponent;
+      const status = joinedData.ready.includes(opponentId)
+        ? "ready"
+        : joinedData.joined.includes(opponentId)
+          ? "joined"
+          : "none";
+      const showReadyScreen = lastEvent.view.general === "joined";
+      lobby = (
+        <>
+          {showReadyScreen ? <ReadyScreen /> : <WaitForOtherPlayer />}
+          <OtherPlayerLobbyStatus params={{ opponentId, status }} />{" "}
+        </>
+      );
       break;
     case "game-ended":
       const data = lastEvent.data as WinnerEvent["data"];
@@ -196,6 +222,8 @@ function GameContainer({
   };
 }) {
   const router = useRouter();
+  const { timers } = useTimers();
+
   const alertLeave = (
     <AlertDialog>
       <AlertDialogTrigger>
@@ -230,32 +258,54 @@ function GameContainer({
         {param?.noGameRunning ?? true ? leave : alertLeave}
       </header>
       <main
-        className="flex flex-col justify-center px-4"
+        className="flex flex-col px-4"
         style={{
           height: "calc(100vh - 56px)",
         }}
       >
-        {children}
+        <section className="flex flex-row gap-4">
+          {(timers ?? []).map((timer) => (
+            <Timer key={timer.id} params={{ id: timer.id }} />
+          ))}
+        </section>
+
+        <section className="flex flex-grow flex-col justify-center">
+          {children}
+        </section>
       </main>
     </>
+  );
+}
+
+function GameCard({
+  header,
+  children,
+}: {
+  header: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-center space-x-4">
+        {header}
+      </CardHeader>
+      <CardContent className="flex items-center justify-center p-8">
+        {children}
+      </CardContent>
+    </Card>
   );
 }
 
 function GameLoadingScreen() {
   return (
     <GameContainer header={<Skeleton className="h-4 w-1/2" />}>
-      <Card>
-        <CardHeader className="flex items-center justify-center space-x-4">
-          <Skeleton className="h-8 w-3/4" />
-        </CardHeader>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="space-y-4 text-center">
-            <Skeleton className="h-4 w-[300px]" />
-            <Skeleton className="h-4 w-[250px]" />
-            <Skeleton className="h-4 w-[200px]" />
-          </div>
-        </CardContent>
-      </Card>
+      <GameCard header={<Skeleton className="h-8 w-3/4" />}>
+        <div className="space-y-4 text-center">
+          <Skeleton className="h-4 w-[300px]" />
+          <Skeleton className="h-4 w-[250px]" />
+          <Skeleton className="h-4 w-[200px]" />
+        </div>
+      </GameCard>
     </GameContainer>
   );
 }
@@ -263,58 +313,76 @@ function GameLoadingScreen() {
 function NoFightOngoing() {
   return (
     <GameContainer header={"No game"} param={{ noGameRunning: true }}>
-      <Card>
-        <CardHeader className="flex items-center justify-center space-x-4">
+      <GameCard
+        header={
           <CardTitle className="flex gap-4">
             <FaGamepad />
             No ongoing game
           </CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-center p-8">
-          <Link className="mx-auto" href="/qr-code">
-            <Button variant="outline">Return to QrCode</Button>
-          </Link>
-        </CardContent>
-      </Card>
+        }
+      >
+        <Link className="mx-auto" href="/qr-code">
+          <Button variant="outline">Return to QrCode</Button>
+        </Link>
+      </GameCard>
     </GameContainer>
   );
 }
 
-function ReadyScreen({ params }: { params: { gameName: string } }) {
+function ReadyScreen() {
   const ready = api.fight.ready.useMutation();
   return (
-    <Card className="flex h-screen flex-col items-center justify-center p-4 md:p-6">
-      <CardContent className="space-y-4 text-center">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold">{params.gameName}</h1>
-        </div>
-        <div className="space-y-2">
-          <Button onClick={() => ready.mutate()}>
-            Ready{" "}
-            {ready.isLoading ? <FaSpinner className="animate-spin" /> : <></>}
-          </Button>
-        </div>
-        <div className="flex flex-col items-center space-y-2 text-center">
-          <Timer params={{ id: "start-timer", label: "Game start timeout" }} />
-        </div>
-      </CardContent>
-    </Card>
+    <GameCard header={<CardTitle>Are you ready to play?</CardTitle>}>
+      <div className="space-y-2">
+        <Button onClick={() => ready.mutate()}>
+          Ready{" "}
+          {ready.isLoading ? <FaSpinner className="animate-spin" /> : <></>}
+        </Button>
+      </div>
+    </GameCard>
   );
 }
 
-function WaitForOtherPlayer({ params }: { params: { gameName: string } }) {
+function OtherPlayerLobbyStatus({
+  params,
+}: {
+  params: { opponentId: string; status: "none" | "joined" | "ready" };
+}) {
+  const { data: opponentName, isLoading } = api.user.getUserName.useQuery(
+    {
+      id: params.opponentId,
+    },
+    {
+      staleTime: Infinity,
+    },
+  );
+  const statusToText = {
+    none: <div className="text-gray-400">Joining</div>,
+    joined: <div>Joined</div>,
+    ready: <div className="text-green-500">Ready</div>,
+  } as const;
   return (
-    <Card className="flex h-screen flex-col items-center justify-center p-4 md:p-6">
-      <CardContent className="space-y-4 text-center">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold">{params.gameName}</h1>
-        </div>
-        <div className="space-y-2"></div>
-        <div className="flex flex-col items-center space-y-2 text-center">
-          <Timer params={{ id: "start-timer", label: "Game start timeout" }} />
-        </div>
-      </CardContent>
-    </Card>
+    <GameCard header={<CardTitle>Opponent</CardTitle>}>
+      <div className="flex justify-between">
+        {isLoading ? (
+          <>
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-1/3" />
+          </>
+        ) : (
+          <>
+            <div>{opponentName}</div>
+            {statusToText[params.status]}
+          </>
+        )}
+      </div>
+    </GameCard>
+  );
+}
+
+function WaitForOtherPlayer() {
+  return (
+    <GameCard header={<CardTitle>Waiting for opponent</CardTitle>}></GameCard>
   );
 }
 
