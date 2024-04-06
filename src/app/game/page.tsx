@@ -22,7 +22,7 @@ import { Button } from "~/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
@@ -33,6 +33,7 @@ import RockPaperScissorsGame from "../_components/games/rock-paper-scissors";
 import LoadingScreen from "../_components/util/loading-spinner";
 import { Timer } from "../_components/util/timer";
 import { useTimers, type TimerCtxData } from "../_context/timer";
+import { param } from "drizzle-orm";
 
 type ServerEvent =
   RouterOutputs["fight"]["onAction"] extends Observable<infer R, never>
@@ -280,9 +281,11 @@ function GameContainer({
 function GameCard({
   header,
   children,
+  footer,
 }: {
   header: React.ReactNode;
   children?: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   return (
     <Card>
@@ -290,9 +293,16 @@ function GameCard({
         {header}
       </CardHeader>
       {children !== undefined ? (
-        <CardContent className="flex items-center justify-center p-8">
+        <CardContent className="flex flex-col items-center justify-center p-8 pt-0">
           {children}
         </CardContent>
+      ) : (
+        <></>
+      )}
+      {footer !== undefined ? (
+        <CardFooter className="flex items-center justify-center p-8 pt-0">
+          {footer}
+        </CardFooter>
       ) : (
         <></>
       )}
@@ -405,76 +415,38 @@ function EndScreen({
   }
 
   return (
-    <div>
-      <Link className="mx-auto" href="/match">
-        <Button variant="outline">Return to QrCode</Button>
-      </Link>
-      <Card className="mx-auto max-w-sm">
-        <CardHeader>
-          <CardTitle>Game Over</CardTitle>
-          <CardDescription>
-            The game has ended. Here are the results.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid items-center justify-center gap-6 px-4 pb-6 md:px-6">
-          <div className="grid w-full max-w-sm gap-2">
-            <div
-              className={
-                "grid grid-cols-2 items-center gap-2" + params.winnerId ===
-                params.you
-                  ? " bg-green-100"
-                  : ""
-              }
-            >
-              <div className="flex items-center gap-2">
-                <div className="grid gap-0.5">
-                  <p className="text-sm font-medium">Player 1</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {winnerName}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                <div className="grid gap-0.5">
-                  <p className="text-right text-sm font-medium text-green-500">
-                    Winner
-                  </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    +10 XP
-                    {/* todo: calculate points */}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div
-              className={
-                "grid grid-cols-2 items-center gap-2" + params.looserId ===
-                params.you
-                  ? " bg-red-100"
-                  : ""
-              }
-            >
-              <div className="flex items-center gap-2">
-                <div className="grid gap-0.5">
-                  <p className="text-sm font-medium">Player 2</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {looserName}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                <div className="grid gap-0.5">
-                  <p className="text-right text-sm font-medium">Loser</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    -5 XP
-                    {/* todo: calculate points */}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <>
+      <GameCard
+        header={
+          <CardTitle>
+            You {params.you === params.winnerId ? "Won" : "Lost"}
+          </CardTitle>
+        }
+      >
+        <div className="flex w-full justify-between">
+          <span>Current score🏗️</span>
+          <span>1000</span>
+        </div>
+      </GameCard>
+      <GameCard
+        header={<CardTitle>Game Result</CardTitle>}
+        footer={
+          <Link className="mx-auto" href="/qr-code">
+            <Button variant="outline">Return to QrCode</Button>
+          </Link>
+        }
+      >
+        <div className="flex w-full justify-around gap-4">
+          <span>Winner</span>
+          <div>{winnerName}</div>
+          <div className="text-green-500">+10 XP</div>
+        </div>
+        <div className="flex w-full justify-around gap-4">
+          <span>Loser</span>
+          <div>{looserName}</div>
+          <div className="text-red-500">-5 XP</div>
+        </div>
+      </GameCard>
+    </>
   );
 }
