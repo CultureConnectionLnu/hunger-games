@@ -62,9 +62,11 @@ export type RockPaperScissorsEvents = EventTemplate<
     };
     "show-result": {
       anotherRound: boolean;
-      winner: string[];
-      looser: string[];
+      yourWin: boolean;
+      wins: number;
+      looses: number;
       draw: boolean;
+      opponentId: string;
     };
     "choose-timer": {
       startTimeUnix: number;
@@ -177,7 +179,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
         );
         if (doneChoosing.length !== this.players.size) return;
 
-        this.chooseTimeout?.cancel()
+        this.chooseTimeout?.cancel();
         this.evaluateState();
       });
     });
@@ -241,9 +243,9 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
 
     // todo: check if all timer events can be aligned
     this.nextRoundTimeout.once("timeout", () => {
-      setTimeout(()=>{
+      setTimeout(() => {
         this.startGame();
-      })
+      });
     });
     this.nextRoundTimeout.on("countdown", (e) => {
       this.emitEvent({
@@ -251,6 +253,12 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
         data: e,
       });
     });
+  }
+
+  private getWinLooseRate(playerId: string) {
+    const wins = this.winners.filter((winner) => winner === playerId).length;
+    const looses = this.winners.length - wins;
+    return { wins, looses };
   }
 
   private evaluateState() {
@@ -264,15 +272,23 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
     player1.showResult();
     player2.showResult();
 
+    const playerStats = [...this.players.values()].map((x) => x.id);
+
     if (result.draw) {
-      this.emitEvent({
-        event: "show-result",
-        data: {
-          anotherRound: true,
-          winner: [],
-          looser: [],
-          draw: true,
-        },
+      playerStats.forEach((id) => {
+        this.emitEvent(
+          {
+            event: "show-result",
+            data: {
+              yourWin: false,
+              anotherRound: true,
+              ...this.getWinLooseRate(id),
+              draw: true,
+              opponentId: id === player1.id ? player2.id : player1.id,
+            },
+          },
+          id,
+        );
       });
       this.setupNextRoundTimeout();
       return;
@@ -280,14 +296,20 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
 
     this.winners.push(result.winner);
     const overAllWinner = this.getWinner();
-    this.emitEvent({
-      event: "show-result",
-      data: {
-        anotherRound: !overAllWinner,
-        winner: [result.winner],
-        looser: [result.looser],
-        draw: false,
-      },
+    playerStats.forEach((id) => {
+      this.emitEvent(
+        {
+          event: "show-result",
+          data: {
+            yourWin: id === result.winner,
+            anotherRound: !overAllWinner,
+            ...this.getWinLooseRate(id),
+            draw: false,
+            opponentId: id === player1.id ? player2.id : player1.id,
+          },
+        },
+        id,
+      );
     });
 
     if (!overAllWinner) {
@@ -307,7 +329,8 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
       {},
     );
 
-    const winsNeeded = Math.ceil(GameConfig.bestOf / 2) + GameConfig.bestOf % 2;
+    const winsNeeded =
+      Math.ceil(GameConfig.bestOf / 2) + (GameConfig.bestOf % 2);
 
     return Object.entries(winCount).find(([, count]) => count >= winsNeeded);
   }

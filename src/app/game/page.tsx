@@ -19,21 +19,14 @@ import {
   AlertDialogTrigger,
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
+import { CardTitle } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
+import { GameCard, GameContentLoading } from "../_components/games/base";
 import RockPaperScissorsGame from "../_components/games/rock-paper-scissors";
-import LoadingScreen from "../_components/util/loading-spinner";
 import { Timer } from "../_components/util/timer";
 import { useTimers, type TimerCtxData } from "../_context/timer";
-import { param } from "drizzle-orm";
 
 type ServerEvent =
   RouterOutputs["fight"]["onAction"] extends Observable<infer R, never>
@@ -142,7 +135,7 @@ function GameLobby({
   let lobby: React.ReactNode | undefined = undefined;
   switch (lastEvent.view.general) {
     case "none":
-      lobby = <LoadingScreen params={{ title: "Joining" }} />;
+      lobby = <GameContentLoading />;
       break;
     case "joined":
     case "ready":
@@ -278,48 +271,10 @@ function GameContainer({
   );
 }
 
-function GameCard({
-  header,
-  children,
-  footer,
-}: {
-  header: React.ReactNode;
-  children?: React.ReactNode;
-  footer?: React.ReactNode;
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex items-center justify-center space-x-4">
-        {header}
-      </CardHeader>
-      {children !== undefined ? (
-        <CardContent className="flex flex-col items-center justify-center p-8 pt-0">
-          {children}
-        </CardContent>
-      ) : (
-        <></>
-      )}
-      {footer !== undefined ? (
-        <CardFooter className="flex items-center justify-center p-8 pt-0">
-          {footer}
-        </CardFooter>
-      ) : (
-        <></>
-      )}
-    </Card>
-  );
-}
-
 function GameLoadingScreen() {
   return (
     <GameContainer header={<Skeleton className="h-4 w-1/2" />}>
-      <GameCard header={<Skeleton className="h-8 w-3/4" />}>
-        <div className="space-y-4 text-center">
-          <Skeleton className="h-4 w-[300px]" />
-          <Skeleton className="h-4 w-[250px]" />
-          <Skeleton className="h-4 w-[200px]" />
-        </div>
-      </GameCard>
+      <GameContentLoading />
     </GameContainer>
   );
 }
@@ -406,13 +361,15 @@ function EndScreen({
   params: { winnerId: string; looserId: string; you: string };
 }) {
   const { data: winnerName, isLoading: winnerLoading } =
-    api.user.getUserName.useQuery({ id: params.winnerId });
+    api.user.getUserName.useQuery(
+      { id: params.winnerId },
+      { staleTime: Infinity },
+    );
   const { data: looserName, isLoading: looserLoading } =
-    api.user.getUserName.useQuery({ id: params.looserId });
-
-  if (winnerLoading || looserLoading) {
-    return <LoadingScreen params={{ title: "Processing Results" }} />;
-  }
+    api.user.getUserName.useQuery(
+      { id: params.looserId },
+      { staleTime: Infinity },
+    );
 
   return (
     <>
@@ -438,12 +395,20 @@ function EndScreen({
       >
         <div className="flex w-full justify-around gap-4">
           <span>Winner</span>
-          <div>{winnerName}</div>
+          {winnerLoading ? (
+            <Skeleton className="h-4 w-1/4" />
+          ) : (
+            <div>{winnerName}</div>
+          )}
           <div className="text-green-500">+10 XP</div>
         </div>
         <div className="flex w-full justify-around gap-4">
           <span>Loser</span>
-          <div>{looserName}</div>
+          {looserLoading ? (
+            <Skeleton className="h-4 w-1/4" />
+          ) : (
+            <div>{looserName}</div>
+          )}
           <div className="text-red-500">-5 XP</div>
         </div>
       </GameCard>

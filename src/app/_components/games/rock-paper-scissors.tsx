@@ -1,11 +1,12 @@
 import type { Observable } from "@trpc/server/observable";
 import { useState } from "react";
 import { FaSpinner } from "react-icons/fa";
+import { useTimers } from "~/app/_context/timer";
+import { CardTitle } from "~/components/ui/card";
+import { Skeleton } from "~/components/ui/skeleton";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
-import LoadingScreen from "../util/loading-spinner";
-import { useTimers } from "~/app/_context/timer";
-import { Timer } from "../util/timer";
+import { GameCard, GameContentLoading } from "./base";
 
 type ServerEvent =
   RouterOutputs["rockPaperScissors"]["onAction"] extends Observable<
@@ -18,11 +19,12 @@ type ServerEvent =
 type ExtractSpecificView<T> = T extends { specific: infer R } ? R : never;
 type SpecificView = ExtractSpecificView<ServerEvent["view"]>;
 
-type ExtractSpecificEvent<
-  Events,
-  Name extends ServerEvent["event"],
-> = Events extends { event: Name } ? Events : never;
-type ShowResultEvent = ExtractSpecificEvent<ServerEvent, "show-result">;
+type GetSpecificEvent<T, Event extends ServerEvent["event"]> = T extends {
+  event: Event;
+}
+  ? T
+  : never;
+type ResultEvent = GetSpecificEvent<ServerEvent, "show-result">;
 
 export default function RockPaperScissorsGame({
   params,
@@ -36,13 +38,11 @@ export default function RockPaperScissorsGame({
   api.rockPaperScissors.onAction.useSubscription(params, {
     onData(data) {
       console.log(data);
-
-      // todo: move timer handling into a component
-      // it should allow to show up to two timers at the same time
       switch (data.event) {
         case "choose-timer":
+          updateTimer!(data.event, data.data.secondsLeft, "Choose timeout");
         case "next-round-timer":
-          updateTimer!(data.event, data.data.secondsLeft);
+          updateTimer!(data.event, data.data.secondsLeft, "Next round timeout");
           break;
         default:
           setLastEvent(data);
@@ -54,46 +54,27 @@ export default function RockPaperScissorsGame({
     enabled: !isLoading,
   });
 
-  if (!lastEvent) return <LoadingScreen params={{ title: "Loading Game" }} />;
+  if (!lastEvent) return <GameContentLoading />;
 
   return (
-    <div>
-      <Header />
-      <ViewContainer
-        params={{
-          view: view,
-          result:
-            lastEvent.event === "show-result"
-              ? {
-                  anotherRound: lastEvent.data.anotherRound,
-                  draw: lastEvent.data.draw,
-                  youWon: lastEvent.data.winner[0] === params.userId,
-                }
-              : undefined,
-        }}
-      />
-    </div>
+    <ViewContainer
+      params={{
+        view: view,
+        result:
+          lastEvent.event === "show-result"
+            ? { ...lastEvent.data, yourId: params.userId }
+            : undefined,
+      }}
+    />
   );
 }
-
-function Header() {
-  return (
-    <div>
-      <h1>Rock Paper Scissors</h1>
-      <Timer params={{ id: "choose-timer", label: "Time to choose" }} />
-      <Timer params={{ id: "next-round-timer", label: "Game continues in" }} />
-    </div>
-  );
-}
-
-// components below stay in this file
 
 function ViewContainer({
   params,
 }: {
   params: {
     view: SpecificView;
-    result?: { anotherRound: boolean; draw: boolean; youWon: boolean };
+    result?: ResultEvent["data"] & { yourId: string };
   };
 }) {
   switch (params.view) {
@@ -104,15 +85,67 @@ function ViewContainer({
     case "chosen":
       return "wait for other party to choose";
     case "show-result":
-      const { anotherRound, draw, youWon } = params.result!;
+      const { draw, yourWin } = params.result!;
       return (
-        <div>
-          <h1>Result</h1>
-          <p>{draw ? "Draw" : youWon ? "You won" : "You lost"}</p>
-          {anotherRound ? <p>Next round coming up</p> : <></>}
-        </div>
+        <ShowResult
+          params={{
+            title: draw ? "Draw" : yourWin ? "You won" : "You lost",
+            ...params.result!,
+          }}
+        />
       );
   }
+}
+
+function ShowResult({
+  params,
+}: {
+  params: {
+    title: string;
+    anotherRound: boolean;
+    wins: number;
+    looses: number;
+    yourId: string;
+    opponentId: string;
+  };
+}) {
+  const { data: yourName, isLoading: yourNameLoading } =
+    api.user.getUserName.useQuery(
+      { id: params.yourId },
+      { staleTime: Infinity },
+    );
+  const { data: opponentName, isLoading: opponentNameLoading } =
+    api.user.getUserName.useQuery(
+      { id: params.opponentId },
+      { staleTime: Infinity },
+    );
+
+  return (
+    <GameCard
+      header={
+        <>
+          <CardTitle>{params.title}</CardTitle>
+        </>
+      }
+      footer={params.anotherRound ? "Next round coming up" : undefined}
+    >
+      <div className="flex w-full justify-between">
+        {yourNameLoading ? (
+          <Skeleton className="h-4 w-1/4" />
+        ) : (
+          <div>{yourName}</div>
+        )}
+        <div>
+          {params.wins} - {params.looses}
+        </div>
+        {opponentNameLoading ? (
+          <Skeleton className="h-4 w-1/4" />
+        ) : (
+          <div>{opponentName}</div>
+        )}
+      </div>
+    </GameCard>
+  );
 }
 
 function SelectionContainer() {
