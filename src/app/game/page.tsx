@@ -16,11 +16,23 @@ import LoadingScreen from "../_components/util/loading-spinner";
 import { useTimers } from "../_context/timer";
 import type { RouterOutputs } from "~/trpc/shared";
 import type { Observable } from "@trpc/server/observable";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Timer } from "../_components/util/timer";
 import RockPaperScissorsGame from "../_components/games/rock-paper-scissors";
 import { Skeleton } from "~/components/ui/skeleton";
 import { RxCross2 } from "react-icons/rx";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "~/components/ui/alert-dialog";
+import { useRouter } from "next/navigation";
 
 type ServerEvent =
   RouterOutputs["fight"]["onAction"] extends Observable<infer R, never>
@@ -57,39 +69,6 @@ export default function CurrentGame() {
         userId: user.id,
       }}
     />
-  );
-}
-
-function GameLoadingScreen() {
-  return (
-    <>
-      <header className="flex h-14 w-full items-center justify-between px-4">
-        <div>{/* empty so that the next element is in the center */}</div>
-        <Skeleton className="h-4 w-1/2" />
-        <RxCross2 />
-      </header>
-      <main
-        className="flex flex-col justify-center px-4"
-        style={{
-          height: "calc(100vh - 56px)",
-        }}
-      >
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-center space-x-4">
-              <Skeleton className="h-8 w-3/4" />
-            </div>
-          </CardHeader>
-          <CardContent className="flex items-center justify-center p-8">
-            <div className="space-y-4 text-center">
-              <Skeleton className="h-4 w-[300px]" />
-              <Skeleton className="h-4 w-[250px]" />
-              <Skeleton className="h-4 w-[200px]" />
-            </div>
-          </CardContent>
-        </Card>
-      </main>
-    </>
   );
 }
 
@@ -139,49 +118,165 @@ function GameLobby({
     },
   });
   if (!lastEvent) {
-    return <LoadingScreen params={{ title: "Joining Game" }} />;
+    return <GameLoadingScreen />;
   }
   console.log(lastEvent);
 
   // Render Lobby
+  let lobby: React.ReactNode | undefined = undefined;
   switch (lastEvent.view.general) {
     case "none":
-      return <LoadingScreen params={{ title: "Joining" }} />;
+      lobby = <LoadingScreen params={{ title: "Joining" }} />;
+      break;
     case "joined":
-      return <ReadyScreen params={params} />;
+      lobby = <ReadyScreen params={params} />;
+      break;
     case "ready":
-      return <WaitForOtherPlayer params={params} />;
+      lobby = <WaitForOtherPlayer params={params} />;
+      break;
     case "game-ended":
       const data = lastEvent.data as WinnerEvent["data"];
-      return <EndScreen params={{ ...data, you: params.userId }} />;
+      lobby = <EndScreen params={{ ...data, you: params.userId }} />;
+      break;
     // todo: add game-halted view
   }
 
+  if (lobby !== undefined) {
+    return (
+      <GameContainer header={getReadableGameName(params.gameName)}>
+        {lobby}
+      </GameContainer>
+    );
+  }
+
   // Render Game
+  let game: React.ReactNode | undefined = undefined;
   switch (params.gameName) {
     case "rock-paper-scissors":
-      return <RockPaperScissorsGame params={params} />;
+      game = <RockPaperScissorsGame params={params} />;
+      break;
     default:
       return `Selected game is not implemented: ${params.gameName}`;
   }
+
+  if (game !== undefined) {
+    return (
+      <GameContainer header={getReadableGameName(params.gameName)}>
+        {game}
+      </GameContainer>
+    );
+  }
+
+  // This should only happen in an error case
+  return (
+    <GameContainer header={"Game not implemented"}>
+      The game {params.gameName} has no implementation
+    </GameContainer>
+  );
+}
+
+function getReadableGameName(gameName: string) {
+  switch (gameName) {
+    case "rock-paper-scissors":
+      return "Rock Paper Scissors";
+    default:
+      return "No Game";
+  }
+}
+
+function GameContainer({
+  param,
+  header,
+  children,
+}: {
+  children: React.ReactNode;
+  header: React.ReactNode;
+  param?: {
+    noGameRunning?: boolean;
+  };
+}) {
+  const router = useRouter();
+  const alertLeave = (
+    <AlertDialog>
+      <AlertDialogTrigger>
+        <RxCross2 />
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>You are about to leave the game</AlertDialogTitle>
+          <AlertDialogDescription>
+            By leaving you will lose the game.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => router.push("/qr-code")}>
+              Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogHeader>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+  const leave = (
+    <Link href="/qr-code">
+      <RxCross2 />
+    </Link>
+  );
+  return (
+    <>
+      <header className="flex h-14 w-full items-center justify-between px-4">
+        <div>{/* empty so that the next element is in the center */}</div>
+        {header}
+        {param?.noGameRunning ?? true ? leave : alertLeave}
+      </header>
+      <main
+        className="flex flex-col justify-center px-4"
+        style={{
+          height: "calc(100vh - 56px)",
+        }}
+      >
+        {children}
+      </main>
+    </>
+  );
+}
+
+function GameLoadingScreen() {
+  return (
+    <GameContainer header={<Skeleton className="h-4 w-1/2" />}>
+      <Card>
+        <CardHeader className="flex items-center justify-center space-x-4">
+          <Skeleton className="h-8 w-3/4" />
+        </CardHeader>
+        <CardContent className="flex items-center justify-center p-8">
+          <div className="space-y-4 text-center">
+            <Skeleton className="h-4 w-[300px]" />
+            <Skeleton className="h-4 w-[250px]" />
+            <Skeleton className="h-4 w-[200px]" />
+          </div>
+        </CardContent>
+      </Card>
+    </GameContainer>
+  );
 }
 
 function NoFightOngoing() {
   return (
-    <Card className="mx-auto max-w-sm">
-      <CardHeader className="flex flex-col items-center gap-2">
-        <div>
-          <FaGamepad />
-          <span className="sr-only">No item found</span>
-        </div>
-        <CardTitle>No ongoing fight</CardTitle>
-      </CardHeader>
-      <CardContent className="flex justify-center">
-        <Link className="mx-auto" href="/qr-code">
-          <Button variant="outline">Return to QrCode</Button>
-        </Link>
-      </CardContent>
-    </Card>
+    <GameContainer header={"No game"} param={{ noGameRunning: true }}>
+      <Card>
+        <CardHeader className="flex items-center justify-center space-x-4">
+          <CardTitle className="flex gap-4">
+            <FaGamepad />
+            No ongoing game
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center p-8">
+          <Link className="mx-auto" href="/qr-code">
+            <Button variant="outline">Return to QrCode</Button>
+          </Link>
+        </CardContent>
+      </Card>
+    </GameContainer>
   );
 }
 
