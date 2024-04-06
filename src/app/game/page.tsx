@@ -269,7 +269,7 @@ function GameContainer({
           ))}
         </section>
 
-        <section className="flex flex-grow flex-col justify-center">
+        <section className="flex flex-grow flex-col justify-center gap-4">
           {children}
         </section>
       </main>
@@ -289,9 +289,13 @@ function GameCard({
       <CardHeader className="flex items-center justify-center space-x-4">
         {header}
       </CardHeader>
-      <CardContent className="flex items-center justify-center p-8">
-        {children}
-      </CardContent>
+      {children !== undefined ? (
+        <CardContent className="flex items-center justify-center p-8">
+          {children}
+        </CardContent>
+      ) : (
+        <></>
+      )}
     </Card>
   );
 }
@@ -363,7 +367,7 @@ function OtherPlayerLobbyStatus({
   } as const;
   return (
     <GameCard header={<CardTitle>Opponent</CardTitle>}>
-      <div className="flex justify-between">
+      <div className="flex w-full justify-between">
         {isLoading ? (
           <>
             <Skeleton className="h-4 w-1/2" />
