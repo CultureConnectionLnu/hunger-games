@@ -10,6 +10,7 @@ export function QrCodeScanner() {
   return (
     // TODO: get rid of width here
     <QrReader
+      className="h-screen w-screen p-4"
       onResult={(result, error) => {
         if (error) {
           console.info(error);

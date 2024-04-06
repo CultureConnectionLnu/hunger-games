@@ -5,6 +5,7 @@ import { Inter } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import Header from "./_components/header";
+import { ForceRedirect } from "./_components/force-redirect";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -27,8 +28,8 @@ export default function RootLayout({
       <html lang="en">
         <body className={`font-sans ${inter.variable}`}>
           <TRPCReactProvider>
-            <SignedIn>
-            </SignedIn>
+            <SignedIn></SignedIn>
+            <ForceRedirect />
             <Header />
             <div>{children}</div>
           </TRPCReactProvider>

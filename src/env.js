@@ -34,6 +34,7 @@ export const env = createEnv({
     NEXT_PUBLIC_NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    NEXT_PUBLIC_FEATURE_MANUAL_JOIN: z.enum(["true", "false"]).default("false"),
   },
 
   /**
@@ -53,6 +54,8 @@ export const env = createEnv({
 
     // feature flags
     FEATURE_GAME_TIMEOUT: process.env.FEATURE_GAME_TIMEOUT,
+    NEXT_PUBLIC_FEATURE_MANUAL_JOIN:
+      process.env.NEXT_PUBLIC_FEATURE_MANUAL_JOIN,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
