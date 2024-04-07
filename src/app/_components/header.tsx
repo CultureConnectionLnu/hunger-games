@@ -186,7 +186,7 @@ function SideBar() {
                       className="w-full justify-start"
                     >
                       <MdOutlinePowerSettingsNew  className="mr-2 h-4 w-4" />
-                      Sign In
+                      Sign Out
                     </Button>
                   </SignOutButton>
                 </SheetClose>
@@ -197,7 +197,7 @@ function SideBar() {
                 <SignInButton>
                   <Button variant="ghost" className="w-full justify-start">
                     <MdLockOpen className="mr-2 h-4 w-4" />
-                    Sign out
+                    Sign In
                   </Button>
                 </SignInButton>
               </ListGroupContent>
