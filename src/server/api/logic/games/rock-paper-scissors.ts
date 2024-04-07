@@ -190,7 +190,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
     return player;
   }
 
-  startGame(): void {
+  protected startGame(): void {
     this.players.forEach((player) => player.enableChoose());
     this.emitEvent({
       event: "enable-choose",
@@ -207,6 +207,16 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
   protected resetState() {
     this.nextRoundTimeout?.cancel();
     this.chooseTimeout?.cancel();
+  }
+
+  protected pauseGame(): void {
+    this.nextRoundTimeout?.pause();
+    this.chooseTimeout?.pause();
+  }
+
+  protected resumeGame(): void {
+    this.nextRoundTimeout?.resume();
+    this.chooseTimeout?.resume();
   }
 
   private setupChooseTimeout() {

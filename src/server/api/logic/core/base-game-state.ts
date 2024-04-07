@@ -142,6 +142,8 @@ export abstract class BaseGameState<
   protected abstract assertPlayer(id: string): BasePlayerState;
   protected abstract startGame(): void;
   protected abstract resetState(): void;
+  protected abstract pauseGame(): void;
+  protected abstract resumeGame(): void;
 
   init() {
     this.initialized = true;
@@ -382,6 +384,7 @@ export abstract class BaseGameState<
         this.endGame(winner);
       };
       this.once("canceled", cancelEvent);
+      this.pauseGame();
     });
 
     player.on("reconnect", ({ id }) => {
@@ -415,6 +418,7 @@ export abstract class BaseGameState<
 
       this.disconnectedTimeout?.cancel();
       this.disconnectedTimeout = undefined;
+      this.resumeGame();
 
       if (cancelEvent) {
         this.removeListener("canceled", cancelEvent);

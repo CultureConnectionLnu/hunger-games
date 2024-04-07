@@ -5,6 +5,7 @@ import { TypedEventEmitter } from "~/lib/event-emitter";
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game-state";
 import { FightHandler } from "~/server/api/logic/fight";
 
+import type { TimerEvent } from "~/server/api/logic/core/timer";
 import { appRouter } from "~/server/api/root";
 import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
@@ -13,10 +14,10 @@ import {
   expectEventEmitted,
   expectNotEvenEmitted,
   getLastEventOf,
-  useManualTimer,
-  runAllMacroTasks,
   getManualTimer,
+  runAllMacroTasks,
   useAutomaticTimer,
+  useManualTimer,
 } from "./utils";
 
 export const fightTests = () =>
@@ -47,10 +48,9 @@ export const fightTests = () =>
     describe("BaseGame", () => {
       describe("Before game start", () => {
         it("should emit that a player joined", () =>
-          testFight(async ({ createGame, join, connect, firstListener }) => {
+          testFight(async ({ createGame, connect, firstListener }) => {
             await createGame();
 
-            await join("test_user_1");
             await connect("test_user_1");
 
             const event = getLastEventOf(
@@ -62,17 +62,9 @@ export const fightTests = () =>
 
         it("should emit that all players joined", () =>
           testFight(
-            async ({
-              createGame,
-              join,
-              connect,
-              firstListener,
-              secondListener,
-            }) => {
+            async ({ createGame, connect, firstListener, secondListener }) => {
               await createGame();
 
-              await join("test_user_1");
-              await join("test_user_2");
               await connect("test_user_1");
               await connect("test_user_2");
 
@@ -89,10 +81,9 @@ export const fightTests = () =>
 
         it("should emit that player is ready", () =>
           testFight(
-            async ({ createGame, join, ready, connect, firstListener }) => {
+            async ({ createGame, ready, connect, firstListener }) => {
               await createGame();
 
-              await join("test_user_1");
               await connect("test_user_1");
               await ready("test_user_1");
 
@@ -177,13 +168,12 @@ export const fightTests = () =>
           }));
 
         it("should cancel the game if only one player joins", () =>
-          testFight(async ({ createGame, getGame, join, connect, timer }) => {
+          testFight(async ({ createGame, getGame, connect, timer }) => {
             await createGame();
             const game = getGame();
             const listener = vi.fn();
             game.on("canceled", listener);
 
-            await join("test_user_1");
             await connect("test_user_1");
 
             timer.getFirstByName("start-game").emitTimeout();
@@ -198,14 +188,13 @@ export const fightTests = () =>
 
         it("should cancel the game if only one player is ready", () =>
           testFight(
-            async ({ createGame, getGame, join, ready, connect, timer }) => {
+            async ({ createGame, getGame, ready, connect, timer }) => {
               await createGame();
 
               const game = getGame();
               const listener = vi.fn();
               game.on("canceled", listener);
 
-              await join("test_user_1");
               await connect("test_user_1");
               await ready("test_user_1");
 
@@ -225,7 +214,6 @@ export const fightTests = () =>
             async ({
               createGame,
               getGame,
-              join,
               connect,
               disconnect,
               timer,
@@ -235,9 +223,7 @@ export const fightTests = () =>
               const listener = vi.fn();
               game.on("canceled", listener);
 
-              await join("test_user_1");
               await connect("test_user_1");
-              await join("test_user_2");
               await connect("test_user_2");
               disconnect("test_user_1");
 
@@ -251,6 +237,78 @@ export const fightTests = () =>
               });
             },
           ));
+
+        it("should not start disconnected timer while the player did not mark as ready", () =>
+          testFight(
+            async ({ createGame, connect, timer, disconnect }) => {
+              await createGame();
+              await connect("test_user_1");
+
+              disconnect("test_user_1");
+
+              expect(() => timer.getFirstByName("player-disconnect")).toThrow();
+            },
+          ));
+
+        it("should show disconnected timer when a player disconnects", () =>
+          testFight(async ({ timer, startGame, disconnect }) => {
+            await startGame();
+
+            disconnect("test_user_2");
+
+            expect(
+              timer.getFirstByName("player-disconnect").isCanceled,
+            ).toBeFalsy();
+          }));
+
+        it("should no longer show disconnected timer when a player reconnects", () =>
+          testFight(
+            async ({
+              timer,
+              startGame,
+              connect,
+              disconnect,
+              firstListener,
+            }) => {
+              await startGame();
+              disconnect("test_user_2");
+
+              await connect("test_user_2");
+
+              expect(
+                timer.getFirstByName("player-disconnect").isCanceled,
+              ).toBeTruthy();
+              const disconnectTimerEvents = firstListener.mock.calls
+                .map((x) => x[0])
+                .filter((x) => x.event === "disconnect-timer")
+                .map((x) => x.data as TimerEvent);
+
+              // start and end
+              expect(disconnectTimerEvents).toHaveLength(2);
+              expect(disconnectTimerEvents[1]!.type).toBe("end");
+            },
+          ));
+
+        it("should pause other timers when a player disconnects", () =>
+          testFight(async ({ startGame, disconnect, timer }) => {
+            await startGame();
+
+            await new Promise((resolve) => setTimeout(resolve));
+            disconnect("test_user_2");
+
+            expect(timer.getLastByName("choose-item").isRunning).toBeFalsy();
+          }));
+
+        it("should resume other timers when a player reconnects", () =>
+          testFight(async ({ startGame, disconnect, connect, timer }) => {
+            await startGame();
+
+            await new Promise((resolve) => setTimeout(resolve));
+            disconnect("test_user_2");
+            await connect("test_user_2");
+
+            expect(timer.getLastByName("choose-item").isRunning).toBeTruthy();
+          }));
 
         it("should end the game if a player is disconnected for to long", () =>
           testFight(
@@ -410,6 +468,7 @@ async function setupTest() {
   };
 
   const connect = async (userId: `test_user_${1 | 2}`) => {
+    await callers[userId].fight.join();
     const listener = userId === "test_user_1" ? firstListener : secondListener;
     const un = (
       await callers[userId].fight.onAction({ userId, fightId: state.fightId! })
@@ -426,19 +485,12 @@ async function setupTest() {
     state[userId] = undefined;
   };
 
-  const join = async (userId: `test_user_${1 | 2}`) => {
-    return callers[userId].fight.join();
-  };
-
   const ready = async (userId: `test_user_${1 | 2}`) => {
     return callers[userId].fight.ready();
   };
 
   const startGame = async () => {
     await createGame();
-
-    await join("test_user_1");
-    await join("test_user_2");
     await connect("test_user_1");
     await connect("test_user_2");
     await ready("test_user_1");
@@ -452,7 +504,6 @@ async function setupTest() {
     createGame,
     connect,
     disconnect,
-    join,
     ready,
     startGame,
     timer: getManualTimer(),

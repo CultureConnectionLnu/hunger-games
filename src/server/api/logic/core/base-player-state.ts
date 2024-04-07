@@ -26,13 +26,19 @@ export abstract class BasePlayerState<
     return this.view;
   }
 
-  abstract get specificView(): string
+  abstract get specificView(): string;
 
   /**
    * indicates if web sockets is connected
    */
   get connected() {
     return this.isConnected;
+  }
+
+  private get hasCommittedToPlayTheGame() {
+    // assumption is that once the player is ready, a connect signal from web sockets
+    // means a reconnect
+    return this.view !== "none" && this.view !== "joined";
   }
 
   constructor(public id: string) {
@@ -42,19 +48,21 @@ export abstract class BasePlayerState<
 
   connect() {
     this.isConnected = true;
-    // assumption is that once the player is ready, a connect signal from web sockets
-    // means a reconnect
-    if (this.view !== "none" && this.view !== "joined") {
+    if (this.hasCommittedToPlayTheGame) {
       this.emit("reconnect", this.identity);
     }
   }
 
   disconnect() {
     this.isConnected = false;
-    this.emit("disconnect", this.identity);
+    if (this.hasCommittedToPlayTheGame) {
+      this.emit("disconnect", this.identity);
+    }
   }
 
   join() {
+    if (this.hasCommittedToPlayTheGame) return;
+
     this.view = "joined";
     this.emit("joined", this.identity);
   }
@@ -69,7 +77,7 @@ export abstract class BasePlayerState<
   }
 
   gameEnd() {
-    this.view = 'game-ended'
+    this.view = "game-ended";
   }
 
   destroy() {

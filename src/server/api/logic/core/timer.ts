@@ -87,6 +87,10 @@ abstract class TimerLogic extends GenericEventEmitter<{
     return this.cancelWasCalled;
   }
 
+  public get isRunning() {
+    return this.running;
+  }
+
   public get secondsLeft() {
     return this.timeoutAfterSeconds - this.secondsCounter;
   }
