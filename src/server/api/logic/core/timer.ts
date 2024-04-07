@@ -1,23 +1,42 @@
 import { GenericEventEmitter } from "~/lib/event-emitter";
 
-export type TimerEvent = {
-  startTimeUnix: number;
-  timeoutAfterSeconds: number;
-  secondsLeft: number;
-};
+export type TimerEvent =
+  | {
+      type: "start";
+      secondsLeft: number;
+      running: boolean;
+    }
+  | {
+      type: "update";
+      secondsLeft: number;
+      running: boolean;
+    }
+  | {
+      type: "pause";
+      secondsLeft: number;
+      running: boolean;
+    }
+  | {
+      type: "resume";
+      secondsLeft: number;
+      running: boolean;
+    }
+  | {
+      type: "end";
+      secondsLeft: number;
+      running: boolean;
+    };
 
 export type Timer = GenericEventEmitter<{
   start: void;
-  countdown: {
-    startTimeUnix: number;
-    timeoutAfterSeconds: number;
-    secondsLeft: number;
-  };
+  timer: TimerEvent;
   timeout: void;
   canceled: void;
 }> & {
   readonly name: string;
-  cancel: () => void;
+  cancel(): void;
+  pause(): void;
+  resume(): void;
 };
 
 export class TimerFactory {
@@ -55,20 +74,21 @@ export class TimerFactory {
 
 abstract class TimerLogic extends GenericEventEmitter<{
   start: void;
-  countdown: {
-    startTimeUnix: number;
-    timeoutAfterSeconds: number;
-    secondsLeft: number;
-  };
+  timer: TimerEvent;
   timeout: void;
   canceled: void;
 }> {
-  private startTimeUnix;
   private secondsCounter;
   private cancelWasCalled = false;
+  private wasStarted = false;
+  private running = true;
 
   public get isCanceled() {
     return this.cancelWasCalled;
+  }
+
+  public get secondsLeft() {
+    return this.timeoutAfterSeconds - this.secondsCounter;
   }
 
   constructor(
@@ -76,7 +96,6 @@ abstract class TimerLogic extends GenericEventEmitter<{
     public readonly name: string,
   ) {
     super();
-    this.startTimeUnix = Date.now();
     this.secondsCounter = 0;
     void Promise.resolve().then(() => {
       // make sure that it is not emitted immediately
@@ -93,6 +112,16 @@ abstract class TimerLogic extends GenericEventEmitter<{
     this.cancelWasCalled = true;
   }
 
+  public pause() {
+    this.running = false;
+    this.emitTimer("pause");
+  }
+
+  public resume() {
+    this.running = true;
+    this.emitTimer("resume");
+  }
+
   public emitTimeout() {
     this.emit("timeout", undefined);
     this.cleanup();
@@ -106,21 +135,59 @@ abstract class TimerLogic extends GenericEventEmitter<{
   protected abstract cleanup(): void;
 
   private emitCountdown() {
-    this.emit("countdown", {
-      startTimeUnix: this.startTimeUnix,
-      timeoutAfterSeconds: this.timeoutAfterSeconds,
-      secondsLeft: this.timeoutAfterSeconds - this.secondsCounter,
+    if (!this.wasStarted) {
+      this.emitTimer("start");
+      this.wasStarted = true;
+      return;
+    }
+    if (this.secondsLeft !== 0) {
+      this.emitTimer("update");
+      return;
+    }
+    this.emitTimer("end");
+  }
+
+  private emitTimer(type: TimerEvent["type"]) {
+    this.emit("timer", {
+      type,
+      secondsLeft: this.secondsLeft,
+      running: this.running,
     });
   }
 }
 
 class AutomaticTimer extends TimerLogic {
-  private timeout?;
-  private interval?;
+  private timeout?: NodeJS.Timeout;
+  private interval?: NodeJS.Timeout;
 
   constructor(timeoutAfterSeconds: number, name: string) {
     super(timeoutAfterSeconds, name);
+    this.startAutomatic(timeoutAfterSeconds);
+  }
 
+  public pause(): void {
+    super.pause();
+    this.stopAutomatic();
+  }
+
+  public resume(): void {
+    super.resume();
+    this.startAutomatic(this.secondsLeft);
+  }
+
+  protected cleanup() {
+    this.stopAutomatic();
+    this.timeout = undefined;
+    this.interval = undefined;
+    this.removeAllListeners();
+  }
+
+  private stopAutomatic() {
+    clearTimeout(this.timeout);
+    clearInterval(this.interval);
+  }
+
+  private startAutomatic(timeoutAfterSeconds: number) {
     const offsetToEnsureTimeoutAfterInterval = 50;
     this.timeout = setTimeout(
       () => this.emitTimeout(),
@@ -128,14 +195,6 @@ class AutomaticTimer extends TimerLogic {
     );
 
     this.interval = setInterval(() => this.emitNextSecond(), 1000);
-  }
-
-  protected cleanup() {
-    clearTimeout(this.timeout);
-    clearInterval(this.interval);
-    this.timeout = undefined;
-    this.interval = undefined;
-    this.removeAllListeners();
   }
 }
 

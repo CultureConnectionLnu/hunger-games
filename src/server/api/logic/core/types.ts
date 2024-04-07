@@ -1,4 +1,4 @@
-import type { TimerEvent } from "./timeout-counter";
+import type { TimerEvent } from "./timer";
 import type { CombineIfNotNever, IfNotNever, ToUnion } from "./util";
 
 /**

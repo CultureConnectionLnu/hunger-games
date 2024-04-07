@@ -8,7 +8,7 @@ import {
   type DefaultEvents,
 } from "~/lib/event-emitter";
 import type { BasePlayerState } from "./base-player-state";
-import { TimerFactory, type TimerEvent, type Timer } from "./timeout-counter";
+import { TimerFactory, type TimerEvent, type Timer } from "./timer";
 import type {
   EventTemplate,
   GetTimerEvents,
@@ -458,7 +458,7 @@ export abstract class BaseGameState<
       });
     });
 
-    timeout.on("countdown", (e) => {
+    timeout.on("timer", (e) => {
       this.emitEvent({
         event: countdownEvent,
         data: e,

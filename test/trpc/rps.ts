@@ -16,7 +16,6 @@ import {
   useAutomaticTimer,
   useManualTimer,
 } from "./utils";
-import test from "node:test";
 
 export const rpsTests = () =>
   describe("Rock Paper Scissors", () => {
@@ -31,8 +30,10 @@ export const rpsTests = () =>
           const event = getLastEventOf(firstRpsListener, "show-result");
           expect(event?.data).toEqual({
             anotherRound: true,
-            winner: [],
-            looser: [],
+            yourWin: false,
+            wins: 0,
+            looses: 0,
+            opponentId: "test_user_2",
             draw: true,
           });
         }));
@@ -48,8 +49,10 @@ export const rpsTests = () =>
           const event = getLastEventOf(firstRpsListener, "show-result");
           expect(event?.data).toEqual({
             anotherRound: true,
-            winner: ["test_user_1"],
-            looser: ["test_user_2"],
+            yourWin: true,
+            wins: 1,
+            looses: 0,
+            opponentId: "test_user_2",
             draw: false,
           });
         }));
@@ -66,8 +69,10 @@ export const rpsTests = () =>
           const event = getLastEventOf(firstRpsListener, "show-result");
           expect(event?.data).toEqual({
             anotherRound: true,
-            winner: [],
-            looser: [],
+            yourWin: false,
+            wins: 0,
+            looses: 0,
+            opponentId: "test_user_2",
             draw: true,
           });
         }));
@@ -77,47 +82,54 @@ export const rpsTests = () =>
           {
             p1: "rock",
             p2: "scissors",
-            winner: "test_user_1",
-            looser: "test_user_2",
+            wins: 1,
+            looses: 0,
+            youWin: true,
           },
           {
             p1: "scissors",
             p2: "paper",
-            winner: "test_user_1",
-            looser: "test_user_2",
+            wins: 1,
+            looses: 0,
+            youWin: true,
           },
           {
             p1: "paper",
             p2: "rock",
-            winner: "test_user_1",
-            looser: "test_user_2",
+            wins: 1,
+            looses: 0,
+            youWin: true,
           },
           {
             p1: "scissors",
             p2: "rock",
-            winner: "test_user_2",
-            looser: "test_user_1",
+            wins: 0,
+            looses: 1,
+            youWin: false,
           },
           {
             p1: "paper",
             p2: "scissors",
-            winner: "test_user_2",
-            looser: "test_user_1",
+            wins: 0,
+            looses: 1,
+            youWin: false,
           },
           {
             p1: "rock",
             p2: "paper",
-            winner: "test_user_2",
-            looser: "test_user_1",
+            wins: 0,
+            looses: 1,
+            youWin: false,
           },
         ] satisfies Array<{
           p1: "rock" | "paper" | "scissors";
           p2: "rock" | "paper" | "scissors";
-          winner: "test_user_1" | "test_user_2";
-          looser: "test_user_1" | "test_user_2";
+          wins: number;
+          looses: number;
+          youWin: boolean;
         }>
       ).forEach((x) => {
-        it(`if player 1 chooses "${x.p1}" and player 2 chooses "${x.p2}", then ${x.winner} is the winner`, () =>
+        it(`if player 1 chooses "${x.p1}" and player 2 chooses "${x.p2}", then player 1 ${x.youWin ? "wins" : "looses"}`, () =>
           testFight(async ({ startGame, firstRpsListener, choose }) => {
             await startGame();
             await choose("test_user_1", x.p1);
@@ -127,8 +139,10 @@ export const rpsTests = () =>
             const event = getLastEventOf(firstRpsListener, "show-result");
             expect(event?.data).toEqual({
               anotherRound: true,
-              winner: [x.winner],
-              looser: [x.looser],
+              yourWin: x.youWin,
+              wins: x.wins,
+              looses: x.looses,
+              opponentId: "test_user_2",
               draw: false,
             });
           }));

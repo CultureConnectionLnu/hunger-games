@@ -2,7 +2,7 @@ import { z } from "zod";
 import { env } from "~/env";
 import { BaseGameState, type GeneralGameEvents } from "../core/base-game-state";
 import { BasePlayerState } from "../core/base-player-state";
-import { TimerFactory, type Timer } from "../core/timeout-counter";
+import { type TimerEvent, TimerFactory, type Timer } from "../core/timer";
 import type { EventTemplate, OnlyPlayerEvents } from "../core/types";
 
 export const rockPaperScissorsItemsSchema = z.enum([
@@ -68,16 +68,8 @@ export type RockPaperScissorsEvents = EventTemplate<
       draw: boolean;
       opponentId: string;
     };
-    "choose-timer": {
-      startTimeUnix: number;
-      timeoutAfterSeconds: number;
-      secondsLeft: number;
-    };
-    "next-round-timer": {
-      startTimeUnix: number;
-      timeoutAfterSeconds: number;
-      secondsLeft: number;
-    };
+    "choose-timer": TimerEvent;
+    "next-round-timer": TimerEvent;
   },
   {
     general: BasePlayerState["generalView"];
@@ -227,7 +219,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
     this.chooseTimeout.once("timeout", () => {
       this.evaluateState();
     });
-    this.chooseTimeout.on("countdown", (e) => {
+    this.chooseTimeout.on("timer", (e) => {
       this.emitEvent({
         event: "choose-timer",
         data: e,
@@ -247,7 +239,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
         this.startGame();
       });
     });
-    this.nextRoundTimeout.on("countdown", (e) => {
+    this.nextRoundTimeout.on("timer", (e) => {
       this.emitEvent({
         event: "next-round-timer",
         data: e,

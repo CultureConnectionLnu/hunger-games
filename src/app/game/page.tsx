@@ -26,7 +26,7 @@ import type { RouterOutputs } from "~/trpc/shared";
 import { GameCard, GameContentLoading } from "../_components/games/base";
 import RockPaperScissorsGame from "../_components/games/rock-paper-scissors";
 import { Timer } from "../_components/util/timer";
-import { useTimers, type TimerCtxData } from "../_context/timer";
+import { useTimers } from "../_context/timer";
 
 type ServerEvent =
   RouterOutputs["fight"]["onAction"] extends Observable<infer R, never>
@@ -43,7 +43,6 @@ type JoinedEvent = GetSpecificEvent<ServerEvent, "player-joined-readying">;
 
 export default function CurrentGame() {
   const { user, isLoaded: userLoaded } = useUser();
-  const { isLoading: timerLoading, updateTimer } = useTimers();
 
   const { data: currentFight, isLoading: currentFightLoading } =
     api.fight.currentFight.useQuery(undefined, {
@@ -51,7 +50,7 @@ export default function CurrentGame() {
       refetchOnMount: "always",
     });
 
-  if (currentFightLoading || timerLoading || !userLoaded) {
+  if (currentFightLoading || !userLoaded) {
     return <GameLoadingScreen />;
   }
 
@@ -64,7 +63,6 @@ export default function CurrentGame() {
       params={{
         gameName: currentFight!.fight.game,
         fightId: currentFight!.fight.fightId,
-        updateTimer,
         userId: user.id,
       }}
     />
@@ -78,7 +76,6 @@ function JoiningGame({
     gameName: string;
     fightId: string;
     userId: string;
-    updateTimer: TimerCtxData["updateTimer"];
   };
 }) {
   const { isLoading: joining } = api.fight.join.useQuery(undefined, {
@@ -99,28 +96,18 @@ function GameLobby({
     gameName: string;
     fightId: string;
     userId: string;
-    updateTimer: TimerCtxData["updateTimer"];
   };
 }) {
   const [lastEvent, setLastEvent] = useState<ServerEvent>();
+  const { handleEvent } = useTimers();
 
   api.fight.onAction.useSubscription(params, {
     onData(data) {
       switch (data.event) {
         case "start-timer":
-          params.updateTimer(
-            data.event,
-            data.data.secondsLeft,
-            "Game start timeout",
-          );
-          break;
+          return handleEvent(data.event, data.data, "Game start timeout");
         case "disconnect-timer":
-          params.updateTimer(
-            data.event,
-            data.data.secondsLeft,
-            "Disconnect Timeout",
-          );
-          break;
+          return handleEvent(data.event, data.data, "Disconnect Timeout");
         default:
           setLastEvent(data);
       }
@@ -129,7 +116,6 @@ function GameLobby({
   if (!lastEvent) {
     return <GameLoadingScreen />;
   }
-  console.log(lastEvent);
 
   // Render Lobby
   let lobby: React.ReactNode | undefined = undefined;
@@ -260,7 +246,7 @@ function GameContainer({
         }}
       >
         <section className="flex flex-row gap-4">
-          {(timers ?? []).map((timer) => (
+          {(timers ? [...timers.values()] : []).map((timer) => (
             <Timer key={timer.id} params={{ id: timer.id }} />
           ))}
         </section>

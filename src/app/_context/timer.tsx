@@ -1,23 +1,24 @@
 "use client";
 import React, { createContext, useContext, useState } from "react";
+import type { TimerEvent } from "~/server/api/logic/core/timer";
 
 type Timer = {
   id: string;
   secondsLeft: number;
+  paused: boolean;
   label: string;
 };
 
 export type TimerCtxData = {
-  timers: Timer[];
-  updateTimer: (id: string, secondsLeft: number, label: string) => void;
+  timers: Map<string, Timer>;
+  handleEvent: (id: string, event: TimerEvent, label: string) => void;
 };
 
-type TimerCtx =
-  | ({ isLoading: true } & Partial<TimerCtxData>)
-  | ({ isLoading: false } & TimerCtxData);
-
-// Timer context
-const TimerContext = createContext<TimerCtx>({ isLoading: true });
+const TimerContext = createContext<TimerCtxData>({
+  timers: new Map(),
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  handleEvent: () => {},
+});
 
 export const useTimers = () => useContext(TimerContext);
 
@@ -27,31 +28,48 @@ export default function TimerProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [timers, setTimers] = useState<Timer[]>([]);
+  const [timers, setTimers] = useState<Map<string, Timer>>(new Map());
 
-  const updateTimer = (id: string, secondsLeft: number, label: string) => {
-    if (timers.some((timer) => timer.id === id) === false) {
-      setTimers((prevTimers) => [
-        ...prevTimers,
-        { id: id, secondsLeft, label },
-      ]);
-      return;
-    }
-    setTimers((prevTimers) =>
-      prevTimers
-        .map((timer) => {
-          if (timer.id === id) {
-            if (secondsLeft <= 0) return undefined;
-            return { ...timer, secondsLeft };
-          }
-          return timer;
-        })
-        .filter(Boolean),
+  const addTimer = (id: string, secondsLeft: number, label: string) => {
+    setTimers(
+      (current) =>
+        new Map(current.set(id, { id, secondsLeft, label, paused: false })),
     );
   };
 
+  const removeTimer = (id: string) => {
+    setTimers((current) => {
+      current.delete(id);
+      return new Map(current);
+    });
+  };
+
+  const updateTimer = (id: string, secondsLeft: number, running: boolean) => {
+    setTimers((current) => {
+      const timer = current.get(id);
+      if (timer) {
+        current.set(id, { ...timer, secondsLeft, paused: !running });
+      }
+      return new Map(current);
+    });
+  };
+
+  const handleEvent = (id: string, event: TimerEvent, label: string) => {
+    switch (event.type) {
+      case "start":
+        return addTimer(id, event.secondsLeft, label);
+      case "end":
+        return removeTimer(id);
+      case "update":
+      case "pause":
+      case "resume":
+        return updateTimer(id, event.secondsLeft, event.running);
+    }
+    event satisfies never;
+  };
+
   return (
-    <TimerContext.Provider value={{ timers, updateTimer, isLoading: false }}>
+    <TimerContext.Provider value={{ timers, handleEvent }}>
       {children}
     </TimerContext.Provider>
   );

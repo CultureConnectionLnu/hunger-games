@@ -31,19 +31,17 @@ export default function RockPaperScissorsGame({
 }: {
   params: { fightId: string; userId: string };
 }) {
-  const { isLoading, updateTimer } = useTimers();
+  const { handleEvent } = useTimers();
   const [view, setView] = useState<SpecificView>("none");
   const [lastEvent, setLastEvent] = useState<ServerEvent>();
 
   api.rockPaperScissors.onAction.useSubscription(params, {
     onData(data) {
-      console.log(data);
       switch (data.event) {
         case "choose-timer":
-          updateTimer!(data.event, data.data.secondsLeft, "Choose timeout");
+          return handleEvent(data.event, data.data, "Choose timeout");
         case "next-round-timer":
-          updateTimer!(data.event, data.data.secondsLeft, "Next round timeout");
-          break;
+          return handleEvent(data.event, data.data, "Next round timeout");
         default:
           setLastEvent(data);
           if ("specific" in data.view) {
@@ -51,7 +49,6 @@ export default function RockPaperScissorsGame({
           }
       }
     },
-    enabled: !isLoading,
   });
 
   if (!lastEvent) return <GameContentLoading />;
