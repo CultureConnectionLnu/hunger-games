@@ -161,7 +161,7 @@ function SelectionContainer() {
 
   return (
     <div className="flex flex-col items-center justify-center">
-      <div className="mt-32 flex scale-90 flex-row sm:scale-125">
+      <div className="flex scale-90 flex-row sm:scale-125">
         <div
           className="absolute z-10 -mx-48 -my-12 cursor-grab transition duration-300 hover:scale-125"
           onClick={() => choose.mutate("paper")}
