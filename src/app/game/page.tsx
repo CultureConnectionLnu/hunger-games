@@ -133,32 +133,34 @@ function GameLobby({
 
   // Render Lobby
   let lobby: React.ReactNode | undefined = undefined;
-  switch (lastEvent.view.general) {
-    case "none":
-      lobby = <GameContentLoading />;
-      break;
-    case "joined":
-    case "ready":
-      const joinedData = lastEvent.data as JoinedEvent["data"];
-      const opponentId = joinedData.opponent;
-      const status = joinedData.ready.includes(opponentId)
-        ? "ready"
-        : joinedData.joined.includes(opponentId)
-          ? "joined"
-          : "none";
-      const showReadyScreen = lastEvent.view.general === "joined";
-      lobby = (
-        <>
-          {showReadyScreen ? <ReadyScreen /> : <WaitForOtherPlayer />}
-          <OtherPlayerLobbyStatus params={{ opponentId, status }} />{" "}
-        </>
-      );
-      break;
-    case "game-ended":
-      const data = lastEvent.data as WinnerEvent["data"];
-      lobby = <EndScreen params={{ ...data, you: params.userId }} />;
-      break;
-    // todo: add game-halted view
+  if (lastEvent.event !== "game-in-progress") {
+    switch (lastEvent.view.general) {
+      case "none":
+        lobby = <GameContentLoading />;
+        break;
+      case "joined":
+      case "ready":
+        const joinedData = lastEvent.data as JoinedEvent["data"];
+        const opponentId = joinedData.opponent;
+        const status = joinedData.ready.includes(opponentId)
+          ? "ready"
+          : joinedData.joined.includes(opponentId)
+            ? "joined"
+            : "none";
+        const showReadyScreen = lastEvent.view.general === "joined";
+        lobby = (
+          <>
+            {showReadyScreen ? <ReadyScreen /> : <WaitForOtherPlayer />}
+            <OtherPlayerLobbyStatus params={{ opponentId, status }} />{" "}
+          </>
+        );
+        break;
+      case "game-ended":
+        const data = lastEvent.data as WinnerEvent["data"];
+        lobby = <EndScreen params={{ ...data, you: params.userId }} />;
+        break;
+      // todo: add game-halted view
+    }
   }
 
   if (lobby !== undefined) {

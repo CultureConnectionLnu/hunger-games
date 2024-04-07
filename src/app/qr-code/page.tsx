@@ -12,7 +12,7 @@ export default function MatchOverviewPage() {
   const createMatch = api.fight.create.useMutation();
   const userId = searchParams.get("userId");
 
-  if (userId) {
+  if (userId && !createMatch.isLoading) {
     createMatch.mutate({ opponent: userId });
   }
 

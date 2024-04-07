@@ -1,39 +1,45 @@
 "use client";
 
+import {
+  SignInButton,
+  SignOutButton,
+  SignedIn,
+  SignedOut,
+} from "@clerk/nextjs";
 import Link from "next/link";
-import {
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenu,
-} from "~/components/ui/navigation-menu";
-import { Button } from "~/components/ui/button";
-import {
-  SheetTrigger,
-  SheetContent,
-  Sheet,
-  SheetClose,
-} from "~/components/ui/sheet";
+import { usePathname } from "next/navigation";
 import * as React from "react";
-import { SignInButton, SignedIn, SignedOut } from "@clerk/nextjs";
 import {
-  MdManageAccounts,
-  MdSettings,
-  MdMap,
+  MdBarChart,
   MdLockOpen,
+  MdManageAccounts,
+  MdMap,
   MdMenuBook,
+  MdOutlinePowerSettingsNew,
   MdQrCode,
   MdQrCodeScanner,
-  MdBarChart,
+  MdSettings,
 } from "react-icons/md";
+import { Button } from "~/components/ui/button";
+import {
+  NavigationMenu,
+  NavigationMenuLink,
+  NavigationMenuList,
+} from "~/components/ui/navigation-menu";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTrigger,
+} from "~/components/ui/sheet";
 import { api } from "~/trpc/react";
-import { usePathname } from "next/navigation";
 
 export default function Header() {
   const { data } = api.fight.currentFight.useQuery();
-  const pathname = usePathname()
+  const pathname = usePathname();
 
-  if(pathname.startsWith('/game')) {
-    return <></>
+  if (pathname.startsWith("/game")) {
+    return <></>;
   }
 
   return (
@@ -51,7 +57,7 @@ function JoinRunningGame() {
   return (
     <div className="h-36 w-full bg-red-400 text-center">
       <Link href="/game">
-        <div className="flex w-full h-full items-center justify-center">
+        <div className="flex h-full w-full items-center justify-center">
           Back to current game
         </div>
       </Link>
@@ -153,7 +159,10 @@ function SideBar() {
               <ListGroupContent>
                 <SheetClose asChild>
                   <Link href="/profile">
-                    <Button variant="ghost" className="w-full justify-start">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                    >
                       <MdManageAccounts className="mr-2 h-4 w-4" />
                       Profile
                     </Button>
@@ -161,11 +170,25 @@ function SideBar() {
                 </SheetClose>
                 <SheetClose asChild>
                   <Link href="#">
-                    <Button variant="ghost" className="w-full justify-start">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                    >
                       <MdSettings className="mr-2 h-4 w-4" />
                       Settings 🏗️
                     </Button>
                   </Link>
+                </SheetClose>
+                <SheetClose asChild>
+                  <SignOutButton>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start"
+                    >
+                      <MdOutlinePowerSettingsNew  className="mr-2 h-4 w-4" />
+                      Sign In
+                    </Button>
+                  </SignOutButton>
                 </SheetClose>
               </ListGroupContent>
             </SignedIn>
@@ -174,7 +197,7 @@ function SideBar() {
                 <SignInButton>
                   <Button variant="ghost" className="w-full justify-start">
                     <MdLockOpen className="mr-2 h-4 w-4" />
-                    Sign In
+                    Sign out
                   </Button>
                 </SignInButton>
               </ListGroupContent>
@@ -201,7 +224,7 @@ function ListGroup({ children }: { children: React.ReactNode }) {
 
 function ListGroupHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
+    <h2 className="mb-2 text-lg font-semibold tracking-tight">
       {children}
     </h2>
   );

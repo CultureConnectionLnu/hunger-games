@@ -21,6 +21,7 @@ FROM --platform=linux/amd64 node:20-alpine AS builder
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_NODE_ENV
 ARG NEXT_PUBLIC_WS_PORT
+ARG NEXT_PUBLIC_FEATURE_MANUAL_JOIN
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules

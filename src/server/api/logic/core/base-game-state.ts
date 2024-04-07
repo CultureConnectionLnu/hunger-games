@@ -61,7 +61,6 @@ export type GeneralGameEvents = EventTemplate<
   | "player-joined-readying"
   | "start-timer"
   | "disconnect-timer"
-  | "all-player-ready"
   | "game-in-progress"
   | "game-ended"
   | "game-halted"
@@ -84,7 +83,6 @@ export abstract class BaseGameState<
     "player-joined-readying",
     "start-timer",
     "disconnect-timer",
-    "all-player-ready",
     "game-in-progress",
     "game-ended",
     "game-halted",

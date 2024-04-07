@@ -10,6 +10,7 @@ services:
         NODE_ENV: production
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
         NEXT_PUBLIC_WS_PORT: 3001
+        NEXT_PUBLIC_FEATURE_MANUAL_JOIN: true
     working_dir: /app
     ports:
       - 3000:3000

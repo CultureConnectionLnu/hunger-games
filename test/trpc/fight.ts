@@ -105,28 +105,28 @@ export const fightTests = () =>
             },
           ));
 
-        it("should emit that all players are ready", () =>
-          testFight(
-            async ({ createGame, join, ready, connect, firstListener }) => {
-              await createGame();
+        // it("should emit that all players are ready", () =>
+        //   testFight(
+        //     async ({ createGame, join, ready, connect, firstListener }) => {
+        //       await createGame();
 
-              await join("test_user_1");
-              await join("test_user_2");
-              await connect("test_user_1");
-              await connect("test_user_2");
-              await ready("test_user_1");
-              await ready("test_user_2");
+        //       await join("test_user_1");
+        //       await join("test_user_2");
+        //       await connect("test_user_1");
+        //       await connect("test_user_2");
+        //       await ready("test_user_1");
+        //       await ready("test_user_2");
 
-              const event = getLastEventOf(
-                firstListener,
-                "player-joined-readying",
-              )!;
-              expect(event.data.ready).toEqual(["test_user_1", "test_user_2"]);
-              expect(event.data.joined).toEqual([]);
+        //       const event = getLastEventOf(
+        //         firstListener,
+        //         "player-joined-readying",
+        //       )!;
+        //       expect(event.data.ready).toEqual(["test_user_1", "test_user_2"]);
+        //       expect(event.data.joined).toEqual([]);
 
-              expectEventEmitted(firstListener, "all-player-ready");
-            },
-          ));
+        //       expectEventEmitted(firstListener, "all-player-ready");
+        //     },
+        //   ));
       });
 
       it("should start the game", () =>
