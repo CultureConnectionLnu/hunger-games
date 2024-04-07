@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
-import { env } from "~/env";
 import { db, type DB } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
-import { RpsGame } from "./games/rock-paper-scissors";
+import { BaseGame } from "./core/base-game";
+import { RpsGame } from "./games/rps";
 
 // todo: remove force delete from here or only have it here
 
@@ -13,8 +13,6 @@ import { RpsGame } from "./games/rock-paper-scissors";
 const knownGames = {
   "rock-paper-scissors": RpsGame,
 };
-
-type AnyGame = InstanceType<(typeof knownGames)[keyof typeof knownGames]>;
 
 const globalForFightHandler = globalThis as unknown as {
   fightHandler: FightHandler | undefined;
@@ -98,7 +96,7 @@ export class FightHandler {
       return newFight;
     });
 
-    const game = this.gameHandler.createGame(gameType, {
+    const { lobby: game } = this.gameHandler.createGame(gameType, {
       fightId: newFight.id,
       players: [userId, opponentId],
     });
@@ -107,7 +105,7 @@ export class FightHandler {
     return newFight;
   }
 
-  public getGame(fightId: string) {
+  public getFight(fightId: string) {
     return this.gameHandler.getGame(fightId);
   }
 
@@ -115,7 +113,7 @@ export class FightHandler {
     this.gameHandler.defineNextGameType(type);
   }
 
-  private async registerEndListener(game: AnyGame) {
+  private async registerEndListener(game: BaseGame) {
     try {
       const winner = await new Promise<string>((resolve, reject) => {
         game.once("game-ended", (event) => {
@@ -143,18 +141,13 @@ export class FightHandler {
 type KnownGamesMap = {
   [K in keyof typeof knownGames]: {
     type: K;
-    instance: InstanceType<(typeof knownGames)[K]>;
+    lobby: BaseGame;
+    game: InstanceType<(typeof knownGames)[K]>;
   };
 }[keyof typeof knownGames];
 
-const longAssTime = 1_000_000;
-
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();
-  private readonly forceDeleteGameTimeout = env.FEATURE_GAME_TIMEOUT
-    ? 1000 * 60 * 60
-    : longAssTime;
-
   private nextGameType?: keyof typeof knownGames;
 
   public getGame(fightId: string) {
@@ -178,38 +171,23 @@ class GameHandler {
     props: { fightId: string; players: string[] },
   ) {
     const game = new knownGames[type](props.fightId, props.players);
+    const lobby = new BaseGame(props.fightId, props.players, game);
 
-    this.runningGames.set(props.fightId, { type, instance: game });
-    this.registerCleanup(game);
+    const setup = {
+      type,
+      lobby,
+      game,
+    };
+    this.runningGames.set(props.fightId, setup);
 
-    return game;
+    lobby.once("destroy", () => {
+      this.runningGames.delete(props.fightId);
+    });
+
+    return setup;
   }
 
   defineNextGameType(type: keyof typeof knownGames) {
     this.nextGameType = type;
-  }
-
-  private registerCleanup(game: AnyGame) {
-    // make sure the game is automatically removed after a certain time
-    const timeout = setTimeout(
-      () => game.destroy(),
-      this.forceDeleteGameTimeout,
-    );
-    game.once("game-ended", () => {
-      clearTimeout(timeout);
-      setTimeout(() => {
-        /**
-         * make sure all the synchronous event listener are processed
-         * before the game is destroyed.
-         *
-         * queueMacroTask
-         */
-        game.destroy();
-      });
-    });
-    game.once("destroy", () => {
-      clearTimeout(timeout);
-      this.runningGames.delete(game.fightId);
-    });
   }
 }

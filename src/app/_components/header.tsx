@@ -180,6 +180,7 @@ function SideBar() {
                   </Link>
                 </SheetClose>
                 <SheetClose asChild>
+                  <Link href="/">
                   <SignOutButton>
                     <Button
                       variant="ghost"
@@ -189,6 +190,7 @@ function SideBar() {
                       Sign Out
                     </Button>
                   </SignOutButton>
+                  </Link>
                 </SheetClose>
               </ListGroupContent>
             </SignedIn>

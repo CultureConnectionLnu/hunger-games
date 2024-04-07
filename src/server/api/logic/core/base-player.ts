@@ -1,3 +1,4 @@
+
 import {
   GenericEventEmitter,
   type BaseEvent,
@@ -7,7 +8,7 @@ import {
 type GeneralState = "none" | "joined" | "ready" | "in-game" | "game-ended";
 type Identity = { id: string };
 
-export abstract class BasePlayerState<
+export class BasePlayer<
   SubEvents extends BaseEvent = DefaultEvents,
 > extends GenericEventEmitter<
   {
@@ -18,15 +19,13 @@ export abstract class BasePlayerState<
   },
   SubEvents
 > {
-  private view: GeneralState = "none";
+  private _view: GeneralState = "none";
   private isConnected = false;
   private identity;
 
-  get generalView() {
-    return this.view;
+  get view() {
+    return this._view;
   }
-
-  abstract get specificView(): string;
 
   /**
    * indicates if web sockets is connected
@@ -38,7 +37,7 @@ export abstract class BasePlayerState<
   private get hasCommittedToPlayTheGame() {
     // assumption is that once the player is ready, a connect signal from web sockets
     // means a reconnect
-    return this.view !== "none" && this.view !== "joined";
+    return this._view !== "none" && this._view !== "joined";
   }
 
   constructor(public id: string) {
@@ -63,24 +62,24 @@ export abstract class BasePlayerState<
   join() {
     if (this.hasCommittedToPlayTheGame) return;
 
-    this.view = "joined";
+    this._view = "joined";
     this.emit("joined", this.identity);
   }
 
   ready() {
-    this.view = "ready";
+    this._view = "ready";
     this.emit("ready", this.identity);
   }
 
   gameStart() {
-    this.view = "in-game";
+    this._view = "in-game";
   }
 
   gameEnd() {
-    this.view = "game-ended";
+    this._view = "game-ended";
   }
 
-  destroy() {
+  cleanup() {
     this.removeAllListeners();
   }
 }

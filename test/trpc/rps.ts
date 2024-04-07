@@ -1,7 +1,6 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { TypedEventEmitter } from "~/lib/event-emitter";
-import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game-state";
 import { FightHandler } from "~/server/api/logic/fight";
 import { appRouter } from "~/server/api/root";
 import type { RockPaperScissorsPlayerEvents } from "~/server/api/routers/games/rock-paper-scissors";
@@ -16,6 +15,7 @@ import {
   useAutomaticTimer,
   useManualTimer,
 } from "./utils";
+import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 
 export const rpsTests = () =>
   describe("Rock Paper Scissors", () => {
@@ -24,7 +24,7 @@ export const rpsTests = () =>
         testFight(async ({ startGame, firstRpsListener, timer }) => {
           await startGame();
 
-          timer.getFirstByName("choose-item").emitTimeout();
+          timer.getFirstByName("choose-timer").emitTimeout();
 
           expectEventEmitted(firstRpsListener, "show-result");
           const event = getLastEventOf(firstRpsListener, "show-result");
@@ -43,7 +43,7 @@ export const rpsTests = () =>
           await startGame();
           await choose("test_user_1", "rock");
 
-          timer.getFirstByName("choose-item").emitTimeout();
+          timer.getFirstByName("choose-timer").emitTimeout();
 
           expectEventEmitted(firstRpsListener, "show-result");
           const event = getLastEventOf(firstRpsListener, "show-result");
@@ -63,7 +63,7 @@ export const rpsTests = () =>
           await choose("test_user_1", "rock");
           await choose("test_user_2", "rock");
 
-          timer.getFirstByName("choose-item").emitTimeout();
+          timer.getFirstByName("choose-timer").emitTimeout();
 
           expectEventEmitted(firstRpsListener, "show-result");
           const event = getLastEventOf(firstRpsListener, "show-result");
@@ -153,15 +153,15 @@ export const rpsTests = () =>
           await startGame();
           await choose("test_user_1", "rock");
           await choose("test_user_2", "scissors");
-          timer.getLastByName("next-round").emitTimeout();
+          timer.getLastByName("next-round-timer").emitTimeout();
 
           await choose("test_user_1", "rock");
           await choose("test_user_2", "scissors");
-          timer.getLastByName("next-round").emitTimeout();
+          timer.getLastByName("next-round-timer").emitTimeout();
 
           await choose("test_user_1", "rock");
           await choose("test_user_2", "scissors");
-          timer.getLastByName("next-round").emitTimeout();
+          timer.getLastByName("next-round-timer").emitTimeout();
 
           expectEventEmitted(firstListener, "game-ended");
           const event = getLastEventOf(firstListener, "game-ended");
@@ -180,16 +180,10 @@ export const rpsTests = () =>
 
             expect(
               getLastEventOf(firstRpsListener, "enable-choose")?.view,
-            ).toEqual({
-              general: "in-game",
-              specific: "start-choose",
-            });
+            ).toEqual("start-choose");
             expect(
               getLastEventOf(secondRpsListener, "enable-choose")?.view,
-            ).toEqual({
-              general: "in-game",
-              specific: "start-choose",
-            });
+            ).toEqual("start-choose");
           },
         ));
 
@@ -206,17 +200,11 @@ export const rpsTests = () =>
 
             expect(
               getLastEventOf(firstRpsListener, "show-waiting")?.view,
-            ).toEqual({
-              general: "in-game",
-              specific: "chosen",
-            });
+            ).toEqual("chosen");
 
             expect(
               getLastEventOf(secondRpsListener, "enable-choose")?.view,
-            ).toEqual({
-              general: "in-game",
-              specific: "start-choose",
-            });
+            ).toEqual("start-choose");
           },
         ));
 
@@ -234,17 +222,11 @@ export const rpsTests = () =>
 
             expect(
               getLastEventOf(firstRpsListener, "show-result")?.view,
-            ).toEqual({
-              general: "in-game",
-              specific: "show-result",
-            });
+            ).toEqual("show-result");
 
             expect(
               getLastEventOf(secondRpsListener, "show-result")?.view,
-            ).toEqual({
-              general: "in-game",
-              specific: "show-result",
-            });
+            ).toEqual("show-result");
           },
         ));
 
@@ -260,21 +242,15 @@ export const rpsTests = () =>
             await startGame();
             await choose("test_user_1", "rock");
             await choose("test_user_2", "rock");
-            timer.getLastByName("next-round").emitTimeout();
+            timer.getLastByName("next-round-timer").emitTimeout();
 
             expect(
               getLastEventOf(firstRpsListener, "enable-choose")?.view,
-            ).toEqual({
-              general: "in-game",
-              specific: "start-choose",
-            });
+            ).toEqual("start-choose");
 
             expect(
               getLastEventOf(secondRpsListener, "enable-choose")?.view,
-            ).toEqual({
-              general: "in-game",
-              specific: "start-choose",
-            });
+            ).toEqual("start-choose");
           },
         ));
     });
@@ -284,7 +260,7 @@ export const rpsTests = () =>
         testFight(async ({ startGame, timer, firstRpsListener }) => {
           await startGame();
 
-          expect(() => timer.getLastByName("choose-item")).not.toThrow();
+          expect(() => timer.getLastByName("choose-timer")).not.toThrow();
           expect(
             getLastEventOf(firstRpsListener, "choose-timer")?.data.secondsLeft,
           ).toBeGreaterThan(0);
@@ -296,7 +272,7 @@ export const rpsTests = () =>
           await choose("test_user_1", "rock");
           await choose("test_user_2", "rock");
 
-          const chooseTimer = timer.getLastByName("choose-item");
+          const chooseTimer = timer.getLastByName("choose-timer");
 
           expect(chooseTimer.isCanceled).toBeTruthy();
           expect(
@@ -308,7 +284,7 @@ export const rpsTests = () =>
         testFight(async ({ startGame, timer }) => {
           await startGame();
 
-          expect(() => timer.getLastByName("next-round")).toThrow();
+          expect(() => timer.getLastByName("next-round-timer")).toThrow();
         }));
 
       it("should start next round timer once everyone has chosen", () =>
@@ -317,7 +293,7 @@ export const rpsTests = () =>
           await choose("test_user_1", "rock");
           await choose("test_user_2", "rock");
 
-          expect(() => timer.getLastByName("next-round")).not.toThrow();
+          expect(() => timer.getLastByName("next-round-timer")).not.toThrow();
           expect(
             getLastEventOf(firstRpsListener, "next-round-timer")?.data
               .secondsLeft,
@@ -330,10 +306,10 @@ export const rpsTests = () =>
           await choose("test_user_1", "rock");
           await choose("test_user_2", "rock");
 
-          const nextRoundTimer = timer.getLastByName("next-round");
+          const nextRoundTimer = timer.getLastByName("next-round-timer");
           await timer.simulateNormalTimeout(nextRoundTimer);
 
-          expect(timer.getLastByName("choose-item").isCanceled).toBeFalsy();
+          expect(timer.getLastByName("choose-timer").isCanceled).toBeFalsy();
           expect(
             getLastEventOf(firstRpsListener, "next-round-timer")?.data
               .secondsLeft,
@@ -361,8 +337,8 @@ async function testFight(
       if (id === undefined) return x;
 
       // finish the game properly before deleting
-      args.getGame().endGame("test_user_1");
-      args.getGame().destroy();
+      args.getLobby().endGame("test_user_1");
+      args.getLobby().destroy();
       await db.delete(fight).where(eq(fight.id, id));
       return x;
     })
@@ -404,7 +380,7 @@ async function setupTest() {
 
   const state = {
     fightId,
-    game: FightHandler.instance.getGame(fightId),
+    fight: FightHandler.instance.getFight(fightId),
     test_user_1: {
       base: (
         await callers.test_user_1.fight.onAction({
@@ -452,7 +428,8 @@ async function setupTest() {
   return {
     callers,
     getFightId: () => state.fightId,
-    getGame: () => state.game!.instance,
+    getGame: () => state.fight!.game,
+    getLobby: () => state.fight!.lobby,
     startGame,
     choose,
     firstListener,

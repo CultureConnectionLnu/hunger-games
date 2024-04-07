@@ -120,7 +120,7 @@ function GameLobby({
   // Render Lobby
   let lobby: React.ReactNode | undefined = undefined;
   if (lastEvent.event !== "game-in-progress") {
-    switch (lastEvent.view.general) {
+    switch (lastEvent.view) {
       case "none":
         lobby = <GameContentLoading />;
         break;
@@ -133,7 +133,7 @@ function GameLobby({
           : joinedData.joined.includes(opponentId)
             ? "joined"
             : "none";
-        const showReadyScreen = lastEvent.view.general === "joined";
+        const showReadyScreen = lastEvent.view=== "joined";
         lobby = (
           <>
             {showReadyScreen ? <ReadyScreen /> : <WaitForOtherPlayer />}

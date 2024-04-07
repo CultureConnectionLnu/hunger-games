@@ -37,6 +37,7 @@ export type Timer = GenericEventEmitter<{
   cancel(): void;
   pause(): void;
   resume(): void;
+  cleanup(): void;
 };
 
 export class TimerFactory {
@@ -136,7 +137,7 @@ abstract class TimerLogic extends GenericEventEmitter<{
     this.emitCountdown();
   }
 
-  protected abstract cleanup(): void;
+  public abstract cleanup(): void;
 
   private emitCountdown() {
     if (!this.wasStarted) {
@@ -179,7 +180,7 @@ class AutomaticTimer extends TimerLogic {
     this.startAutomatic(this.secondsLeft);
   }
 
-  protected cleanup() {
+  public cleanup() {
     this.stopAutomatic();
     this.timeout = undefined;
     this.interval = undefined;
@@ -203,7 +204,7 @@ class AutomaticTimer extends TimerLogic {
 }
 
 class ManualTimer extends TimerLogic {
-  protected cleanup() {
+  public cleanup() {
     this.removeAllListeners();
   }
 }

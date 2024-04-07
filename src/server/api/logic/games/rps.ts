@@ -1,55 +1,33 @@
 import { z } from "zod";
-import { env } from "~/env";
-import { BaseGameState, type GeneralGameEvents } from "../core/base-game-state";
-import { BasePlayerState } from "../core/base-player-state";
-import { type TimerEvent, TimerFactory, type Timer } from "../core/timer";
-import type { EventTemplate, OnlyPlayerEvents } from "../core/types";
+import { GenericEventEmitter } from "~/lib/event-emitter";
+import { rockPaperScissorsConfig } from "../config";
+import type { SpecificGame } from "../core/base-game";
+import { GameEventingHandler } from "../core/game-parts/eventing";
+import { GameTimerHandler } from "../core/game-parts/timer";
+import { type TimerEvent } from "../core/timer";
+import type {
+  EventTemplate,
+  ToEventData,
+  UnspecificPlayerEventData,
+} from "../core/types";
 
 export const rockPaperScissorsItemsSchema = z.enum([
   "rock",
   "paper",
   "scissors",
 ]);
-const longAssTime = 1_000_000;
-
-const GameConfig = {
-  get startTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 30 : longAssTime;
-  },
-  get disconnectTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 60 * 60 : longAssTime;
-  },
-  get forceStopInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 1000 * 60 * 60 : longAssTime;
-  },
-  get chooseTimeoutInSeconds() {
-    return env.FEATURE_GAME_TIMEOUT ? 5 : longAssTime;
-  },
-  get nextRoundTimeoutInSeconds() {
-    // should not be affected by the feature flag
-    return 5;
-  },
-  bestOf: 3,
-  evaluation: [
-    {
-      item: "rock",
-      beats: ["scissors"],
-    },
-    {
-      item: "scissors",
-      beats: ["paper"],
-    },
-    {
-      item: "paper",
-      beats: ["rock"],
-    },
-  ] as GameEvaluation[],
-} as const;
 
 type PlayerChooseItem = z.infer<typeof rockPaperScissorsItemsSchema>;
-type GameEvaluation = {
+export type GameEvaluation = {
   item: PlayerChooseItem;
   beats: PlayerChooseItem[];
+};
+
+export type RockPaperScissorsConfig = {
+  chooseTimeoutInSeconds: number;
+  nextRoundTimeoutInSeconds: number;
+  bestOf: number;
+  evaluation: GameEvaluation[];
 };
 
 export type RockPaperScissorsEvents = EventTemplate<
@@ -70,12 +48,10 @@ export type RockPaperScissorsEvents = EventTemplate<
     };
     "choose-timer": TimerEvent;
     "next-round-timer": TimerEvent;
+    destroy: undefined;
   },
-  {
-    general: BasePlayerState["generalView"];
-    specific: RpsPlayer["specificView"];
-  },
-  never,
+  RpsPlayer["view"],
+  "destroy",
   | "enable-choose"
   | "show-waiting"
   | "show-result"
@@ -83,37 +59,37 @@ export type RockPaperScissorsEvents = EventTemplate<
   | "next-round-timer"
 >;
 
-class RpsPlayer extends BasePlayerState<{
+class RpsPlayer extends GenericEventEmitter<{
   chosen: {
     id: string;
     item: PlayerChooseItem;
   };
 }> {
-  private gameSpecificState:
-    | "none"
-    | "start-choose"
-    | "chosen"
-    | "show-result" = "none";
+  private _view: "none" | "start-choose" | "chosen" | "show-result" = "none";
   private item?: PlayerChooseItem;
 
-  get specificView() {
-    return this.gameSpecificState;
+  get view() {
+    return this._view;
   }
 
   get selectedItem() {
     return this.item;
   }
 
+  constructor(public id: string) {
+    super();
+  }
+
   enableChoose() {
-    this.gameSpecificState = "start-choose";
+    this._view = "start-choose";
   }
 
   choose(item: PlayerChooseItem) {
-    if (this.gameSpecificState !== "start-choose") {
+    if (this._view !== "start-choose") {
       throw new Error(`Player can't choose right now`);
     }
 
-    this.gameSpecificState = "chosen";
+    this._view = "chosen";
     this.item = item;
     this.emit("chosen", {
       id: this.id,
@@ -122,67 +98,142 @@ class RpsPlayer extends BasePlayerState<{
   }
 
   showResult() {
-    this.gameSpecificState = "show-result";
+    this._view = "show-result";
     this.item = undefined;
+  }
+
+  cleanup() {
+    this.removeAllListeners();
   }
 }
 
-export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
-  protected readonly eventHistory: Record<
-    string,
-    (
-      | OnlyPlayerEvents<GeneralGameEvents>
-      | OnlyPlayerEvents<RockPaperScissorsEvents>
-    )[]
-  > = {};
-  protected readonly players = new Map<string, RpsPlayer>();
+export class RpsGame
+  extends GenericEventEmitter<RockPaperScissorsEvents>
+  implements SpecificGame
+{
+  private readonly players = new Map<string, RpsPlayer>();
+  private timerHandler;
   private winners: string[] = [];
-  private nextRoundTimeout?: Timer;
-  private chooseTimeout?: Timer;
+  private endGame?: (winnerId: string) => void;
+  private readonly config: RockPaperScissorsConfig = rockPaperScissorsConfig;
+
+  private get hasStarted() {
+    return this.endGame !== undefined;
+  }
+
+  private emitEvent: (
+    eventData: ToEventData<RockPaperScissorsEvents>,
+    playerId?: string,
+  ) => void;
+  public getEventHistory: (playerId: string) => UnspecificPlayerEventData[];
 
   constructor(fightId: string, playerIds: string[]) {
-    super(
-      GameConfig,
+    super();
+    this.setupPlayers(playerIds);
+
+    const eventing = new GameEventingHandler({
+      emit: this.emit.bind(this),
       fightId,
-      [
+      playerIds,
+      getView: (playerId) => this.players.get(playerId)!.view,
+      playerSpecificEvents: [
         "enable-choose",
         "show-waiting",
         "show-result",
         "choose-timer",
         "next-round-timer",
       ],
-      [],
-    );
-    playerIds.forEach((id) => {
-      const player = new RpsPlayer(id);
-      this.players.set(id, player);
-      this.eventHistory[id] = [];
-
-      player.on("chosen", (e) => {
-        const doneChoosing = [...this.players.values()]
-          .filter((x) => x.specificView === "chosen")
-          .map((x) => x.id);
-        this.emitEvent(
-          {
-            event: "show-waiting",
-            data: { doneChoosing },
-          },
-          e.id,
-        );
-        if (doneChoosing.length !== this.players.size) return;
-
-        this.chooseTimeout?.cancel();
-        this.evaluateState();
-      });
+      serverSpecificEvents: ["destroy"],
     });
-    this.init();
+    this.emitEvent = eventing.emitEvent.bind(eventing);
+    this.getEventHistory = eventing.getPlayerEvents.bind(eventing);
+
+    this.timerHandler = new GameTimerHandler<RockPaperScissorsEvents>(
+      this.emitEvent,
+      [
+        {
+          name: "choose-timer",
+          time: this.config.chooseTimeoutInSeconds,
+          timeoutEvent: () => this.evaluateState(),
+        },
+        {
+          name: "next-round-timer",
+          time: this.config.nextRoundTimeoutInSeconds,
+          timeoutEvent: () => setTimeout(() => this.startChoose()),
+        },
+      ],
+    );
   }
 
   getPlayer(id: string) {
     return this.players.get(id);
   }
 
-  assertPlayer(id: string) {
+  cleanup() {
+    this.emitEvent({
+      event: "destroy",
+      data: undefined,
+    });
+    this.timerHandler.cleanup();
+    this.players.forEach((player) => player.cleanup());
+    this.removeAllListeners();
+  }
+
+  startGame(endGame: (winnerId: string) => void): void {
+    this.endGame = endGame;
+    this.startChoose();
+  }
+
+  playerChoose(playerId: string, choice: PlayerChooseItem) {
+    this.assertGameHasStarted();
+    this.assertPlayer(playerId).choose(choice);
+  }
+
+  pauseGame() {
+    this.timerHandler.pauseAllTimers();
+  }
+
+  resumeGame() {
+    this.timerHandler.resumeAllTimers();
+  }
+
+  private startChoose() {
+    this.players.forEach((player) => player.enableChoose());
+    this.emitEvent({
+      event: "enable-choose",
+      data: undefined,
+    });
+    this.timerHandler.startTimer("choose-timer");
+  }
+
+  private setupPlayers(ids: string[]) {
+    ids.forEach((id) => {
+      const player = new RpsPlayer(id);
+      this.players.set(id, player);
+      this.handleChoose(player);
+    });
+  }
+
+  private handleChoose(player: RpsPlayer) {
+    player.on("chosen", (e) => {
+      const doneChoosing = [...this.players.values()]
+        .filter((x) => x.view === "chosen")
+        .map((x) => x.id);
+      this.emitEvent(
+        {
+          event: "show-waiting",
+          data: { doneChoosing },
+        },
+        e.id,
+      );
+      if (doneChoosing.length !== this.players.size) return;
+
+      this.timerHandler.cancelTimer("choose-timer");
+      this.evaluateState();
+    });
+  }
+
+  private assertPlayer(id: string) {
     const player = this.getPlayer(id);
     if (!player) {
       throw new Error("Player is not part of the game");
@@ -190,71 +241,10 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
     return player;
   }
 
-  protected startGame(): void {
-    this.players.forEach((player) => player.enableChoose());
-    this.emitEvent({
-      event: "enable-choose",
-      data: undefined,
-    });
-    this.setupChooseTimeout();
-  }
-
-  playerChoose(playerId: string, choice: PlayerChooseItem) {
-    this.assertGameIsRunning();
-    this.assertPlayer(playerId).choose(choice);
-  }
-
-  protected resetState() {
-    this.nextRoundTimeout?.cancel();
-    this.chooseTimeout?.cancel();
-  }
-
-  protected pauseGame(): void {
-    this.nextRoundTimeout?.pause();
-    this.chooseTimeout?.pause();
-  }
-
-  protected resumeGame(): void {
-    this.nextRoundTimeout?.resume();
-    this.chooseTimeout?.resume();
-  }
-
-  private setupChooseTimeout() {
-    this.chooseTimeout = TimerFactory.instance.create(
-      GameConfig.chooseTimeoutInSeconds,
-      "choose-item",
-    );
-
-    // todo: check if all timer events can be aligned
-    this.chooseTimeout.once("timeout", () => {
-      this.evaluateState();
-    });
-    this.chooseTimeout.on("timer", (e) => {
-      this.emitEvent({
-        event: "choose-timer",
-        data: e,
-      });
-    });
-  }
-
-  private setupNextRoundTimeout() {
-    this.nextRoundTimeout = TimerFactory.instance.create(
-      GameConfig.nextRoundTimeoutInSeconds,
-      "next-round",
-    );
-
-    // todo: check if all timer events can be aligned
-    this.nextRoundTimeout.once("timeout", () => {
-      setTimeout(() => {
-        this.startGame();
-      });
-    });
-    this.nextRoundTimeout.on("timer", (e) => {
-      this.emitEvent({
-        event: "next-round-timer",
-        data: e,
-      });
-    });
+  private assertGameHasStarted() {
+    if (!this.hasStarted) {
+      throw new Error(`The game has not been started yet`);
+    }
   }
 
   private getWinLooseRate(playerId: string) {
@@ -292,7 +282,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
           id,
         );
       });
-      this.setupNextRoundTimeout();
+      this.timerHandler.startTimer("next-round-timer");
       return;
     }
 
@@ -316,9 +306,9 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
 
     if (!overAllWinner) {
       // continue with the next round
-      this.setupNextRoundTimeout();
+      this.timerHandler.startTimer("next-round-timer");
     } else {
-      this.endGame(overAllWinner[0]);
+      this.endGame!(overAllWinner[0]);
     }
   }
 
@@ -332,7 +322,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
     );
 
     const winsNeeded =
-      Math.ceil(GameConfig.bestOf / 2) + (GameConfig.bestOf % 2);
+      Math.ceil(this.config.bestOf / 2) + (this.config.bestOf % 2);
 
     return Object.entries(winCount).find(([, count]) => count >= winsNeeded);
   }
@@ -372,7 +362,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
       } as const;
     }
 
-    const firstPlayerBeats = GameConfig.evaluation.find(
+    const firstPlayerBeats = this.config.evaluation.find(
       (item) => item.item === firstPlayer.selectedItem,
     )!.beats;
 
@@ -384,7 +374,7 @@ export class RpsGame extends BaseGameState<RockPaperScissorsEvents> {
       } as const;
     }
 
-    const secondPlayerBeats = GameConfig.evaluation.find(
+    const secondPlayerBeats = this.config.evaluation.find(
       (item) => item.item === secondPlayer.selectedItem,
     )!.beats;
 

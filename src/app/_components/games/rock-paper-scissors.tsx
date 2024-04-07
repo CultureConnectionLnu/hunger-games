@@ -16,8 +16,7 @@ type ServerEvent =
     ? R
     : never;
 
-type ExtractSpecificView<T> = T extends { specific: infer R } ? R : never;
-type SpecificView = ExtractSpecificView<ServerEvent["view"]>;
+type View = ServerEvent["view"];
 
 type GetSpecificEvent<T, Event extends ServerEvent["event"]> = T extends {
   event: Event;
@@ -32,7 +31,7 @@ export default function RockPaperScissorsGame({
   params: { fightId: string; userId: string };
 }) {
   const { handleEvent } = useTimers();
-  const [view, setView] = useState<SpecificView>("none");
+  const [view, setView] = useState<View>("none");
   const [lastEvent, setLastEvent] = useState<ServerEvent>();
 
   api.rockPaperScissors.onAction.useSubscription(params, {
@@ -44,9 +43,7 @@ export default function RockPaperScissorsGame({
           return handleEvent(data.event, data.data, "Next round timeout");
         default:
           setLastEvent(data);
-          if ("specific" in data.view) {
-            setView(data.view.specific);
-          }
+            setView(data.view);
       }
     },
   });
@@ -70,7 +67,7 @@ function ViewContainer({
   params,
 }: {
   params: {
-    view: SpecificView;
+    view: View;
     result?: ResultEvent["data"] & { yourId: string };
   };
 }) {

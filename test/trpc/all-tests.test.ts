@@ -1,4 +1,4 @@
-import { fightTests } from "./fight";
+import { lobbyTests } from "./lobby";
 import { rpsTests } from "./rps";
 import { provideTestUsers } from "./utils";
 
@@ -6,5 +6,5 @@ import { provideTestUsers } from "./utils";
 // and this would make it difficult to decide when the users should be created
 // and when they should be removed again
 provideTestUsers();
-fightTests();
+lobbyTests();
 rpsTests();

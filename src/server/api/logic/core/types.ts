@@ -6,10 +6,7 @@ import type { CombineIfNotNever, IfNotNever, ToUnion } from "./util";
  */
 export type EventTemplate<
   Events extends Record<string, unknown>,
-  PlayerStates extends {
-    general?: string;
-    specific?: string;
-  },
+  PlayerStates,
   ServerEvents extends keyof Events = never,
   PlayerEvents extends keyof Events = keyof Events,
 > = CombineIfNotNever<
@@ -62,10 +59,7 @@ export type UnspecificPlayerEventData = {
   event: string;
   data: unknown;
   fightId: string;
-  view: {
-    general: string;
-    specific: string;
-  };
+  view: string;
 };
 
 type ReduceToEventAndData<T> = {
