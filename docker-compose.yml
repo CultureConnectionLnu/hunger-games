@@ -10,6 +10,7 @@ services:
         NODE_ENV: production
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
         NEXT_PUBLIC_WS_PORT: 3001
+        NEXT_PUBLIC_FEATURE_MANUAL_JOIN: true
     working_dir: /app
     ports:
       - 3000:3000
@@ -22,9 +23,10 @@ services:
       - DATABASE_URL=postgresql://myuser:mysecretpassword@db:5432/mydatabase
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
+      - FEATURE_GAME_TIMEOUT=true
 
   db:
-    image: postgres
+    image: postgres@sha256:44e345d9eb8bf0c62187df6dd4082f2cf4ab3cabe9957004dedc91e05e6d02c7 # postgres:16.2-bullseye
     container_name: hunger-games-db
     restart: always
     environment:

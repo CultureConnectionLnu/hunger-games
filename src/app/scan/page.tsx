@@ -1,4 +1,4 @@
-import { QrCodeScanner } from "../_components/qr-code-scanner";
+import { QrCodeScanner } from "../_feature/qrcode/qr-code-scanner";
 import { unstable_noStore as noStore } from "next/cache";
 
 export default async function MatchOverviewPage() {

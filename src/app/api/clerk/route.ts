@@ -18,13 +18,17 @@ async function handleEvent(event: WebhookEvent) {
       const userId = event.data.id;
       if (!userId) {
         throw new Error(`user.deleted webhook event missing user id`, {
-            cause: event
+          cause: event,
         });
       }
-      const updated = await db.update(users).set({ isDeleted: true, clerkId: null }).where(eq(users.clerkId, userId)).returning({updatedId: users.id})
-      if(updated.length === 0) {
+      const updated = await db
+        .update(users)
+        .set({ isDeleted: true })
+        .where(eq(users.clerkId, userId))
+        .returning({ updatedId: users.clerkId });
+      if (updated.length === 0) {
         throw new Error(`user.deleted webhook event for unknown user`, {
-            cause: event
+          cause: event,
         });
       }
       break;
@@ -58,4 +62,3 @@ export async function POST(request: Request) {
 export async function GET() {
   return Response.json({ message: "Endpoint available" });
 }
-

@@ -7,12 +7,12 @@ import { api } from "~/trpc/react";
 export function ForceRedirect() {
   const router = useRouter();
   const { user } = useUser();
-  
+
   api.fight.onInvite.useSubscription(
-    { id: user?.id ?? '' },
+    { id: user?.id ?? "" },
     {
-      onData(data) {
-        router.push(`/game/${data.game}/${data.fightId}`);
+      onData() {
+        router.push(`/game`);
       },
       enabled: Boolean(user?.id),
     },

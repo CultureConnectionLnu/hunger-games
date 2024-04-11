@@ -12,11 +12,13 @@ export const env = createEnv({
       .url()
       .refine(
         (str) => !str.includes("YOUR_POSTGRES_URL_HERE"),
-        "You forgot to change the default URL"
+        "You forgot to change the default URL",
       ),
     PORT: z.string().regex(/^\d+$/),
     CLERK_SECRET_KEY: z.string(),
     CLERK_WEBHOOK_SECRET: z.string(),
+    // feature flags
+    FEATURE_GAME_TIMEOUT: z.enum(["true", "false"]),
   },
 
   /**
@@ -32,6 +34,7 @@ export const env = createEnv({
     NEXT_PUBLIC_NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    NEXT_PUBLIC_FEATURE_MANUAL_JOIN: z.enum(["true", "false"]).default("false"),
   },
 
   /**
@@ -44,9 +47,15 @@ export const env = createEnv({
     NEXT_PUBLIC_NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_WS_PORT: process.env.NEXT_PUBLIC_WS_PORT,
 
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
+      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY,
     CLERK_WEBHOOK_SECRET: process.env.CLERK_WEBHOOK_SECRET,
+
+    // feature flags
+    FEATURE_GAME_TIMEOUT: process.env.FEATURE_GAME_TIMEOUT,
+    NEXT_PUBLIC_FEATURE_MANUAL_JOIN:
+      process.env.NEXT_PUBLIC_FEATURE_MANUAL_JOIN,
   },
   /**
    * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially

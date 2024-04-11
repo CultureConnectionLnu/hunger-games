@@ -1,6 +1,7 @@
 ##### DEPENDENCIES
 
-FROM --platform=linux/amd64 node:20-alpine AS deps
+# node:20-alpine
+FROM --platform=linux/amd64 node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 AS deps 
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
@@ -17,10 +18,12 @@ RUN \
 
 ##### BUILDER
 
-FROM --platform=linux/amd64 node:20-alpine AS builder
+# node:20-alpine
+FROM --platform=linux/amd64 node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 AS builder
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_NODE_ENV
 ARG NEXT_PUBLIC_WS_PORT
+ARG NEXT_PUBLIC_FEATURE_MANUAL_JOIN
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -37,7 +40,8 @@ RUN \
 
 ##### RUNNER
 
-FROM --platform=linux/amd64 node:20-alpine AS runner
+# node:20-alpine
+FROM --platform=linux/amd64 node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 AS runner
 # FROM --platform=linux/amd64 gcr.io/distroless/nodejs20-debian12 AS runner
 WORKDIR /app
 

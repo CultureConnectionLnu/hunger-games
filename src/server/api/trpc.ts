@@ -56,7 +56,6 @@ export async function createCommonContext(opts: {
         .insert(users)
         .values({ clerkId: userId, role: "user" })
         .returning({
-          id: users.id,
           createdAt: users.createdAt,
           clerkId: users.clerkId,
           isDeleted: users.isDeleted,
@@ -87,6 +86,7 @@ export async function createCommonContext(opts: {
  * @see https://trpc.io/docs/server/context
  */
 export const createTRPCContext = async () => {
+  // HACK to get clerk working with web socket
   const { auth } = await clerkModule;
   const session = auth();
   return createCommonContext({
@@ -100,7 +100,7 @@ export const createWebSocketContext = async () => {
     ee: globalForEE.ee!,
     userId: undefined,
   });
-}
+};
 /**
  * 2. INITIALIZATION
  *
@@ -152,12 +152,21 @@ export const userProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
+  if (ctx.user.isDeleted) {
+    throw new TRPCError({
+      code: "UNPROCESSABLE_CONTENT",
+      message: "User is deleted",
+    });
+  }
   // default role is user, so no further checks are needed
 
   return next({
     ctx: {
       ...ctx,
-      user: ctx.user,
+      user: {
+        ...ctx.user,
+        clerkId: ctx.user.clerkId,
+      },
     },
   });
 });

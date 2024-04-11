@@ -1,9 +1,11 @@
 import "~/styles/globals.css";
 
-import { ClerkProvider, SignedIn } from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Inter } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
+import Header from "./_components/header";
+import { ForceRedirect } from "./_feature/force-redirect/force-redirect";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,9 +28,9 @@ export default function RootLayout({
       <html lang="en">
         <body className={`font-sans ${inter.variable}`}>
           <TRPCReactProvider>
-            <SignedIn>
-            </SignedIn>
-            <div style={{ width: 900 }}>{children}</div>
+            <ForceRedirect />
+            <Header />
+            <div>{children}</div>
           </TRPCReactProvider>
         </body>
       </html>

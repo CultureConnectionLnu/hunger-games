@@ -1,13 +1,14 @@
 import { TRPCError } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
-import { and, eq, isNull } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 import {
   createTRPCRouter,
   publicProcedure,
   userProcedure,
 } from "~/server/api/trpc";
-import { fight, usersToFight } from "~/server/db/schema";
+import type { BaseGamePlayerEvents } from "../logic/core/base-game";
+import { FightHandler } from "../logic/fight";
 
 const messageSchema = z.object({
   fightId: z.string().uuid(),
@@ -18,9 +19,61 @@ type Message = Pick<z.TypeOf<typeof messageSchema>, "fightId" | "game">;
 
 declare module "~/lib/event-emitter" {
   type UserId = string;
+  type FightId = string;
   // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
   interface KnownEvents {
     [key: `fight.join.${UserId}`]: Message;
+  }
+}
+
+/**
+ * makes sure that a user is in a fight
+ */
+export const inFightProcedure = userProcedure.use(async ({ ctx, next }) => {
+  const currentFight = await FightHandler.instance.getCurrentFight(
+    ctx.user.clerkId,
+  );
+
+  const fight = FightHandler.instance.getFight(currentFight.fightId);
+  if (!fight) {
+    // TODO: introduce delete action for the invalid fight
+    console.error(
+      `Could not find the fight with id '${currentFight.fightId}' in the GameHandler`,
+    );
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Could not find your match, even though it should exist",
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      currentFight,
+      fight,
+      fightHandler: FightHandler.instance,
+    },
+  });
+});
+
+export function catchMatchError(fn: () => void) {
+  try {
+    fn();
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: error.message,
+      });
+    }
+    const errorId = randomUUID();
+    console.error("Error id: " + errorId, error);
+    throw new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message:
+        "Could not interact with rock paper scissors match. For more details, check the logs with error id: " +
+        errorId,
+    });
   }
 }
 
@@ -43,58 +96,91 @@ export const fightRouter = createTRPCRouter({
         });
       }
 
-      const existingFight = await ctx.db
-        .select()
-        .from(fight)
-        .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
-        .where(and(isNull(fight.winner), eq(usersToFight.userId, 1)))
-        .limit(1)
-        .execute();
-
-      if (existingFight.length > 0) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "You already have an ongoing fight",
-        });
-      }
-
-      const newFight = await ctx.db.transaction(async (tx) => {
-        const newFights = await tx
-          .insert(fight)
-          // todo: implement game selection
-          .values({ game: "rock-paper-scissors" })
-          .returning({ id: fight.id, game: fight.game });
-        const newFight = newFights[0];
-
-        if (!newFight) {
-          tx.rollback();
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to create fight",
-          });
-        }
-        await tx.insert(usersToFight).values(
-          [opponent, ctx.user].map((user) => ({
-            fightId: newFight.id,
-            userId: user.id,
-          })),
-        );
-
-        return newFight;
-      });
+      await FightHandler.instance.assertHasNoFight(ctx.user.clerkId);
+      const newFight = await FightHandler.instance.createFight(
+        ctx.user.clerkId,
+        opponent.clerkId,
+      );
 
       const event = {
         fightId: newFight.id,
         game: newFight.game,
       };
-      // both values are checked to be non-null by validating isDeleted
-      [ctx.user.clerkId!, opponent.clerkId!].forEach((player) => {
+      [ctx.user.clerkId, opponent.clerkId].forEach((player) => {
         ctx.ee.emit(`fight.join.${player}`, event);
+      });
+
+      console.log("New fight", {
+        id: newFight.id,
+        game: newFight.game,
+        players: [ctx.user.clerkId, opponent.clerkId],
       });
 
       return {
         id: newFight.id,
       };
+    }),
+
+  currentFight: userProcedure.query(async ({ ctx }) => {
+    try {
+      return {
+        fight: await FightHandler.instance.getCurrentFight(ctx.user.clerkId),
+        success: true,
+      } as const;
+    } catch (error) {
+      return { success: false } as const;
+    }
+  }),
+
+  join: inFightProcedure.query(({ ctx }) => {
+    catchMatchError(() => {
+      ctx.fight.lobby.playerJoin(ctx.user.clerkId);
+    });
+    return true;
+  }),
+
+  ready: inFightProcedure.mutation(({ ctx }) => {
+    catchMatchError(() => {
+      ctx.fight.lobby.playerReady(ctx.user.clerkId);
+    });
+    return true;
+  }),
+
+  onAction: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        fightId: z.string().uuid(),
+      }),
+    )
+    .subscription(({ input }) => {
+      return observable<BaseGamePlayerEvents>((emit) => {
+        const match = FightHandler.instance.getFight(input.fightId)?.lobby;
+        if (match?.getPlayer(input.userId) === undefined) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Match not found",
+          });
+        }
+        const onMessage = (data: BaseGamePlayerEvents) => {
+          emit.next(data);
+        };
+        match.on(`player-${input.userId}`, onMessage);
+        (match.getEventHistory(input.userId) as BaseGamePlayerEvents[]).forEach(
+          onMessage,
+        );
+
+        match.once("destroy", () => {
+          emit.complete();
+        });
+
+        match.playerConnect(input.userId);
+
+        return () => {
+          match.off(`player-${input.userId}`, onMessage);
+          match.playerDisconnect(input.userId);
+        };
+      });
     }),
 
   canJoin: userProcedure
@@ -111,7 +197,7 @@ export const fightRouter = createTRPCRouter({
         return false;
       }
       return result.participants.some(
-        (participant) => participant.userId === ctx.user.id,
+        (participant) => participant.userId === ctx.user.clerkId,
       );
     }),
 
