@@ -115,8 +115,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-
 
+      - name: Install PostgreSQL client
+        run: sudo apt-get install -y postgresql-client
+
       - name: Wait for PostgreSQL to become ready
-        run: until PGPASSWORD=postgres psql -h localhost -U postgres -c '\q'; do sleep 2; done
+        run: until psql $DATABASE_URL -c '\q'; do sleep 2; done
 
       - name: Push to DB 📥
         run: pnpm db:push
