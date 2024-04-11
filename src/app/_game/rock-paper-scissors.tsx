@@ -1,12 +1,12 @@
 import type { Observable } from "@trpc/server/observable";
 import { useState } from "react";
 import { FaSpinner } from "react-icons/fa";
-import { useTimers } from "~/app/_context/timer";
 import { CardTitle } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import { GameCard, GameContentLoading } from "./base";
+import { useTimers } from "~/app/_feature/timer/timer-provider";
 
 type ServerEvent =
   RouterOutputs["rockPaperScissors"]["onAction"] extends Observable<
@@ -43,7 +43,7 @@ export default function RockPaperScissorsGame({
           return handleEvent(data.event, data.data, "Next round timeout");
         default:
           setLastEvent(data);
-            setView(data.view);
+          setView(data.view);
       }
     },
   });
@@ -77,7 +77,7 @@ function ViewContainer({
     case "start-choose":
       return <SelectionContainer />;
     case "chosen":
-      return "wait for other party to choose";
+      return <WaitForOpponentToChoose />;
     case "show-result":
       const { draw, yourWin } = params.result!;
       return (
@@ -140,6 +140,10 @@ function ShowResult({
       </div>
     </GameCard>
   );
+}
+
+function WaitForOpponentToChoose() {
+  return <GameCard header={<CardTitle>Waiting for opponent</CardTitle>} />;
 }
 
 function SelectionContainer() {

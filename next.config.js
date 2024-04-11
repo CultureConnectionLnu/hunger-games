@@ -7,10 +7,6 @@ await import("./src/env.js");
 /** @type {import("next").NextConfig} */
 const config = {
   output: "standalone",
-  experimental: {
-    // info: enabling this feature breaks the build with drizzle orm
-    // instrumentationHook: true,
-  },
 };
 
 export default config;

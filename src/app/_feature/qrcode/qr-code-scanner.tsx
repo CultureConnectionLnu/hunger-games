@@ -8,7 +8,6 @@ export function QrCodeScanner() {
   const router = useRouter();
   const [navigationDone, setNavigationDone] = useState(false);
   return (
-    // TODO: get rid of width here
     <QrReader
       className="h-screen w-screen p-4"
       onResult={(result, error) => {

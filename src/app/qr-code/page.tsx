@@ -1,6 +1,6 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import { QrCode } from "../_components/qr-code-visualizer";
+import { QrCode } from "../_feature/qrcode/qr-code-visualizer";
 import { useState } from "react";
 import { api } from "~/trpc/react";
 import { FaSpinner } from "react-icons/fa";

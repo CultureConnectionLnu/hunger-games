@@ -23,10 +23,10 @@ import { CardTitle } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
-import { GameCard, GameContentLoading } from "../_components/games/base";
-import RockPaperScissorsGame from "../_components/games/rock-paper-scissors";
-import { Timer } from "../_components/util/timer";
-import { useTimers } from "../_context/timer";
+import { GameCard, GameContentLoading } from "../_game/base";
+import RockPaperScissorsGame from "../_game/rock-paper-scissors";
+import { Timer } from "../_feature/timer/timer";
+import { useTimers } from "../_feature/timer/timer-provider";
 
 type ServerEvent =
   RouterOutputs["fight"]["onAction"] extends Observable<infer R, never>

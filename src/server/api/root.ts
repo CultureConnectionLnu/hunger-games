@@ -1,4 +1,3 @@
-import { postRouter } from "~/server/api/routers/post";
 import { createTRPCRouter } from "~/server/api/trpc";
 import { fightRouter } from "./routers/fight";
 import { rockPaperScissorsRouter } from "./routers/games/rock-paper-scissors";
@@ -10,7 +9,6 @@ import { userRouter } from "./routers/user";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-  post: postRouter,
   fight: fightRouter,
   rockPaperScissors: rockPaperScissorsRouter,
   user: userRouter,

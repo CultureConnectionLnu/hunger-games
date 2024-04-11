@@ -12,8 +12,6 @@ import { type AppRouter } from "~/server/api/root";
 
 export const transformer = superjson;
 
-
-
 function getBaseUrl() {
   if (typeof window !== "undefined") return "";
   return `http://localhost:${env.NEXT_PUBLIC_WS_PORT}`;

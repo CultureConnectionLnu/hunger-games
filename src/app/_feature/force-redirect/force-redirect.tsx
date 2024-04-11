@@ -11,8 +11,7 @@ export function ForceRedirect() {
   api.fight.onInvite.useSubscription(
     { id: user?.id ?? "" },
     {
-      onData(data) {
-        console.log("force redirect", data);
+      onData() {
         router.push(`/game`);
       },
       enabled: Boolean(user?.id),

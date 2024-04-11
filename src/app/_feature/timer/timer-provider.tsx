@@ -22,7 +22,6 @@ const TimerContext = createContext<TimerCtxData>({
 
 export const useTimers = () => useContext(TimerContext);
 
-// Timer provider component
 export default function TimerProvider({
   children,
 }: {

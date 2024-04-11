@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
-import { useTimers } from "../../_context/timer";
+import { useTimers } from "./timer-provider";
 import { MdOutlineTimer, MdPause } from "react-icons/md";
 
 export function Timer({ params }: { params: { id: string } }) {
