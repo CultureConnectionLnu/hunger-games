@@ -1,24 +1,16 @@
-
 import {
   GenericEventEmitter,
-  type BaseEvent,
-  type DefaultEvents,
 } from "~/lib/event-emitter";
 
 type GeneralState = "none" | "joined" | "ready" | "in-game" | "game-ended";
 type Identity = { id: string };
 
-export class BasePlayer<
-  SubEvents extends BaseEvent = DefaultEvents,
-> extends GenericEventEmitter<
-  {
-    joined: Identity;
-    ready: Identity;
-    disconnect: Identity;
-    reconnect: Identity;
-  },
-  SubEvents
-> {
+export class BasePlayer extends GenericEventEmitter<{
+  joined: Identity;
+  ready: Identity;
+  disconnect: Identity;
+  reconnect: Identity;
+}> {
   private _view: GeneralState = "none";
   private isConnected = false;
   private identity;
