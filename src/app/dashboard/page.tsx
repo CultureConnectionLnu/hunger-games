@@ -1,4 +1,14 @@
 "use client";
+import { Skeleton } from "~/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 
@@ -8,35 +18,41 @@ type ScoreBoardEntry = UnwrapArray<RouterOutputs["score"]["dashboard"]>;
 export default function Dashboard() {
   const { isLoading, data } = api.score.dashboard.useQuery();
 
-  if (isLoading) {
-    return <DashboardLoading />;
-  }
-
+  const loadingFiller = (
+    <TableRow>
+      <TableCell>
+        <Skeleton className="h-4 w-full" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-full" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-full" />
+      </TableCell>
+    </TableRow>
+  );
   return (
     <main>
-      <h1>Dashboard</h1>
-      <section>
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>User</th>
-              <th>Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(data ?? []).map((entry) => (
-              <DashboardEntry key={entry.userId} {...entry} />
-            ))}
-          </tbody>
-        </table>
-      </section>
+      {/* todo: introduce pagination */}
+      <Table>
+        <TableCaption>Global Dashboard</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Rank</TableHead>
+            <TableHead>User</TableHead>
+            <TableHead className="text-right">Score</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isLoading
+            ? Array.from({ length: 5 }).map(() => loadingFiller)
+            : (data ?? []).map((entry) => (
+                <DashboardEntry key={entry.userId} {...entry} />
+              ))}
+        </TableBody>
+      </Table>
     </main>
   );
-}
-
-function DashboardLoading() {
-  return "skeleton";
 }
 
 function DashboardEntry({ rank, score, userId }: ScoreBoardEntry) {
@@ -48,14 +64,26 @@ function DashboardEntry({ rank, score, userId }: ScoreBoardEntry) {
   );
 
   if (isLoading) {
-    return <tr>skeleton</tr>;
+    return (
+      <TableRow>
+        <TableCell>
+          <Skeleton className="h-4 w-full" />
+        </TableCell>
+        <TableCell>
+          <Skeleton className="h-4 w-full" />
+        </TableCell>
+        <TableCell>
+          <Skeleton className="h-4 w-full" />
+        </TableCell>
+      </TableRow>
+    );
   }
 
   return (
-    <tr>
-      <td>{rank}</td>
-      <td>{userName}</td>
-      <td>{score}</td>
-    </tr>
+    <TableRow>
+      <TableCell>{rank}</TableCell>
+      <TableCell>{userName}</TableCell>
+      <TableCell className="text-right">{score}</TableCell>
+    </TableRow>
   );
 }
