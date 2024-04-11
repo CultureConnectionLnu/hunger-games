@@ -121,6 +121,10 @@ jobs:
       - name: Wait for PostgreSQL to become ready
         run: until psql $DATABASE_URL -c '\q'; do sleep 2; done
 
+      - name: Install 📦
+        run: |
+          pnpm install
+
       - name: Push to DB 📥
         run: pnpm db:push
 
