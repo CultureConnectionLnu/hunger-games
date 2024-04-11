@@ -163,6 +163,7 @@ export const rpsTests = () =>
           await choose("test_user_2", "scissors");
           timer.getLastByName("next-round-timer").emitTimeout();
 
+          await runAllMacroTasks();
           expectEventEmitted(firstListener, "game-ended");
           const event = getLastEventOf(firstListener, "game-ended");
           expect(event?.data).toEqual({
@@ -416,6 +417,7 @@ async function setupTest() {
     choice: "rock" | "paper" | "scissors",
   ) => {
     await callers[player].rockPaperScissors.choose(choice);
+    await runAllMacroTasks();
   };
 
   const startGame = async () => {
