@@ -96,6 +96,7 @@ jobs:
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     env:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/test
+      SKIP_ENV_VALIDATION: 1 # as we are not actually building the app
     steps:
       - name: Checkout 🛎️
         uses: actions/checkout@v3
