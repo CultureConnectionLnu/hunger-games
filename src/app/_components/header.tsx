@@ -143,10 +143,10 @@ function SideBar() {
                 </Link>
               </SheetClose>
               <SheetClose asChild>
-                <Link href="#">
+                <Link href="/dashboard">
                   <Button variant="ghost" className="w-full justify-start">
                     <MdBarChart className="mr-2 h-4 w-4" />
-                    Dashboard 🏗️
+                    Dashboard
                   </Button>
                 </Link>
               </SheetClose>
@@ -159,10 +159,7 @@ function SideBar() {
               <ListGroupContent>
                 <SheetClose asChild>
                   <Link href="/profile">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                    >
+                    <Button variant="ghost" className="w-full justify-start">
                       <MdManageAccounts className="mr-2 h-4 w-4" />
                       Profile
                     </Button>
@@ -170,10 +167,7 @@ function SideBar() {
                 </SheetClose>
                 <SheetClose asChild>
                   <Link href="#">
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                    >
+                    <Button variant="ghost" className="w-full justify-start">
                       <MdSettings className="mr-2 h-4 w-4" />
                       Settings 🏗️
                     </Button>
@@ -181,15 +175,12 @@ function SideBar() {
                 </SheetClose>
                 <SheetClose asChild>
                   <Link href="/">
-                  <SignOutButton>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start"
-                    >
-                      <MdOutlinePowerSettingsNew  className="mr-2 h-4 w-4" />
-                      Sign Out
-                    </Button>
-                  </SignOutButton>
+                    <SignOutButton>
+                      <Button variant="ghost" className="w-full justify-start">
+                        <MdOutlinePowerSettingsNew className="mr-2 h-4 w-4" />
+                        Sign Out
+                      </Button>
+                    </SignOutButton>
                   </Link>
                 </SheetClose>
               </ListGroupContent>
@@ -226,9 +217,7 @@ function ListGroup({ children }: { children: React.ReactNode }) {
 
 function ListGroupHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mb-2 text-lg font-semibold tracking-tight">
-      {children}
-    </h2>
+    <h2 className="mb-2 text-lg font-semibold tracking-tight">{children}</h2>
   );
 }
 

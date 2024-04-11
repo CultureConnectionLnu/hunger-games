@@ -337,8 +337,8 @@ async function testFight(
       if (id === undefined) return x;
 
       // finish the game properly before deleting
-      args.getLobby().endGame("test_user_1");
-      args.getLobby().destroy();
+      args.getFight().lobby.endGame("test_user_1");
+      await args.getFight().gameDone;
       await db.delete(fight).where(eq(fight.id, id));
       return x;
     })
@@ -415,7 +415,9 @@ async function setupTest() {
     player: "test_user_1" | "test_user_2",
     choice: "rock" | "paper" | "scissors",
   ) => {
+    await runAllMacroTasks();
     await callers[player].rockPaperScissors.choose(choice);
+    await runAllMacroTasks();
   };
 
   const startGame = async () => {
@@ -429,7 +431,7 @@ async function setupTest() {
     callers,
     getFightId: () => state.fightId,
     getGame: () => state.fight!.game,
-    getLobby: () => state.fight!.lobby,
+    getFight: () => state.fight!,
     startGame,
     choose,
     firstListener,

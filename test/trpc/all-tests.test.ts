@@ -1,5 +1,6 @@
 import { lobbyTests } from "./lobby";
 import { rpsTests } from "./rps";
+import { scoreTests } from "./score";
 import { provideTestUsers } from "./utils";
 
 // this file is needed as otherwise all test files would be run in parallel
@@ -8,3 +9,4 @@ import { provideTestUsers } from "./utils";
 provideTestUsers();
 lobbyTests();
 rpsTests();
+scoreTests();

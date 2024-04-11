@@ -99,6 +99,7 @@ function GameLobby({
   };
 }) {
   const [lastEvent, setLastEvent] = useState<ServerEvent>();
+  const [gameEnded, setGameEnded] = useState(false);
   const { handleEvent } = useTimers();
 
   api.fight.onAction.useSubscription(params, {
@@ -110,8 +111,13 @@ function GameLobby({
           return handleEvent(data.event, data.data, "Disconnect Timeout");
         default:
           setLastEvent(data);
+          // make sure that the end screen does not disappear because of random event
+          if (data.event === "game-ended") {
+            setGameEnded(true);
+          }
       }
     },
+    enabled: !gameEnded,
   });
   if (!lastEvent) {
     return <GameLoadingScreen />;
@@ -133,7 +139,7 @@ function GameLobby({
           : joinedData.joined.includes(opponentId)
             ? "joined"
             : "none";
-        const showReadyScreen = lastEvent.view=== "joined";
+        const showReadyScreen = lastEvent.view === "joined";
         lobby = (
           <>
             {showReadyScreen ? <ReadyScreen /> : <WaitForOtherPlayer />}
@@ -143,7 +149,11 @@ function GameLobby({
         break;
       case "game-ended":
         const data = lastEvent.data as WinnerEvent["data"];
-        lobby = <EndScreen params={{ ...data, you: params.userId }} />;
+        lobby = (
+          <EndScreen
+            params={{ ...data, you: params.userId, fightId: params.fightId }}
+          />
+        );
         break;
       // todo: add game-halted view
     }
@@ -346,7 +356,7 @@ function WaitForOtherPlayer() {
 function EndScreen({
   params,
 }: {
-  params: { winnerId: string; looserId: string; you: string };
+  params: { winnerId: string; looserId: string; you: string; fightId: string };
 }) {
   const { data: winnerName, isLoading: winnerLoading } =
     api.user.getUserName.useQuery(
@@ -358,6 +368,46 @@ function EndScreen({
       { id: params.looserId },
       { staleTime: Infinity },
     );
+  const { data: currentScore, isLoading: currentScoreLoading } =
+    api.score.currentScore.useQuery(undefined, {
+      staleTime: Infinity,
+      refetchOnMount: "always",
+    });
+
+  const { data: winnerScore, isLoading: winnerScoreLoading } =
+    api.score.scoreFromGame.useQuery(
+      {
+        fightId: params.fightId,
+        userId: params.winnerId,
+      },
+      {
+        staleTime: Infinity,
+        refetchOnMount: "always",
+      },
+    );
+
+  const { data: looserScore, isLoading: looserScoreLoading } =
+    api.score.scoreFromGame.useQuery(
+      {
+        fightId: params.fightId,
+        userId: params.looserId,
+      },
+      {
+        staleTime: Infinity,
+        refetchOnMount: "always",
+      },
+    );
+  console.log({
+    text: "end screen",
+    params,
+    data: {
+      winnerName,
+      looserName,
+      currentScore,
+      winnerScore,
+      looserScore,
+    },
+  });
 
   return (
     <>
@@ -368,9 +418,13 @@ function EndScreen({
           </CardTitle>
         }
       >
-        <div className="flex w-full justify-between">
-          <span>Current score🏗️</span>
-          <span>1000</span>
+        <div className="flex w-full justify-around">
+          <span>Current score</span>
+          {currentScoreLoading ? (
+            <Skeleton className="h-4 w-1/6" />
+          ) : (
+            <span>{currentScore?.score}</span>
+          )}
         </div>
       </GameCard>
       <GameCard
@@ -388,7 +442,11 @@ function EndScreen({
           ) : (
             <div>{winnerName}</div>
           )}
-          <div className="text-green-500">+10 XP</div>
+          {winnerScoreLoading ? (
+            <Skeleton className="h-4 w-1/4 bg-green-500" />
+          ) : (
+            <div className="text-green-500">+{winnerScore}</div>
+          )}
         </div>
         <div className="flex w-full justify-around gap-4">
           <span>Loser</span>
@@ -397,7 +455,11 @@ function EndScreen({
           ) : (
             <div>{looserName}</div>
           )}
-          <div className="text-red-500">-5 XP</div>
+          {looserScoreLoading ? (
+            <Skeleton className="h-4 w-1/4 bg-red-500" />
+          ) : (
+            <div className="text-red-500">{looserScore}</div>
+          )}
         </div>
       </GameCard>
     </>

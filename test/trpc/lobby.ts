@@ -340,7 +340,8 @@ export const lobbyTests = () =>
             },
           ));
 
-        it("should allow multiple disconnects to happen", ()=> testFight(async ({startGame, disconnect, connect, timer})=>{
+        it("should allow multiple disconnects to happen", () =>
+          testFight(async ({ startGame, disconnect, connect, timer }) => {
             await startGame();
             disconnect("test_user_2");
             await connect("test_user_2");
@@ -350,7 +351,7 @@ export const lobbyTests = () =>
             expect(
               timer.getLastByName("disconnect-timer").isCanceled,
             ).toBeFalsy();
-        }))
+          }));
       });
     });
   });
@@ -372,7 +373,8 @@ async function testFight(
 
       // finish the game properly before deleting
       args.getLobby().endGame("test_user_1");
-      args.getLobby().destroy();
+      args.getFight().lobby.endGame("test_user_1");
+      await args.getFight().gameDone;
       await db.delete(fight).where(eq(fight.id, id));
       return x;
     })
@@ -453,7 +455,7 @@ async function setupTest() {
     callers,
     getFightId: () => state.fightId,
     getLobby: () => state.fight!.lobby,
-    getGame: () => state.fight!.game,
+    getFight: () => state.fight!,
     createGame,
     connect,
     disconnect,
