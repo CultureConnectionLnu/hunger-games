@@ -4,6 +4,7 @@ import { db, type DB } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
 import { BaseGame } from "./core/base-game";
 import { RpsGame } from "./games/rps";
+import { ScoreHandler } from "./score";
 
 // todo: remove force delete from here or only have it here
 
@@ -96,11 +97,11 @@ export class FightHandler {
       return newFight;
     });
 
-    const { lobby: game } = this.gameHandler.createGame(gameType, {
+    const wrapper = this.gameHandler.createGame(gameType, {
       fightId: newFight.id,
       players: [userId, opponentId],
     });
-    void this.registerEndListener(game);
+    wrapper.gameDone = this.registerEndListener(wrapper.lobby);
 
     return newFight;
   }
@@ -130,6 +131,9 @@ export class FightHandler {
         .catch((error) => {
           throw new Error("Failed to update fight", { cause: error });
         });
+
+      const looser = game.playerIds.find((id) => id !== winner)!;
+      await ScoreHandler.instance.updateScore(winner, looser, game.fightId);
     } catch (error) {
       console.log("Game completed with an error", error);
     }
@@ -143,6 +147,7 @@ type KnownGamesMap = {
     type: K;
     lobby: BaseGame;
     game: InstanceType<(typeof knownGames)[K]>;
+    gameDone?: Promise<void>;
   };
 }[keyof typeof knownGames];
 
@@ -169,7 +174,7 @@ class GameHandler {
   public createGame<T extends keyof typeof knownGames>(
     type: T,
     props: { fightId: string; players: string[] },
-  ) {
+  ): KnownGamesMap {
     const game = new knownGames[type](props.fightId, props.players);
     const lobby = new BaseGame(props.fightId, props.players, game);
 

@@ -1,12 +1,14 @@
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
+  integer,
   pgEnum,
   pgTableCreator,
   primaryKey,
   timestamp,
+  unique,
   uuid,
-  varchar
+  varchar,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -38,7 +40,7 @@ export const userRelations = relations(users, ({ many }) => ({
 export const fight = createTable("fight", {
   id: uuid("id").primaryKey().defaultRandom(),
   game: varchar("game", { length: 255 }).notNull(),
-  winner: varchar("winner", {length: 255}).references(() => users.clerkId, {
+  winner: varchar("winner", { length: 255 }).references(() => users.clerkId, {
     onDelete: "cascade",
   }),
   ...metadata,
@@ -74,3 +76,20 @@ export const userToFightRelations = relations(usersToFight, ({ one }) => ({
     references: [users.clerkId],
   }),
 }));
+
+export const score = createTable(
+  "score",
+  {
+    fightId: uuid("fight_id")
+      .references(() => fight.id, { onDelete: "cascade" })
+      .notNull(),
+    userId: varchar("user_id", { length: 255 })
+      .references(() => users.clerkId, { onDelete: "cascade" })
+      .notNull(),
+    score: integer("score").notNull(),
+    ...metadata,
+  },
+  (t) => ({
+    unq: unique().on(t.fightId, t.userId),
+  }),
+);
