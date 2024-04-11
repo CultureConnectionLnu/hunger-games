@@ -3,10 +3,10 @@ import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
-type ScoreBoardEntry = UnwrapArray<RouterOutputs["score"]["scoreBoard"]>;
+type ScoreBoardEntry = UnwrapArray<RouterOutputs["score"]["dashboard"]>;
 
 export default function Dashboard() {
-  const { isLoading, data } = api.score.scoreBoard.useQuery();
+  const { isLoading, data } = api.score.dashboard.useQuery();
 
   if (isLoading) {
     return <DashboardLoading />;

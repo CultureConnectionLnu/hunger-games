@@ -1,4 +1,4 @@
-import { eq, sum } from "drizzle-orm";
+import { and, eq, sum } from "drizzle-orm";
 import { type DB, db } from "~/server/db";
 import { score } from "~/server/db/schema";
 
@@ -62,7 +62,7 @@ export class ScoreHandler {
     }
   }
 
-  public async getScoreBoard() {
+  public async getDashboard() {
     const queryResult = await this.db
       .select({
         score: sum(score.score),
@@ -102,6 +102,16 @@ export class ScoreHandler {
     }
 
     return rankedScores;
+  }
+
+  public async getScoreFromGame(fight: string, user: string) {
+    const score = await this.db.query.score.findFirst({
+      where: ({ fightId, userId }) => and(eq(fightId, fight), eq(userId, user)),
+    });
+    if (!score) {
+      return { success: false } as const;
+    }
+    return { success: true, score: score.score };
   }
 
   private calculateScoreEntries(looserCurrentScore: number) {

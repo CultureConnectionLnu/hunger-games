@@ -8,6 +8,7 @@ import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
 import { useAutomaticTimer, useManualTimer } from "./utils";
 import { staticScoringConfig } from "~/server/api/logic/score";
+import { randomUUID } from "crypto";
 
 export const scoreTests = () =>
   describe("Score", () => {
@@ -66,6 +67,16 @@ export const scoreTests = () =>
           const user2 = await getUserFromDashboard("test_user_2");
 
           expect(user1?.rank).toBeGreaterThan(user2!.rank);
+        }));
+    });
+
+    describe("scoreFromGame", () => {
+      it("should return the score from a specific game", () =>
+        testFight(async ({ getAllFightIds, playGame, getScoreFromGame }) => {
+          await playGame("test_user_1");
+          const fightId = getAllFightIds()[0]!;
+          const score = await getScoreFromGame(fightId, "test_user_1");
+          expect(score).toEqual(100);
         }));
     });
   });
@@ -130,7 +141,7 @@ async function setupTest() {
     callers[userId].score.currentScore();
 
   const getDashboard = async () => {
-    const board = await callers.test_user_1.score.scoreBoard();
+    const board = await callers.test_user_1.score.dashboard();
     return board.filter(
       (x) => x.userId === "test_user_1" || x.userId === "test_user_2",
     );
@@ -141,6 +152,9 @@ async function setupTest() {
     return board.find((x) => x.userId === userId);
   };
 
+  const getScoreFromGame = (fightId: string, userId: `test_user_${1 | 2}`) =>
+    callers[userId].score.scoreFromGame({ fightId, userId });
+
   return {
     callers,
     playGame,
@@ -148,5 +162,6 @@ async function setupTest() {
     getScoreOfUser,
     getDashboard,
     getUserFromDashboard,
+    getScoreFromGame,
   };
 }
