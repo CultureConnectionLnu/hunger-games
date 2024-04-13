@@ -9,7 +9,7 @@ services:
       args:
         NODE_ENV: production
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-        NEXT_PUBLIC_WS_LOCATION: 3001
+        NEXT_PUBLIC_WS_LOCATION: /api/ws
         NEXT_PUBLIC_FEATURE_MANUAL_JOIN: true
     working_dir: /app
     ports:
@@ -20,6 +20,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - WS_PORT=3001
       - DATABASE_URL=${DATABASE_URL:-postgresql://myuser:mysecretpassword@db:5432/mydatabase}
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
