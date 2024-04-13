@@ -1,6 +1,8 @@
 #!/bin/bash
 
 if [ -d env ]; then
+    cd env
+    git pull
     exit 0
 fi
 
