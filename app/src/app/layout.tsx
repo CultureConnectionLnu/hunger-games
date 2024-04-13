@@ -5,7 +5,7 @@ import { Inter } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
 import Header from "./_components/header";
-import { ForceRedirect } from "./_feature/force-redirect/force-redirect";
+import FightProvider from "./_feature/auto-join-game/fight-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -28,9 +28,10 @@ export default function RootLayout({
       <html lang="en">
         <body className={`font-sans ${inter.variable}`}>
           <TRPCReactProvider>
-            <ForceRedirect />
-            <Header />
-            <div>{children}</div>
+            <FightProvider>
+              <Header />
+              <div>{children}</div>
+            </FightProvider>
           </TRPCReactProvider>
         </body>
       </html>

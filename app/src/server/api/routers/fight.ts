@@ -10,19 +10,22 @@ import {
 import type { BaseGamePlayerEvents } from "../logic/core/base-game";
 import { FightHandler } from "../logic/fight";
 
-const messageSchema = z.object({
-  fightId: z.string().uuid(),
-  game: z.string(),
-  players: z.array(z.string()).min(2).max(2),
-});
-type Message = Pick<z.TypeOf<typeof messageSchema>, "fightId" | "game">;
-
+type JoinMessage = {
+  type: 'join'
+  fightId: string;
+  game: string;
+};
+type EndMessage = {
+  type: 'end'
+  fightId: string;
+};
 declare module "~/lib/event-emitter" {
   type UserId = string;
   type FightId = string;
   // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
   interface KnownEvents {
-    [key: `fight.join.${UserId}`]: Message;
+    [key: `fight.join.${UserId}`]: JoinMessage;
+    [key: `fight.end.${UserId}`]: EndMessage;
   }
 }
 
@@ -146,7 +149,7 @@ export const fightRouter = createTRPCRouter({
     return true;
   }),
 
-  onAction: publicProcedure
+  onGameAction: publicProcedure
     .input(
       z.object({
         userId: z.string(),
@@ -190,15 +193,18 @@ export const fightRouter = createTRPCRouter({
       }),
     )
     .subscription(({ ctx, input }) => {
-      return observable<Message>((emit) => {
-        function onMessage(data: Message) {
+      type Messages = JoinMessage | EndMessage;
+      return observable<Messages>((emit) => {
+        function onMessage(data: Messages) {
           emit.next(data);
         }
 
         ctx.ee.on(`fight.join.${input.id}`, onMessage);
+        ctx.ee.on(`fight.end.${input.id}`, onMessage);
 
         return () => {
           ctx.ee.off(`fight.join.${input.id}`, onMessage);
+          ctx.ee.off(`fight.end.${input.id}`, onMessage);
         };
       });
     }),

@@ -32,10 +32,10 @@ import {
   SheetContent,
   SheetTrigger,
 } from "~/components/ui/sheet";
-import { api } from "~/trpc/react";
+import { useFight } from "../_feature/auto-join-game/fight-provider";
 
 export default function Header() {
-  const { data } = api.fight.currentFight.useQuery();
+  const { currentFight } = useFight();
   const pathname = usePathname();
 
   if (pathname.startsWith("/game")) {
@@ -44,7 +44,7 @@ export default function Header() {
 
   return (
     <header>
-      {data?.fight && <JoinRunningGame />}
+      {currentFight !== undefined && <JoinRunningGame />}
       <div className="flex h-14 w-full items-center justify-between px-4">
         <SideBar />
         <NavigationBar />

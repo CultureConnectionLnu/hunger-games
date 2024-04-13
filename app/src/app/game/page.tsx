@@ -27,6 +27,7 @@ import { GameCard, GameContentLoading } from "../_game/base";
 import RockPaperScissorsGame from "../_game/rock-paper-scissors";
 import { Timer } from "../_feature/timer/timer";
 import { useTimers } from "../_feature/timer/timer-provider";
+import { useFight } from "../_feature/auto-join-game/fight-provider";
 
 type ServerEvent =
   RouterOutputs["fight"]["onGameAction"] extends Observable<infer R, never>
@@ -43,26 +44,21 @@ type JoinedEvent = GetSpecificEvent<ServerEvent, "player-joined-readying">;
 
 export default function CurrentGame() {
   const { user, isLoaded: userLoaded } = useUser();
+  const { currentFight } = useFight();
 
-  const { data: currentFight, isLoading: currentFightLoading } =
-    api.fight.currentFight.useQuery(undefined, {
-      staleTime: Infinity,
-      refetchOnMount: "always",
-    });
-
-  if (currentFightLoading || !userLoaded) {
+  if (!userLoaded) {
     return <GameLoadingScreen />;
   }
 
-  if (currentFight!.success === false || user == null) {
+  if (currentFight === undefined || user == null) {
     return <NoFightOngoing />;
   }
 
   return (
     <JoiningGame
       params={{
-        gameName: currentFight!.fight.game,
-        fightId: currentFight!.fight.fightId,
+        gameName: currentFight.game,
+        fightId: currentFight.id,
         userId: user.id,
       }}
     />
