@@ -105,12 +105,12 @@ export const fightRouter = createTRPCRouter({
         opponent.clerkId,
       );
 
-      const event = {
-        fightId: newFight.id,
-        game: newFight.game,
-      };
       [ctx.user.clerkId, opponent.clerkId].forEach((player) => {
-        ctx.ee.emit(`fight.join.${player}`, event);
+        ctx.ee.emit(`fight.join.${player}`, {
+          type: "join",
+          fightId: newFight.id,
+          game: newFight.game,
+        });
       });
 
       console.log("New fight", {
@@ -198,6 +198,19 @@ export const fightRouter = createTRPCRouter({
         function onMessage(data: Messages) {
           emit.next(data);
         }
+
+        FightHandler.instance
+          .getCurrentFight(input.id)
+          .then(({ fightId, game }) => {
+            onMessage({
+              type: "join",
+              fightId,
+              game,
+            });
+          })
+          .catch(() => {
+            // do nothing, because no fight exists
+          });
 
         ctx.ee.on(`fight.join.${input.id}`, onMessage);
         ctx.ee.on(`fight.end.${input.id}`, onMessage);
