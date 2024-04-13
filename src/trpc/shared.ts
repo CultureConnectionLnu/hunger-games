@@ -14,7 +14,8 @@ export const transformer = superjson;
 
 function getBaseUrl() {
   if (typeof window !== "undefined") return "";
-  return `http://localhost:${env.NEXT_PUBLIC_WS_PORT}`;
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  const url = `${protocol}://${window.location.hostname}${process.env.NEXT_PUBLIC_WS_LOCATION}`;
 }
 
 export function getBatchLink(ctx?: NextPageContext) {
@@ -37,8 +38,7 @@ export function getEndingLink() {
     return getBatchLink();
   }
 
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const url = `${protocol}://${window.location.hostname}:${process.env.NEXT_PUBLIC_WS_PORT}`;
+  const url = getBaseUrl();
 
   return wsLink<AppRouter>({
     client: createWSClient({

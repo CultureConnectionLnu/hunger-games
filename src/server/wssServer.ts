@@ -7,7 +7,7 @@ import { createWebSocketContext } from "./api/trpc";
 
 export function bootstrapWS({ dev, server }: { dev: boolean; server: Server }) {
   const host = "0.0.0.0";
-  const port = Number(env.NEXT_PUBLIC_WS_PORT ?? 3001);
+  const port = Number(env.WS_PORT ?? 3001);
   const wss = new WebSocketServer({
     host,
     port,

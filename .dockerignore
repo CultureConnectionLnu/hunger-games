@@ -8,3 +8,5 @@ README.md
 .next
 .git
 postgres-data
+data
+letsencrypt

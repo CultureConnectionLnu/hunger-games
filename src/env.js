@@ -15,6 +15,7 @@ export const env = createEnv({
         "You forgot to change the default URL",
       ),
     PORT: z.string().regex(/^\d+$/),
+    WS_PORT: z.string().regex(/^\d+$/),
     CLERK_SECRET_KEY: z.string(),
     CLERK_WEBHOOK_SECRET: z.string(),
     // feature flags
@@ -27,9 +28,7 @@ export const env = createEnv({
    * `NEXT_PUBLIC_`.
    */
   client: {
-    NEXT_PUBLIC_WS_PORT: z.string().regex(/^\d+$/, {
-      message: "Expected a string of digits",
-    }),
+    NEXT_PUBLIC_WS_LOCATION: z.string(),
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string(),
     NEXT_PUBLIC_NODE_ENV: z
       .enum(["development", "test", "production"])
@@ -43,9 +42,10 @@ export const env = createEnv({
    */
   runtimeEnv: {
     PORT: process.env.PORT,
+    WS_PORT: process.env.WS_PORT,
     DATABASE_URL: process.env.DATABASE_URL,
     NEXT_PUBLIC_NODE_ENV: process.env.NODE_ENV,
-    NEXT_PUBLIC_WS_PORT: process.env.NEXT_PUBLIC_WS_PORT,
+    NEXT_PUBLIC_WS_LOCATION: process.env.NEXT_PUBLIC_WS_LOCATION,
 
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
