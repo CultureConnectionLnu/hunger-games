@@ -130,7 +130,8 @@ jobs:
         working-directory: ./app
 
       - name: Push to DB 📥
-        run: ./db-setup/setup.sh
+        run: pnpm db:push
+        working-directory: ./app
 
       - name: Run tests 🔬
         run: pnpm test
