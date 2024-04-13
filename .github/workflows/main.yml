@@ -22,9 +22,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Go to app directory 📂
-        run: cd app
-
       - name: Setup pnpm ⚙️
         uses: pnpm/action-setup@v3
         with:
@@ -41,14 +38,17 @@ jobs:
       - name: Install 📦
         run: |
           pnpm install
+        working-directory: ./app
 
       - name: Lint 📝
         run: |
           SKIP_ENV_VALIDATION=1 pnpm run lint
+        working-directory: ./app
 
       - name: Lint 📝
         run: |
           pnpm run lint-non-code-files
+        working-directory: ./app
 
   build:
     name: Build 🏗️
@@ -60,9 +60,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 1
-
-      - name: Go to app directory 📂
-        run: cd app
 
       - name: Setup pnpm ⚙️
         uses: pnpm/action-setup@v3
@@ -80,10 +77,12 @@ jobs:
       - name: Install 📦
         run: |
           pnpm install
+        working-directory: ./app
 
       - name: Build 🏗️
         run: |
           SKIP_ENV_VALIDATION=1 pnpm run build
+        working-directory: ./app
 
   test:
     name: Test 🧪
@@ -109,9 +108,6 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Go to app directory 📂
-        run: cd app
-
       - name: Setup pnpm ⚙️
         uses: pnpm/action-setup@v3
         with:
@@ -128,15 +124,14 @@ jobs:
       - name: Install PostgreSQL client
         run: apk add --no-cache postgresql-client
 
-      - name: Wait for PostgreSQL to become ready
-        run: until psql $DATABASE_URL -c '\q'; do sleep 2; done
-
       - name: Install 📦
         run: |
           pnpm install
+        working-directory: ./app
 
       - name: Push to DB 📥
-        run: pnpm db:push
+        run: ./db-setup/setup.sh
 
       - name: Run tests 🔬
         run: pnpm test
+        working-directory: ./app
