@@ -7,6 +7,8 @@ used this code base to get it working: https://github.com/growupanand/ConvoForm/
 
 ## Websockets
 
+to correctly use websocket on production forward `/api/ws` to `app:3001`
+
 https://github.com/vercel/next.js/discussions/58698#discussioncomment-7655962
 to validate user in the websocket request:
 https://clerk.com/docs/backend-requests/handling/manual-jwt
