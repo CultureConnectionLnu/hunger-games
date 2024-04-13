@@ -11,7 +11,6 @@ async function handleEvent(event: WebhookEvent) {
     case "user.created":
       return await db.insert(users).values({
         clerkId: event.data.id,
-        role: "user",
       });
 
     case "user.deleted":

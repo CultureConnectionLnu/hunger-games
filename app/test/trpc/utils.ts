@@ -9,11 +9,9 @@ export function provideTestUsers() {
     await db.insert(users).values([
       {
         clerkId: "test_user_1",
-        role: "user",
       },
       {
         clerkId: "test_user_2",
-        role: "user",
       },
     ]);
   });

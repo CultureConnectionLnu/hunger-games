@@ -86,7 +86,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
 
   constructor(
     public readonly fightId: string,
-    readonly playerIds: string[],
+    readonly playerTuple: { id: string; name: string }[],
     private readonly specificGame: SpecificGame,
   ) {
     super();
@@ -99,13 +99,13 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
         this.destroy();
       }),
     );
-    this.setupPlayers(playerIds);
+    this.setupPlayers(playerTuple);
     this.setupGameStartListener();
 
     const eventing = new GameEventingHandler({
       emit: this.emit.bind(this),
       fightId,
-      playerIds,
+      playerIds: playerTuple.map(x=> x.id),
       getView: (playerId) => this.players.get(playerId)!.view,
       playerSpecificEvents: [
         "player-joined-readying",
@@ -221,9 +221,9 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
     return player;
   }
 
-  private setupPlayers(ids: string[]) {
-    ids.forEach((id) => {
-      const player = new BasePlayer(id);
+  private setupPlayers(playerTuples: {id: string, name: string}[]) {
+    playerTuples.forEach(({id, name}) => {
+      const player = new BasePlayer(id, name);
       this.players.set(id, player);
       this.handleJoinAndReady(player);
     });

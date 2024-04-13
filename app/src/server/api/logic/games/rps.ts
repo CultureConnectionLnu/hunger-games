@@ -76,7 +76,10 @@ class RpsPlayer extends GenericEventEmitter<{
     return this.item;
   }
 
-  constructor(public id: string) {
+  constructor(
+    public readonly id: string,
+    public readonly name: string,
+  ) {
     super();
   }
 
@@ -127,14 +130,17 @@ export class RpsGame
   ) => void;
   public getEventHistory: (playerId: string) => UnspecificPlayerEventData[];
 
-  constructor(fightId: string, playerIds: string[]) {
+  constructor(
+    fightId: string,
+    readonly playerTuple: { id: string; name: string }[],
+  ) {
     super();
-    this.setupPlayers(playerIds);
+    this.setupPlayers(playerTuple);
 
     const eventing = new GameEventingHandler({
       emit: this.emit.bind(this),
       fightId,
-      playerIds,
+      playerIds: playerTuple.map((x) => x.id),
       getView: (playerId) => this.players.get(playerId)!.view,
       playerSpecificEvents: [
         "enable-choose",
@@ -206,9 +212,9 @@ export class RpsGame
     this.timerHandler.startTimer("choose-timer");
   }
 
-  private setupPlayers(ids: string[]) {
-    ids.forEach((id) => {
-      const player = new RpsPlayer(id);
+  private setupPlayers(playerTuple: { id: string; name: string }[]) {
+    playerTuple.forEach(({ id, name }) => {
+      const player = new RpsPlayer(id, name);
       this.players.set(id, player);
       this.handleChoose(player);
     });
