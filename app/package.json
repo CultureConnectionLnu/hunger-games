@@ -14,11 +14,7 @@
     "lint-non-code-files": "prettier --check \"**/*.{json,yaml,yml,md}\"",
     "format-non-code-files": "prettier --write \"**/*.{json,yaml,yml,md}\"",
     "test": "dotenv cross-env NODE_ENV=development vitest run",
-    "test:watch": "dotenv cross-env NODE_ENV=development vitest",
-    "deploy": "docker compose -f docker-compose.yml -f docker-compose.local.yml up -d",
-    "deploy:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d",
-        "docker": "docker compose -f docker-compose.yml -f docker-compose.local.yml",
-    "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+    "test:watch": "dotenv cross-env NODE_ENV=development vitest"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^0.3.6",

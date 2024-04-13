@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "docker": "docker compose",
+    "docker:prod": "docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file env/.env.prod",
+    "predocker:prod": "pnpm run env",
+    "deploy": "pnpm run docker up -d --build && pnpm run docker logs -f db-setup",
+    "deploy:prod": "pnpm run docker:prod up -d --build && pnpm run docker:prod logs -f db-setup",
+    "env": "./setup-env.sh"
+  }
+}
