@@ -5,18 +5,18 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   publicProcedure,
-  playerProcedure,
+  userProcedure,
 } from "~/server/api/trpc";
 import type { BaseGamePlayerEvents } from "../logic/core/base-game";
 import { FightHandler } from "../logic/fight";
 
 type JoinMessage = {
-  type: 'join'
+  type: "join";
   fightId: string;
   game: string;
 };
 type EndMessage = {
-  type: 'end'
+  type: "end";
   fightId: string;
 };
 declare module "~/lib/event-emitter" {
@@ -32,7 +32,7 @@ declare module "~/lib/event-emitter" {
 /**
  * makes sure that a user is in a fight
  */
-export const inFightProcedure = playerProcedure.use(async ({ ctx, next }) => {
+export const inFightProcedure = userProcedure.use(async ({ ctx, next }) => {
   const currentFight = await FightHandler.instance.getCurrentFight(
     ctx.user.clerkId,
   );
@@ -81,7 +81,7 @@ export function catchMatchError(fn: () => void) {
 }
 
 export const fightRouter = createTRPCRouter({
-  create: playerProcedure
+  create: userProcedure
     .input(
       z.object({
         opponent: z.string(),
@@ -124,7 +124,7 @@ export const fightRouter = createTRPCRouter({
       };
     }),
 
-  currentFight: playerProcedure.query(async ({ ctx }) => {
+  currentFight: userProcedure.query(async ({ ctx }) => {
     try {
       return {
         fight: await FightHandler.instance.getCurrentFight(ctx.user.clerkId),

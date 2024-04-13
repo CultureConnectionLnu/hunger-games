@@ -1,14 +1,14 @@
 import { z } from "zod";
 import { ScoreHandler } from "../logic/score";
-import { createTRPCRouter, playerProcedure } from "../trpc";
+import { createTRPCRouter, userProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 
 export const scoreRouter = createTRPCRouter({
-  currentScore: playerProcedure.query(({ ctx }) =>
+  currentScore: userProcedure.query(({ ctx }) =>
     ScoreHandler.instance.currentScore(ctx.user.clerkId),
   ),
-  dashboard: playerProcedure.query(() => ScoreHandler.instance.getDashboard()),
-  scoreFromGame: playerProcedure
+  dashboard: userProcedure.query(() => ScoreHandler.instance.getDashboard()),
+  scoreFromGame: userProcedure
     .input(
       z.object({
         fightId: z.string(),

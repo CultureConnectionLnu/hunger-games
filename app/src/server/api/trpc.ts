@@ -200,7 +200,7 @@ export const playerProcedure = userProcedure.use(({ ctx, next }) => {
 /**
  * Protected (authenticated) procedure for moderators
  */
-export const moderatorProcedure = playerProcedure.use(async ({ ctx, next }) => {
+export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
   if (!["moderator", "admin"].includes(ctx.role)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a moderator" });
   }
@@ -211,7 +211,7 @@ export const moderatorProcedure = playerProcedure.use(async ({ ctx, next }) => {
 /**
  * Protected (authenticated) procedure for admins
  */
-export const adminProcedure = playerProcedure.use(async ({ ctx, next }) => {
+export const adminProcedure = userProcedure.use(async ({ ctx, next }) => {
   if (!["admin"].includes(ctx.role)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not an admin" });
   }

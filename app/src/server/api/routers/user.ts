@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, playerProcedure } from "../trpc";
+import { createTRPCRouter, userProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 // import { clerkClient } from "@clerk/nextjs";
 /**
@@ -11,7 +11,7 @@ import { TRPCError } from "@trpc/server";
 const clerkModule = import("@clerk/nextjs");
 
 export const userRouter = createTRPCRouter({
-  getUserName: playerProcedure
+  getUserName: userProcedure
     .input(
       z.object({
         id: z.string(),
