@@ -32,9 +32,18 @@ if (!globalForEE.ee) {
   globalForEE.ee = new TypedEventEmitter();
 }
 
+declare global {
+  interface CustomJwtSessionClaims {
+    metadata: {
+      role?: "admin" | "moderator" | "player";
+    };
+  }
+}
+
 export async function createCommonContext(opts: {
   ee: TypedEventEmitter;
   userId: string | undefined;
+  role?: CustomJwtSessionClaims["metadata"]["role"];
 }) {
   const base = { db, user: undefined, ...opts };
   const { userId } = opts;
@@ -54,18 +63,18 @@ export async function createCommonContext(opts: {
        */
       const newUser = await db
         .insert(users)
-        .values({ clerkId: userId, role: "user" })
+        .values({ clerkId: userId })
         .returning({
           createdAt: users.createdAt,
           clerkId: users.clerkId,
           isDeleted: users.isDeleted,
-          role: users.role,
         });
       user = newUser[0]!;
     }
     return {
       ...base,
       user: user.isDeleted ? undefined : user,
+      role: opts.role ?? ("guest" as const),
     };
   } catch (e) {
     console.error(e);
@@ -92,6 +101,7 @@ export const createTRPCContext = async () => {
   return createCommonContext({
     ee: globalForEE.ee!,
     userId: session.userId ?? undefined,
+    role: session.sessionClaims?.metadata.role,
   });
 };
 
@@ -99,6 +109,7 @@ export const createWebSocketContext = async () => {
   return createCommonContext({
     ee: globalForEE.ee!,
     userId: undefined,
+    role: undefined,
   });
 };
 /**
@@ -145,9 +156,6 @@ export const createTRPCRouter = t.router;
  */
 export const publicProcedure = t.procedure;
 
-/**
- * Protected (authenticated) procedure for users
- */
 export const userProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
@@ -158,7 +166,25 @@ export const userProcedure = t.procedure.use(({ ctx, next }) => {
       message: "User is deleted",
     });
   }
-  // default role is user, so no further checks are needed
+
+  return next({
+    ctx: {
+      ...ctx,
+      user: {
+        ...ctx.user,
+        clerkId: ctx.user.clerkId,
+      },
+    },
+  });
+});
+
+/**
+ * Protected (authenticated) procedure for players
+ */
+export const playerProcedure = userProcedure.use(({ ctx, next }) => {
+  if (!["moderator", "admin", "player"].includes(ctx.role)) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a player" });
+  }
 
   return next({
     ctx: {
@@ -174,8 +200,8 @@ export const userProcedure = t.procedure.use(({ ctx, next }) => {
 /**
  * Protected (authenticated) procedure for moderators
  */
-export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!["moderator", "admin"].includes(ctx.user.role)) {
+export const moderatorProcedure = playerProcedure.use(async ({ ctx, next }) => {
+  if (!["moderator", "admin"].includes(ctx.role)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a moderator" });
   }
 
@@ -185,8 +211,8 @@ export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
 /**
  * Protected (authenticated) procedure for admins
  */
-export const adminProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!["admin"].includes(ctx.user.role)) {
+export const adminProcedure = playerProcedure.use(async ({ ctx, next }) => {
+  if (!["admin"].includes(ctx.role)) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not an admin" });
   }
 

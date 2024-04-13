@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createTRPCRouter, userProcedure } from "../trpc";
+import { createTRPCRouter, playerProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 // import { clerkClient } from "@clerk/nextjs";
 /**
@@ -11,7 +11,7 @@ import { TRPCError } from "@trpc/server";
 const clerkModule = import("@clerk/nextjs");
 
 export const userRouter = createTRPCRouter({
-  getUserName: userProcedure
+  getUserName: playerProcedure
     .input(
       z.object({
         id: z.string(),
@@ -29,14 +29,14 @@ export const userRouter = createTRPCRouter({
       const { clerkClient } = await clerkModule;
       try {
         const user = await clerkClient.users.getUser(input.id);
-        if(user.firstName && user.lastName){
-            return `${user.firstName} ${user.lastName}`;
+        if (user.firstName && user.lastName) {
+          return `${user.firstName} ${user.lastName}`;
         }
-        if(user.firstName){
-            return user.firstName;
+        if (user.firstName) {
+          return user.firstName;
         }
-        if(user.username){
-            return user.username;
+        if (user.username) {
+          return user.username;
         }
 
         return "Anonymous User";

@@ -5,7 +5,7 @@ import { z } from "zod";
 import {
   createTRPCRouter,
   publicProcedure,
-  userProcedure,
+  playerProcedure,
 } from "~/server/api/trpc";
 import type { BaseGamePlayerEvents } from "../logic/core/base-game";
 import { FightHandler } from "../logic/fight";
@@ -29,7 +29,7 @@ declare module "~/lib/event-emitter" {
 /**
  * makes sure that a user is in a fight
  */
-export const inFightProcedure = userProcedure.use(async ({ ctx, next }) => {
+export const inFightProcedure = playerProcedure.use(async ({ ctx, next }) => {
   const currentFight = await FightHandler.instance.getCurrentFight(
     ctx.user.clerkId,
   );
@@ -78,7 +78,7 @@ export function catchMatchError(fn: () => void) {
 }
 
 export const fightRouter = createTRPCRouter({
-  create: userProcedure
+  create: playerProcedure
     .input(
       z.object({
         opponent: z.string(),
@@ -121,7 +121,7 @@ export const fightRouter = createTRPCRouter({
       };
     }),
 
-  currentFight: userProcedure.query(async ({ ctx }) => {
+  currentFight: playerProcedure.query(async ({ ctx }) => {
     try {
       return {
         fight: await FightHandler.instance.getCurrentFight(ctx.user.clerkId),
@@ -183,25 +183,7 @@ export const fightRouter = createTRPCRouter({
       });
     }),
 
-  canJoin: userProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const result = await ctx.db.query.fight.findFirst({
-        where: (matches, { and, eq, isNull }) =>
-          and(isNull(matches.winner), eq(matches.id, input.id)),
-        with: {
-          participants: true,
-        },
-      });
-      if (!result) {
-        return false;
-      }
-      return result.participants.some(
-        (participant) => participant.userId === ctx.user.clerkId,
-      );
-    }),
-
-  onInvite: publicProcedure
+  onFightUpdate: publicProcedure
     .input(
       z.object({
         id: z.string(),

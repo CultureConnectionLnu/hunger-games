@@ -383,7 +383,7 @@ async function setupTest() {
     fight: FightHandler.instance.getFight(fightId),
     test_user_1: {
       base: (
-        await callers.test_user_1.fight.onAction({
+        await callers.test_user_1.fight.onGameAction({
           userId: "test_user_1",
           fightId,
         })
@@ -397,7 +397,7 @@ async function setupTest() {
     },
     test_user_2: {
       base: (
-        await callers.test_user_2.fight.onAction({
+        await callers.test_user_2.fight.onGameAction({
           userId: "test_user_2",
           fightId,
         })

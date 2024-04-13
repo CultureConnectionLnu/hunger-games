@@ -425,7 +425,10 @@ async function setupTest() {
     await callers[userId].fight.join();
     const listener = userId === "test_user_1" ? firstListener : secondListener;
     const un = (
-      await callers[userId].fight.onAction({ userId, fightId: state.fightId! })
+      await callers[userId].fight.onGameAction({
+        userId,
+        fightId: state.fightId!,
+      })
     ).subscribe({
       next: (event) => listener(event),
     });

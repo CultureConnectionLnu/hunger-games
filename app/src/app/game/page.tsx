@@ -29,7 +29,7 @@ import { Timer } from "../_feature/timer/timer";
 import { useTimers } from "../_feature/timer/timer-provider";
 
 type ServerEvent =
-  RouterOutputs["fight"]["onAction"] extends Observable<infer R, never>
+  RouterOutputs["fight"]["onGameAction"] extends Observable<infer R, never>
     ? R
     : never;
 
@@ -102,7 +102,7 @@ function GameLobby({
   const [gameEnded, setGameEnded] = useState(false);
   const { handleEvent } = useTimers();
 
-  api.fight.onAction.useSubscription(params, {
+  api.fight.onGameAction.useSubscription(params, {
     onData(data) {
       switch (data.event) {
         case "start-timer":
