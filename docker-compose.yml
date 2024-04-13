@@ -3,9 +3,7 @@ version: "3.9"
 services:
   app:
     platform: "linux/amd64"
-    build:
-      context: .
-      dockerfile: Dockerfile
+    build: ./app
       args:
         NODE_ENV: production
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
