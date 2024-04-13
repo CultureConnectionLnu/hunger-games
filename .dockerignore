@@ -1,10 +1,5 @@
-.env
-Dockerfile
-docker-compose.yml
+env
+docker-compose.*
 .dockerignore
-node_modules
-npm-debug.log
 README.md
-.next
 .git
-postgres-data
