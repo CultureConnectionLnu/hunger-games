@@ -10,33 +10,37 @@ services:
         NODE_ENV: production
         NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
         NEXT_PUBLIC_WS_PORT: 3001
-        NEXT_PUBLIC_FEATURE_MANUAL_JOIN: true
+        NEXT_PUBLIC_FEATURE_MANUAL_JOIN: false
     working_dir: /app
     ports:
-      - 3000:3000
-      - 3001:3001
+      - 3000
+      - 3001
     image: hunger-games-server
     container_name: hunger-games-server
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DATABASE_URL=postgresql://myuser:mysecretpassword@db:5432/mydatabase
+      - DATABASE_URL=${DATABASE_URL:-postgresql://myuser:mysecretpassword@db:5432/mydatabase}
       - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
       - CLERK_WEBHOOK_SECRET=${CLERK_WEBHOOK_SECRET}
       - FEATURE_GAME_TIMEOUT=true
+    networks:
+      - internal-network
 
   db:
     image: postgres@sha256:44e345d9eb8bf0c62187df6dd4082f2cf4ab3cabe9957004dedc91e05e6d02c7 # postgres:16.2-bullseye
     container_name: hunger-games-db
     restart: always
     environment:
-      POSTGRES_PASSWORD: mysecretpassword
-      POSTGRES_DB: mydatabase
-      POSTGRES_USER: myuser
-    # volumes:
-    #   - ./postgres-data:/var/lib/postgresql/data
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mysecretpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-mydatabase}
+      POSTGRES_USER: ${POSTGRES_USER:-myuser}
     ports:
-      - "5432:5432"
+      - 5432
+    networks:
+      - internal-network
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
   adminer:
     image: adminer
@@ -44,4 +48,12 @@ services:
     depends_on:
       - db
     ports:
-      - 8080:8080
+      - 8080
+    networks:
+      - internal-network
+
+networks:
+  internal-network:
+
+volumes:
+  pgdata:
