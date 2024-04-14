@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import { inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { TypedEventEmitter } from "~/lib/event-emitter";
@@ -6,9 +7,13 @@ import { appRouter } from "~/server/api/root";
 import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
-import { useAutomaticTimer, useManualTimer } from "./utils";
+import {
+  useAutomaticTimer,
+  useManualTimer,
+  useMockUserNames,
+  useRealUserNames,
+} from "./utils";
 import { staticScoringConfig } from "~/server/api/logic/score";
-import { randomUUID } from "crypto";
 
 export const scoreTests = () =>
   describe("Score", () => {
@@ -17,8 +22,8 @@ export const scoreTests = () =>
         testFight(async ({ getScoreOfUser }) => {
           const score1 = await getScoreOfUser("test_user_1");
           const score2 = await getScoreOfUser("test_user_2");
-          expect(score1).toEqual({ score: 0 });
-          expect(score2).toEqual({ score: 0 });
+          expect(score1).toBe(0);
+          expect(score2).toBe(0);
         }));
 
       it(`winner gets at least ${staticScoringConfig.winnerMinimumPointsBonus} points`, () =>
@@ -26,10 +31,8 @@ export const scoreTests = () =>
           await playGame("test_user_1");
           const score1 = await getScoreOfUser("test_user_1");
           const score2 = await getScoreOfUser("test_user_2");
-          expect(score1).toEqual({
-            score: staticScoringConfig.winnerMinimumPointsBonus,
-          });
-          expect(score2).toEqual({ score: 0 });
+          expect(score1).toBe(staticScoringConfig.winnerMinimumPointsBonus);
+          expect(score2).toBe(0);
         }));
 
       it(`looser should loose ${staticScoringConfig.winnerGetsPercent}% of his points`, () =>
@@ -38,8 +41,8 @@ export const scoreTests = () =>
           await playGame("test_user_2");
           const score1 = await getScoreOfUser("test_user_1");
           const score2 = await getScoreOfUser("test_user_2");
-          expect(score1).toEqual({ score: 50 });
-          expect(score2).toEqual({ score: 100 });
+          expect(score1).toBe(50);
+          expect(score2).toBe(100);
         }));
     });
 
@@ -84,8 +87,8 @@ export const scoreTests = () =>
 async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useManualTimer();
+  useMockUserNames();
   const args = await setupTest();
   // make sure that no scores for the player are present before the test
   return await test(args)
@@ -93,6 +96,7 @@ async function testFight(
     .catch((error: Error) => ({ pass: false, error }) as const)
     .then(async (x) => {
       useAutomaticTimer();
+      useRealUserNames();
       if (args.getAllFightIds().length !== 0) {
         await db.delete(fight).where(inArray(fight.id, args.getAllFightIds()));
       }
@@ -129,8 +133,9 @@ async function setupTest() {
     const { id } = await callers.test_user_1.fight.create({
       opponent: `test_user_2`,
     });
+    const looser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
     const fight = FightHandler.instance.getFight(id)!;
-    fight.lobby.endGame(winner);
+    fight.lobby.endGame(winner, looser);
     await fight.gameDone;
     state.allFightIds.push(id);
   };

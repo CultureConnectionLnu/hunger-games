@@ -1,6 +1,7 @@
 import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, type Mock } from "vitest";
 import { TimerFactory } from "~/server/api/logic/core/timer";
+import { UserHandler } from "~/server/api/logic/user";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 
@@ -29,6 +30,16 @@ export function useManualTimer() {
 
 export function useAutomaticTimer() {
   TimerFactory.instance.useAutomatic();
+}
+
+export function useMockUserNames() {
+  UserHandler.instance.useMockUserNames({
+    test_user_1: "Test User 1",
+    test_user_2: "Test User 2",
+  });
+}
+export function useRealUserNames() {
+  UserHandler.instance.useRealUserNames();
 }
 
 export function getManualTimer() {

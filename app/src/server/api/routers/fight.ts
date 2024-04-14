@@ -105,22 +105,32 @@ export const fightRouter = createTRPCRouter({
         opponent.clerkId,
       );
 
-      [ctx.user.clerkId, opponent.clerkId].forEach((player) => {
+      const players = [ctx.user.clerkId, opponent.clerkId];
+      players.forEach((player) => {
         ctx.ee.emit(`fight.join.${player}`, {
           type: "join",
-          fightId: newFight.id,
-          game: newFight.game,
+          fightId: newFight.lobby.fightId,
+          game: newFight.type,
+        });
+      });
+
+      newFight.lobby.on("game-ended", () => {
+        players.forEach((player) => {
+          ctx.ee.emit(`fight.end.${player}`, {
+            type: "end",
+            fightId: newFight.lobby.fightId,
+          });
         });
       });
 
       console.log("New fight", {
-        id: newFight.id,
-        game: newFight.game,
+        id: newFight.lobby.fightId,
+        game: newFight.type,
         players: [ctx.user.clerkId, opponent.clerkId],
       });
 
       return {
-        id: newFight.id,
+        id: newFight.lobby.fightId,
       };
     }),
 

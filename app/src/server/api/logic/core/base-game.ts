@@ -11,6 +11,7 @@ import type {
   UnspecificPlayerEventData,
 } from "./types";
 import { generalGameConfig } from "../config";
+import { ScoreHandler } from "../score";
 
 export type BaseGameConfig = {
   startTimeoutInSeconds: number;
@@ -21,9 +22,8 @@ export type BaseGameConfig = {
 export type GeneralGameEvents = EventTemplate<
   {
     "player-joined-readying": {
-      opponent: string;
-      joined: string[];
-      ready: string[];
+      opponentName: string;
+      opponentStatus: "none" | "joined" | "ready";
     };
     "start-timer": TimerEvent;
     "disconnect-timer": TimerEvent;
@@ -32,6 +32,14 @@ export type GeneralGameEvents = EventTemplate<
     "game-ended": {
       winnerId: string;
       looserId: string;
+    };
+    "game-ended-score": {
+      winnerName: string;
+      looserName: string;
+      winnerScore: number;
+      looserScore: number;
+      currentScore: number;
+      youWon: boolean;
     };
     "game-halted": {
       disconnected: string[];
@@ -52,6 +60,7 @@ export type GeneralGameEvents = EventTemplate<
   | "start-timer"
   | "disconnect-timer"
   | "game-in-progress"
+  | "game-ended-score"
   | "game-ended"
   | "game-halted"
   | "game-resume"
@@ -64,7 +73,7 @@ type GameState = "none" | "initialized" | "running" | "ended";
 export type SpecificGame = {
   pauseGame: () => void;
   resumeGame: () => void;
-  startGame: (endGame: (winnerId: string) => void) => void;
+  startGame: (endGame: (winnerId: string, looserId: string) => void) => void;
   cleanup: () => void;
 };
 
@@ -91,21 +100,13 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
   ) {
     super();
 
-    this.on("game-ended", () =>
-      setTimeout(() => {
-        /**
-         * make sure that all the synchronous events are done before starting the game
-         */
-        this.destroy();
-      }),
-    );
     this.setupPlayers(playerTuple);
     this.setupGameStartListener();
 
     const eventing = new GameEventingHandler({
       emit: this.emit.bind(this),
       fightId,
-      playerIds: playerTuple.map(x=> x.id),
+      playerIds: playerTuple.map((x) => x.id),
       getView: (playerId) => this.players.get(playerId)!.view,
       playerSpecificEvents: [
         "player-joined-readying",
@@ -113,6 +114,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
         "disconnect-timer",
         "game-in-progress",
         "game-ended",
+        "game-ended-score",
         "game-halted",
         "game-resume",
         "canceled",
@@ -200,15 +202,54 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
     return this.players.get(id);
   }
 
-  endGame(winner: string) {
-    this.assertPlayer(winner);
+  public async informPlayerScore(winnerId: string, looserId: string) {
+    const looser = this.players.get(looserId)!;
+    const winner = this.players.get(winnerId)!;
+
+    const winnerScoreResult = await ScoreHandler.instance.getScoreFromGame(
+      this.fightId,
+      winner.id,
+    );
+    const looserScoreResult = await ScoreHandler.instance.getScoreFromGame(
+      this.fightId,
+      looser.id,
+    );
+
+    if (!winnerScoreResult.success || !looserScoreResult.success) {
+      console.error(
+        `Could not get score for fight ${this.fightId} of player ${winner.id} or ${looser.id}`,
+      );
+      return;
+    }
+
+    for (const player of this.players.values()) {
+      this.emitEvent(
+        {
+          event: "game-ended-score",
+          data: {
+            winnerName: winner.name,
+            looserName: looser.name,
+            winnerScore: winnerScoreResult.score,
+            looserScore: looserScoreResult.score,
+            currentScore: await ScoreHandler.instance.currentScore(player.id),
+            youWon: player.id === winnerId,
+          },
+        },
+        player.id,
+      );
+    }
+  }
+
+  endGame(winnerId: string, looserId: string) {
+    this.assertPlayer(winnerId);
+    this.assertPlayer(looserId);
 
     this.players.forEach((x) => x.gameEnd());
     this.emitEvent({
       event: "game-ended",
       data: {
-        winnerId: winner,
-        looserId: [...this.players.values()].find((x) => x.id !== winner)!.id,
+        winnerId,
+        looserId,
       },
     });
   }
@@ -221,8 +262,8 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
     return player;
   }
 
-  private setupPlayers(playerTuples: {id: string, name: string}[]) {
-    playerTuples.forEach(({id, name}) => {
+  private setupPlayers(playerTuples: { id: string; name: string }[]) {
+    playerTuples.forEach(({ id, name }) => {
       const player = new BasePlayer(id, name);
       this.players.set(id, player);
       this.handleJoinAndReady(player);
@@ -236,23 +277,18 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
 
   private emitJoiningPlayingUpdate() {
     const playerArray = [...this.players.values()];
-
-    const generalEventData = {
-      joined: playerArray.filter((x) => x.view === "joined").map((x) => x.id),
-      ready: playerArray.filter((x) => x.view === "ready").map((x) => x.id),
-    };
-    const playerIds = playerArray.map((x) => x.id);
-    playerIds.forEach((id) => {
-      const opponent = playerIds.find((x) => x !== id);
+    playerArray.forEach((player) => {
+      const { name, view } = playerArray.find((x) => x !== player)!;
       this.emitEvent(
         {
           event: "player-joined-readying",
           data: {
-            opponent: opponent!,
-            ...generalEventData,
+            opponentName: name,
+            opponentStatus:
+              view === "joined" || view === "ready" ? view : "none",
           },
         },
-        id,
+        player.id,
       );
     });
     if ([...this.players.values()].every((x) => x.view === "ready")) {

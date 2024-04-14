@@ -110,7 +110,7 @@ export class FightHandler {
     });
     wrapper.gameDone = this.registerEndListener(wrapper.lobby);
 
-    return newFight;
+    return wrapper;
   }
 
   public getFight(fightId: string) {
@@ -123,9 +123,12 @@ export class FightHandler {
 
   private async registerEndListener(game: BaseGame) {
     try {
-      const winner = await new Promise<string>((resolve, reject) => {
+      const { winnerId, looserId } = await new Promise<{
+        winnerId: string;
+        looserId: string;
+      }>((resolve, reject) => {
         game.once("game-ended", (event) => {
-          resolve(event.data.winnerId);
+          resolve(event.data);
         });
         game.once("destroy", () => {
           reject(new Error("Game destroyed before it ended"));
@@ -133,14 +136,14 @@ export class FightHandler {
       });
       await this.db
         .update(fight)
-        .set({ winner })
+        .set({ winner: winnerId })
         .where(eq(fight.id, game.fightId))
         .catch((error) => {
           throw new Error("Failed to update fight", { cause: error });
         });
 
-      const looser = game.playerTuple.find(({ id }) => id !== winner)!;
-      await ScoreHandler.instance.updateScore(winner, looser.id, game.fightId);
+      await ScoreHandler.instance.updateScore(winnerId, looserId, game.fightId);
+      await game.informPlayerScore(winnerId, looserId);
     } catch (error) {
       console.log("Game completed with an error", error);
     }

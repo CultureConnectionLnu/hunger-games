@@ -30,9 +30,7 @@ export class ScoreHandler {
       .from(score)
       .where(eq(score.userId, userId));
 
-    return {
-      score: Number(totalScore[0]?.score ?? 0),
-    };
+    return Number(totalScore[0]?.score ?? 0);
   }
 
   public async updateScore(
@@ -42,9 +40,8 @@ export class ScoreHandler {
   ) {
     try {
       const currentLooserScore = await this.currentScore(looserId);
-      const { looserSubtraction, winnerAddition } = this.calculateScoreEntries(
-        currentLooserScore.score,
-      );
+      const { looserSubtraction, winnerAddition } =
+        this.calculateScoreEntries(currentLooserScore);
       await this.db.insert(score).values([
         {
           fightId,

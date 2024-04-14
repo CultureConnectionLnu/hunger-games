@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import type { Unsubscribable } from "@trpc/server/observable";
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
@@ -18,17 +19,20 @@ import {
   runAllMacroTasks,
   useAutomaticTimer,
   useManualTimer,
+  useMockUserNames,
+  useRealUserNames,
 } from "./utils";
 
 export const lobbyTests = () =>
   describe("Lobby", () => {
     describe("currentFight", () => {
       it("should not find a match for current user", async () => {
-        const ctx = await createCommonContext({
-          ee: new TypedEventEmitter(),
-          userId: "test_user_1",
-        });
-        const caller = appRouter.createCaller(ctx);
+        const caller = appRouter.createCaller(
+          await createCommonContext({
+            ee: new TypedEventEmitter(),
+            userId: "test_user_1",
+          }),
+        );
 
         const result = await caller.fight.currentFight(undefined);
 
@@ -45,6 +49,56 @@ export const lobbyTests = () =>
         }));
     });
 
+    describe("onFightUpdate", () => {
+      it("should not emit when no fight is happening", () =>
+        testFight(async ({ callers }) => {
+          const listener = vi.fn();
+          const un = (
+            await callers.test_user_1.fight.onFightUpdate({ id: "test_user_1" })
+          ).subscribe({ next: listener });
+
+          await runAllMacroTasks();
+
+          expect(listener).not.toHaveBeenCalled();
+          un.unsubscribe();
+        }));
+
+      it('should emit when a fight is happening and the "id" matches', () =>
+        testFight(async ({ startGame, getLobby, callers }) => {
+          const listener = vi.fn();
+          const un = (
+            await callers.test_user_1.fight.onFightUpdate({ id: "test_user_1" })
+          ).subscribe({ next: listener });
+
+          await startGame();
+
+          expect(listener).toHaveBeenCalledWith({
+            type: "join",
+            fightId: getLobby().fightId,
+            game: "rock-paper-scissors",
+          });
+          un.unsubscribe();
+        }));
+
+      it("should emit when the game ended", () =>
+        testFight(async ({ startGame, getLobby, callers }) => {
+          const listener = vi.fn();
+          const un = (
+            await callers.test_user_1.fight.onFightUpdate({ id: "test_user_1" })
+          ).subscribe({ next: listener });
+
+          await startGame();
+          getLobby().endGame("test_user_1", "test_user_2");
+          await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+          expect(listener).toHaveBeenCalledWith({
+            type: "end",
+            fightId: getLobby().fightId,
+          });
+          un.unsubscribe();
+        }));
+    });
+
     describe("BaseGame", () => {
       describe("Before game start", () => {
         it("should emit that a player joined", () =>
@@ -52,12 +106,13 @@ export const lobbyTests = () =>
             await createGame();
 
             await connect("test_user_1");
+            await connect("test_user_2");
 
             const event = getLastEventOf(
               firstListener,
               "player-joined-readying",
             )!;
-            expect(event.data.joined).toContain("test_user_1");
+            expect(event.data.opponentStatus).toBe("joined");
           }));
 
         it("should emit that all players joined", () =>
@@ -70,12 +125,12 @@ export const lobbyTests = () =>
 
               expect(
                 getLastEventOf(firstListener, "player-joined-readying")!.data
-                  .joined,
-              ).toEqual(["test_user_1", "test_user_2"]);
+                  .opponentStatus,
+              ).toBe("joined");
               expect(
                 getLastEventOf(secondListener, "player-joined-readying")!.data
-                  .joined,
-              ).toEqual(["test_user_1", "test_user_2"]);
+                  .opponentStatus,
+              ).toBe("joined");
             },
           ));
 
@@ -84,14 +139,14 @@ export const lobbyTests = () =>
             await createGame();
 
             await connect("test_user_1");
-            await ready("test_user_1");
+            await connect("test_user_2");
+            await ready("test_user_2");
 
             const event = getLastEventOf(
               firstListener,
               "player-joined-readying",
             )!;
-            expect(event.data.ready).toEqual(["test_user_1"]);
-            expect(event.data.joined).toEqual([]);
+            expect(event.data.opponentStatus).toBe("ready");
           }));
       });
 
@@ -353,14 +408,26 @@ export const lobbyTests = () =>
             ).toBeFalsy();
           }));
       });
+
+      it("should inform players about the score", () =>
+        testFight(
+          async ({ getLobby, startGame, firstListener, secondListener }) => {
+            await startGame();
+            getLobby().endGame("test_user_1", "test_user_2");
+            await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+            expectEventEmitted(firstListener, "game-ended-score");
+            expectEventEmitted(secondListener, "game-ended-score");
+          },
+        ));
     });
   });
 
 async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useManualTimer();
+  useMockUserNames();
   const args = await setupTest();
 
   return await test(args)
@@ -369,11 +436,11 @@ async function testFight(
     .then(async (x) => {
       const id = args.getFightId();
       useAutomaticTimer();
+      useRealUserNames();
       if (id === undefined) return x;
 
       // finish the game properly before deleting
-      args.getLobby().endGame("test_user_1");
-      args.getFight().lobby.endGame("test_user_1");
+      args.getLobby().endGame("test_user_1", "test_user_2");
       await args.getFight().gameDone;
       await db.delete(fight).where(eq(fight.id, id));
       return x;

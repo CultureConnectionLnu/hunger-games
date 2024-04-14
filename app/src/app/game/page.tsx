@@ -39,7 +39,6 @@ type GetSpecificEvent<T, Event extends ServerEvent["event"]> = T extends {
 }
   ? T
   : never;
-type WinnerEvent = GetSpecificEvent<ServerEvent, "game-ended">;
 type JoinedEvent = GetSpecificEvent<ServerEvent, "player-joined-readying">;
 
 export default function CurrentGame() {
@@ -108,7 +107,7 @@ function GameLobby({
         default:
           setLastEvent(data);
           // make sure that the end screen does not disappear because of random event
-          if (data.event === "game-ended") {
+          if (data.event === "game-ended-score") {
             setGameEnded(true);
           }
       }
@@ -129,27 +128,20 @@ function GameLobby({
       case "joined":
       case "ready":
         const joinedData = lastEvent.data as JoinedEvent["data"];
-        const opponentId = joinedData.opponent;
-        const status = joinedData.ready.includes(opponentId)
-          ? "ready"
-          : joinedData.joined.includes(opponentId)
-            ? "joined"
-            : "none";
         const showReadyScreen = lastEvent.view === "joined";
         lobby = (
           <>
             {showReadyScreen ? <ReadyScreen /> : <WaitForOtherPlayer />}
-            <OtherPlayerLobbyStatus params={{ opponentId, status }} />{" "}
+            <OtherPlayerLobbyStatus params={joinedData} />{" "}
           </>
         );
         break;
       case "game-ended":
-        const data = lastEvent.data as WinnerEvent["data"];
-        lobby = (
-          <EndScreen
-            params={{ ...data, you: params.userId, fightId: params.fightId }}
-          />
-        );
+        if (lastEvent.event === "game-ended-score") {
+          lobby = <EndScreen params={lastEvent.data} />;
+        } else {
+          lobby = <CalculatingScore />;
+        }
         break;
       // todo: add game-halted view
     }
@@ -309,16 +301,8 @@ function ReadyScreen() {
 function OtherPlayerLobbyStatus({
   params,
 }: {
-  params: { opponentId: string; status: "none" | "joined" | "ready" };
+  params: { opponentName: string; opponentStatus: "none" | "joined" | "ready" };
 }) {
-  const { data: opponentName, isLoading } = api.user.getUserName.useQuery(
-    {
-      id: params.opponentId,
-    },
-    {
-      staleTime: Infinity,
-    },
-  );
   const statusToText = {
     none: <div className="text-gray-400">Joining</div>,
     joined: <div>Joined</div>,
@@ -327,17 +311,8 @@ function OtherPlayerLobbyStatus({
   return (
     <GameCard header={<CardTitle>Opponent</CardTitle>}>
       <div className="flex w-full justify-between">
-        {isLoading ? (
-          <>
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-4 w-1/3" />
-          </>
-        ) : (
-          <>
-            <div>{opponentName}</div>
-            {statusToText[params.status]}
-          </>
-        )}
+        <div>{params.opponentName}</div>
+        {statusToText[params.opponentStatus]}
       </div>
     </GameCard>
   );
@@ -349,78 +324,32 @@ function WaitForOtherPlayer() {
   );
 }
 
+function CalculatingScore() {
+  return (
+    <GameCard header={<CardTitle>Calculating Score</CardTitle>}></GameCard>
+  );
+}
+
 function EndScreen({
   params,
 }: {
-  params: { winnerId: string; looserId: string; you: string; fightId: string };
+  params: {
+    winnerName: string;
+    looserName: string;
+    winnerScore: number;
+    looserScore: number;
+    currentScore: number;
+    youWon: boolean;
+  };
 }) {
-  const { data: winnerName, isLoading: winnerLoading } =
-    api.user.getUserName.useQuery(
-      { id: params.winnerId },
-      { staleTime: Infinity },
-    );
-  const { data: looserName, isLoading: looserLoading } =
-    api.user.getUserName.useQuery(
-      { id: params.looserId },
-      { staleTime: Infinity },
-    );
-  const { data: currentScore, isLoading: currentScoreLoading } =
-    api.score.currentScore.useQuery(undefined, {
-      staleTime: Infinity,
-      refetchOnMount: "always",
-    });
-
-  const { data: winnerScore, isLoading: winnerScoreLoading } =
-    api.score.scoreFromGame.useQuery(
-      {
-        fightId: params.fightId,
-        userId: params.winnerId,
-      },
-      {
-        staleTime: Infinity,
-        refetchOnMount: "always",
-      },
-    );
-
-  const { data: looserScore, isLoading: looserScoreLoading } =
-    api.score.scoreFromGame.useQuery(
-      {
-        fightId: params.fightId,
-        userId: params.looserId,
-      },
-      {
-        staleTime: Infinity,
-        refetchOnMount: "always",
-      },
-    );
-  console.log({
-    text: "end screen",
-    params,
-    data: {
-      winnerName,
-      looserName,
-      currentScore,
-      winnerScore,
-      looserScore,
-    },
-  });
-
   return (
     <>
       <GameCard
-        header={
-          <CardTitle>
-            You {params.you === params.winnerId ? "Won" : "Lost"}
-          </CardTitle>
-        }
+        header={<CardTitle>You {params.youWon ? "Won" : "Lost"}</CardTitle>}
       >
         <div className="flex w-full justify-around">
           <span>Current score</span>
-          {currentScoreLoading ? (
-            <Skeleton className="h-4 w-1/6" />
-          ) : (
-            <span>{currentScore?.score}</span>
-          )}
+          <span>{params.currentScore}</span>
         </div>
       </GameCard>
       <GameCard
@@ -433,29 +362,13 @@ function EndScreen({
       >
         <div className="flex w-full justify-around gap-4">
           <span>Winner</span>
-          {winnerLoading ? (
-            <Skeleton className="h-4 w-1/4" />
-          ) : (
-            <div>{winnerName}</div>
-          )}
-          {winnerScoreLoading ? (
-            <Skeleton className="h-4 w-1/4 bg-green-500" />
-          ) : (
-            <div className="text-green-500">+{winnerScore}</div>
-          )}
+          <div>{params.winnerName}</div>
+          <div className="text-green-500">+{params.winnerScore}</div>
         </div>
         <div className="flex w-full justify-around gap-4">
           <span>Loser</span>
-          {looserLoading ? (
-            <Skeleton className="h-4 w-1/4" />
-          ) : (
-            <div>{looserName}</div>
-          )}
-          {looserScoreLoading ? (
-            <Skeleton className="h-4 w-1/4 bg-red-500" />
-          ) : (
-            <div className="text-red-500">{looserScore}</div>
-          )}
+          <div>{params.looserName}</div>
+          <div className="text-red-500">{params.looserScore}</div>
         </div>
       </GameCard>
     </>

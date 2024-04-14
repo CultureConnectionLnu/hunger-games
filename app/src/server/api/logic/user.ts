@@ -18,20 +18,33 @@ export class UserHandler {
     }
     return globalForUserHandler.userHandler;
   }
+  public getUserName = getUserName;
 
-  public async getUserName(id: string) {
-    const { clerkClient } = await clerkModule;
-    const user = await clerkClient.users.getUser(id);
-    if (user.firstName && user.lastName) {
-      return `${user.firstName} ${user.lastName}`;
-    }
-    if (user.firstName) {
-      return user.firstName;
-    }
-    if (user.username) {
-      return user.username;
-    }
-
-    return "Anonymous User";
+  public useRealUserNames() {
+    this.getUserName = getUserName;
   }
+
+  public useMockUserNames(data: Record<string, string>) {
+    this.getUserName = mockGetUserName(data);
+  }
+}
+
+function mockGetUserName(lookup: Record<string, string>) {
+  return async (id: string) => lookup[id] ?? "Anonymous User";
+}
+
+async function getUserName(id: string) {
+  const { clerkClient } = await clerkModule;
+  const user = await clerkClient.users.getUser(id);
+  if (user.firstName && user.lastName) {
+    return `${user.firstName} ${user.lastName}`;
+  }
+  if (user.firstName) {
+    return user.firstName;
+  }
+  if (user.username) {
+    return user.username;
+  }
+
+  return "Anonymous User";
 }

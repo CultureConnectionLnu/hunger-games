@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { TypedEventEmitter } from "~/lib/event-emitter";
@@ -14,6 +15,8 @@ import {
   runAllMacroTasks,
   useAutomaticTimer,
   useManualTimer,
+  useMockUserNames,
+  useRealUserNames,
 } from "./utils";
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 
@@ -29,12 +32,12 @@ export const rpsTests = () =>
           expectEventEmitted(firstRpsListener, "show-result");
           const event = getLastEventOf(firstRpsListener, "show-result");
           expect(event?.data).toEqual({
+            outcome: "draw",
             anotherRound: true,
-            yourWin: false,
             wins: 0,
             looses: 0,
-            opponentId: "test_user_2",
-            draw: true,
+            yourName: "Test User 1",
+            opponentName: "Test User 2",
           });
         }));
 
@@ -48,12 +51,12 @@ export const rpsTests = () =>
           expectEventEmitted(firstRpsListener, "show-result");
           const event = getLastEventOf(firstRpsListener, "show-result");
           expect(event?.data).toEqual({
+            outcome: "win",
             anotherRound: true,
-            yourWin: true,
             wins: 1,
             looses: 0,
-            opponentId: "test_user_2",
-            draw: false,
+            yourName: "Test User 1",
+            opponentName: "Test User 2",
           });
         }));
 
@@ -68,12 +71,12 @@ export const rpsTests = () =>
           expectEventEmitted(firstRpsListener, "show-result");
           const event = getLastEventOf(firstRpsListener, "show-result");
           expect(event?.data).toEqual({
+            outcome: "draw",
             anotherRound: true,
-            yourWin: false,
             wins: 0,
             looses: 0,
-            opponentId: "test_user_2",
-            draw: true,
+            yourName: "Test User 1",
+            opponentName: "Test User 2",
           });
         }));
 
@@ -84,52 +87,52 @@ export const rpsTests = () =>
             p2: "scissors",
             wins: 1,
             looses: 0,
-            youWin: true,
+            outcome: "win",
           },
           {
             p1: "scissors",
             p2: "paper",
             wins: 1,
             looses: 0,
-            youWin: true,
+            outcome: "win",
           },
           {
             p1: "paper",
             p2: "rock",
             wins: 1,
             looses: 0,
-            youWin: true,
+            outcome: "win",
           },
           {
             p1: "scissors",
             p2: "rock",
             wins: 0,
             looses: 1,
-            youWin: false,
+            outcome: "loose",
           },
           {
             p1: "paper",
             p2: "scissors",
             wins: 0,
             looses: 1,
-            youWin: false,
+            outcome: "loose",
           },
           {
             p1: "rock",
             p2: "paper",
             wins: 0,
             looses: 1,
-            youWin: false,
+            outcome: "loose",
           },
         ] satisfies Array<{
           p1: "rock" | "paper" | "scissors";
           p2: "rock" | "paper" | "scissors";
           wins: number;
           looses: number;
-          youWin: boolean;
+          outcome: "win" | "draw" | "loose";
         }>
       ).forEach((x) => {
-        it(`if player 1 chooses "${x.p1}" and player 2 chooses "${x.p2}", then player 1 ${x.youWin ? "wins" : "looses"}`, () =>
+        it(`if player 1 chooses "${x.p1}" and player 2 chooses "${x.p2}", then player 1 ${x.outcome === "win" ? "wins" : "looses"}`, () =>
           testFight(async ({ startGame, firstRpsListener, choose }) => {
             await startGame();
             await choose("test_user_1", x.p1);
@@ -138,12 +141,13 @@ export const rpsTests = () =>
             expectEventEmitted(firstRpsListener, "show-result");
             const event = getLastEventOf(firstRpsListener, "show-result");
             expect(event?.data).toEqual({
+              outcome: x.outcome,
               anotherRound: true,
-              yourWin: x.youWin,
               wins: x.wins,
               looses: x.looses,
-              opponentId: "test_user_2",
-              draw: false,
+
+              yourName: "Test User 1",
+              opponentName: "Test User 2",
             });
           }));
       });
@@ -324,8 +328,8 @@ export const rpsTests = () =>
 async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useManualTimer();
+  useMockUserNames();
   const args = await setupTest();
 
   return await test(args)
@@ -334,10 +338,11 @@ async function testFight(
     .then(async (x) => {
       const id = args.getFightId();
       useAutomaticTimer();
+      useRealUserNames();
       if (id === undefined) return x;
 
       // finish the game properly before deleting
-      args.getFight().lobby.endGame("test_user_1");
+      args.getFight().lobby.endGame("test_user_1", "test_user_2");
       await args.getFight().gameDone;
       await db.delete(fight).where(eq(fight.id, id));
       return x;

@@ -39,12 +39,12 @@ export type RockPaperScissorsEvents = EventTemplate<
       doneChoosing: string[];
     };
     "show-result": {
+      outcome: "draw" | "win" | "loose";
       anotherRound: boolean;
-      yourWin: boolean;
       wins: number;
       looses: number;
-      draw: boolean;
-      opponentId: string;
+      yourName: string;
+      opponentName: string;
     };
     "choose-timer": TimerEvent;
     "next-round-timer": TimerEvent;
@@ -117,7 +117,7 @@ export class RpsGame
   private readonly players = new Map<string, RpsPlayer>();
   private timerHandler;
   private winners: string[] = [];
-  private endGame?: (winnerId: string) => void;
+  private endGame?: (winnerId: string, looserId: string) => void;
   private readonly config: RockPaperScissorsConfig = rockPaperScissorsConfig;
 
   private get hasStarted() {
@@ -185,7 +185,7 @@ export class RpsGame
     this.removeAllListeners();
   }
 
-  startGame(endGame: (winnerId: string) => void): void {
+  startGame(endGame: (winnerId: string, looserId: string) => void): void {
     this.endGame = endGame;
     this.startChoose();
   }
@@ -270,19 +270,22 @@ export class RpsGame
     player1.showResult();
     player2.showResult();
 
-    const playerStats = [...this.players.values()].map((x) => x.id);
+    const playerStats = [
+      { id: player1.id, name: player1.name, opponent: player2.name },
+      { id: player2.id, name: player2.name, opponent: player1.name },
+    ];
 
     if (result.draw) {
-      playerStats.forEach((id) => {
+      playerStats.forEach(({ id, name, opponent }) => {
         this.emitEvent(
           {
             event: "show-result",
             data: {
-              yourWin: false,
+              outcome: "draw",
               anotherRound: true,
+              yourName: name,
+              opponentName: opponent,
               ...this.getWinLooseRate(id),
-              draw: true,
-              opponentId: id === player1.id ? player2.id : player1.id,
             },
           },
           id,
@@ -294,16 +297,16 @@ export class RpsGame
 
     this.winners.push(result.winner);
     const overAllWinner = this.getWinner();
-    playerStats.forEach((id) => {
+    playerStats.forEach(({ id, name, opponent }) => {
       this.emitEvent(
         {
           event: "show-result",
           data: {
-            yourWin: id === result.winner,
+            outcome: id === result.winner ? "win" : "loose",
             anotherRound: !overAllWinner,
+            yourName: name,
+            opponentName: opponent,
             ...this.getWinLooseRate(id),
-            draw: false,
-            opponentId: id === player1.id ? player2.id : player1.id,
           },
         },
         id,
@@ -314,7 +317,11 @@ export class RpsGame
       // continue with the next round
       this.timerHandler.startTimer("next-round-timer");
     } else {
-      this.endGame!(overAllWinner[0]);
+      const winnerId = overAllWinner[0];
+      this.endGame!(
+        winnerId,
+        player1.id === winnerId ? player2.id : player1.id,
+      );
     }
   }
 
