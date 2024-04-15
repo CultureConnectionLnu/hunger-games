@@ -15,6 +15,7 @@ import { UserHandler } from "./user";
 const knownGames = {
   "rock-paper-scissors": RpsGame,
 };
+export type KnownGames = keyof typeof knownGames;
 
 const globalForFightHandler = globalThis as unknown as {
   fightHandler: FightHandler | undefined;

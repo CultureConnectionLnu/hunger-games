@@ -90,3 +90,7 @@ export const score = createTable(
     unq: unique().on(t.fightId, t.userId),
   }),
 );
+
+export const scoreFightRelation = relations(score, ({ one }) => ({
+  fight: one(fight),
+}));

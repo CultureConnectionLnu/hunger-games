@@ -27,7 +27,7 @@ export class UserHandler {
       errors: [] as { id: string; reason: unknown }[],
     };
     const results = await Promise.all(
-      ids.map((id) =>
+      [...new Set(ids)].map((id) =>
         this.getUserName(id)
           .then((name) => ({ success: true, id, name }) as const)
           .catch(
@@ -63,6 +63,8 @@ function mockGetUserName(lookup: Record<string, string>) {
 }
 
 async function getUserName(id: string) {
+  // todo: this feels like it should have caching for like 24h, but lets see if this is actually needed
+  // this could very well be included in the clerk code base already 
   const { clerkClient } = await clerkModule;
   const user = await clerkClient.users.getUser(id);
   if (user.firstName && user.lastName) {

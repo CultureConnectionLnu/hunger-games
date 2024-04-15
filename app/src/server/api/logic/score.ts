@@ -1,6 +1,7 @@
-import { and, eq, sum } from "drizzle-orm";
+import { and, desc, eq, sum } from "drizzle-orm";
 import { type DB, db } from "~/server/db";
 import { score } from "~/server/db/schema";
+import { type KnownGames } from "./fight";
 
 export const staticScoringConfig = {
   lowestScore: 0,
@@ -99,6 +100,41 @@ export class ScoreHandler {
     }
 
     return rankedScores;
+  }
+
+  public async getHistory(user: string) {
+    const rawHistory = await this.db.query.score.findMany({
+      with: {
+        fight: {
+          with: {
+            participants: true,
+          },
+        },
+      },
+      where: ({ userId }) => eq(userId, user),
+      orderBy: ({ createdAt }) => desc(createdAt),
+    });
+    const failedFightIds: string[] = [];
+    const history = rawHistory.map((x) => {
+      if (x.fight === null) {
+        failedFightIds.push(x.fightId);
+        return {
+          fightId: x.fightId,
+          game: "???" as const,
+          opponentId: undefined,
+          youWon: false,
+          score: x.score,
+        };
+      }
+      return {
+        fightId: x.fightId,
+        game: x.fight.game as KnownGames,
+        opponentId: x.fight.participants.find((y) => y.userId !== user)?.userId,
+        youWon: x.fight.winner === user,
+        score: x.score,
+      };
+    });
+    return { history, failedFightIds };
   }
 
   public async getScoreFromGame(fight: string, user: string) {
