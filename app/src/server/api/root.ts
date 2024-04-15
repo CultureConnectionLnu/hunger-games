@@ -1,7 +1,6 @@
 import { createTRPCRouter } from "~/server/api/trpc";
 import { fightRouter } from "./routers/fight";
 import { rockPaperScissorsRouter } from "./routers/games/rock-paper-scissors";
-import { userRouter } from "./routers/user";
 import { scoreRouter } from "./routers/score";
 
 /**
@@ -12,7 +11,6 @@ import { scoreRouter } from "./routers/score";
 export const appRouter = createTRPCRouter({
   fight: fightRouter,
   rockPaperScissors: rockPaperScissorsRouter,
-  user: userRouter,
   score: scoreRouter,
 });
 

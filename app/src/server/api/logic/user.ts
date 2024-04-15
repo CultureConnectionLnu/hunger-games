@@ -18,7 +18,36 @@ export class UserHandler {
     }
     return globalForUserHandler.userHandler;
   }
+  static readonly backupUserName = "Anonymous User";
   public getUserName = getUserName;
+
+  public async getUserNames(ids: string[]) {
+    const data = {
+      map: {} as Record<string, string>,
+      errors: [] as { id: string; reason: unknown }[],
+    };
+    const results = await Promise.all(
+      ids.map((id) =>
+        this.getUserName(id)
+          .then((name) => ({ success: true, id, name }) as const)
+          .catch(
+            (error: unknown) =>
+              ({ success: false, id, reason: error }) as const,
+          ),
+      ),
+    );
+
+    for (const result of results) {
+      if (result.success) {
+        data.map[result.id] = result.name;
+      } else {
+        data.errors.push({ id: result.id, reason: result.reason });
+        data.map[result.id] = UserHandler.backupUserName;
+      }
+    }
+
+    return data;
+  }
 
   public useRealUserNames() {
     this.getUserName = getUserName;
@@ -30,7 +59,7 @@ export class UserHandler {
 }
 
 function mockGetUserName(lookup: Record<string, string>) {
-  return async (id: string) => lookup[id] ?? "Anonymous User";
+  return async (id: string) => lookup[id] ?? UserHandler.backupUserName;
 }
 
 async function getUserName(id: string) {
@@ -46,5 +75,5 @@ async function getUserName(id: string) {
     return user.username;
   }
 
-  return "Anonymous User";
+  return UserHandler.backupUserName;
 }

@@ -55,30 +55,7 @@ export default function Dashboard() {
   );
 }
 
-function DashboardEntry({ rank, score, userId }: ScoreBoardEntry) {
-  const { isLoading, data: userName } = api.user.getUserName.useQuery(
-    { id: userId },
-    {
-      staleTime: Infinity,
-    },
-  );
-
-  if (isLoading) {
-    return (
-      <TableRow>
-        <TableCell>
-          <Skeleton className="h-4 w-full" />
-        </TableCell>
-        <TableCell>
-          <Skeleton className="h-4 w-full" />
-        </TableCell>
-        <TableCell>
-          <Skeleton className="h-4 w-full" />
-        </TableCell>
-      </TableRow>
-    );
-  }
-
+function DashboardEntry({ rank, score, userName }: ScoreBoardEntry) {
   return (
     <TableRow>
       <TableCell>{rank}</TableCell>
