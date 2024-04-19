@@ -96,6 +96,7 @@ function GameLobby({
   const [lastEvent, setLastEvent] = useState<ServerEvent>();
   const [gameEnded, setGameEnded] = useState(false);
   const { handleEvent } = useTimers();
+  const router = useRouter();
 
   api.fight.onGameAction.useSubscription(params, {
     onData(data) {
@@ -138,7 +139,10 @@ function GameLobby({
         break;
       case "game-ended":
         if (lastEvent.event === "game-ended-score") {
+          // todo: move end screen to history, but as a highlight dialog
           lobby = <EndScreen params={lastEvent.data} />;
+          // todo: pass the fightId once the highlight dialog exists
+          router.push("/history");
         } else {
           lobby = <CalculatingScore />;
         }

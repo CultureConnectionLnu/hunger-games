@@ -92,5 +92,8 @@ export const score = createTable(
 );
 
 export const scoreFightRelation = relations(score, ({ one }) => ({
-  fight: one(fight),
+  fight: one(fight, {
+    fields: [score.fightId],
+    references: [fight.id],
+  }),
 }));
