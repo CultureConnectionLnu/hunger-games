@@ -40,7 +40,6 @@ function usePrevious<T>(value: T) {
 
 export default function Dashboard() {
   const { isLoading, data } = api.score.history.useQuery(undefined, {
-    staleTime: Infinity,
     refetchOnMount: true,
   });
   const [open, setOpen] = useState(false);

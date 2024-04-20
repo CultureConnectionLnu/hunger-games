@@ -24,6 +24,8 @@ export default function FightProvider({
   const { user } = useUser();
 
   const autoJoinGame = () => router.push(`/game`);
+  const showGameResult = () =>
+    router.push(`/history?fightId=${currentFight?.id}`);
 
   api.fight.onFightUpdate.useSubscription(
     { id: user?.id ?? "" },
@@ -35,6 +37,7 @@ export default function FightProvider({
             void autoJoinGame();
             break;
           case "end":
+            showGameResult();
             setCurrentFight(undefined);
             break;
         }

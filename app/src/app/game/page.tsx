@@ -96,7 +96,6 @@ function GameLobby({
   const [lastEvent, setLastEvent] = useState<ServerEvent>();
   const [gameEnded, setGameEnded] = useState(false);
   const { handleEvent } = useTimers();
-  const router = useRouter();
 
   api.fight.onGameAction.useSubscription(params, {
     onData(data) {
@@ -138,12 +137,8 @@ function GameLobby({
         );
         break;
       case "game-ended":
-        if (lastEvent.event === "game-ended-score") {
-          // todo: pass the fightId once the highlight dialog exists
-          router.push("/history");
-        } else {
-          lobby = <CalculatingScore />;
-        }
+        // info: the auto join feature will transition the player to the end screen
+        lobby = <CalculatingScore />;
         break;
       // todo: add game-halted view
     }

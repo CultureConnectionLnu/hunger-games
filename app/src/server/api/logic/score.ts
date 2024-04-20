@@ -1,4 +1,4 @@
-import { and, desc, eq, not, sum } from "drizzle-orm";
+import { and, asc, desc, eq, not, sum } from "drizzle-orm";
 import { type DB, db } from "~/server/db";
 import { fight, score, usersToFight } from "~/server/db/schema";
 import { type KnownGames } from "./fight";
@@ -109,36 +109,38 @@ export class ScoreHandler {
         fight: true,
       },
       where: ({ userId }) => eq(userId, user),
-      orderBy: ({ createdAt }) => desc(createdAt),
+      orderBy: ({ createdAt }) => asc(createdAt),
     });
 
     const failedFightIds: string[] = [];
     let score = 0;
 
-    const history = rawHistory.map((x) => {
-      const scoreChange =
-        x.fight === null ? 0 : x.fight.winner === user ? x.score : -x.score;
-      score += scoreChange;
+    const history = rawHistory
+      .map((x) => {
+        const scoreChange =
+          x.fight === null ? 0 : x.fight.winner === user ? x.score : -x.score;
+        score += scoreChange;
 
-      if (x.fight === null) {
-        failedFightIds.push(x.fightId);
+        if (x.fight === null) {
+          failedFightIds.push(x.fightId);
+          return {
+            fightId: x.fightId,
+            game: "???" as const,
+            youWon: false,
+            scoreChange,
+            score,
+          };
+        }
+
         return {
           fightId: x.fightId,
-          game: "???" as const,
-          youWon: false,
+          game: x.fight.game as KnownGames,
+          youWon: x.fight.winner === user,
           scoreChange,
           score,
         };
-      }
-
-      return {
-        fightId: x.fightId,
-        game: x.fight.game as KnownGames,
-        youWon: x.fight.winner === user,
-        scoreChange,
-        score,
-      };
-    });
+      })
+      .reverse();
     return { history, failedFightIds };
   }
 
