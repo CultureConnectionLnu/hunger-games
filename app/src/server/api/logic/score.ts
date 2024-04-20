@@ -1,7 +1,8 @@
-import { and, desc, eq, sum } from "drizzle-orm";
+import { and, desc, eq, not, sum } from "drizzle-orm";
 import { type DB, db } from "~/server/db";
-import { score } from "~/server/db/schema";
+import { fight, score, usersToFight } from "~/server/db/schema";
 import { type KnownGames } from "./fight";
+import { UserHandler } from "./user";
 
 export const staticScoringConfig = {
   lowestScore: 0,
@@ -105,36 +106,108 @@ export class ScoreHandler {
   public async getHistory(user: string) {
     const rawHistory = await this.db.query.score.findMany({
       with: {
-        fight: {
-          with: {
-            participants: true,
-          },
-        },
+        fight: true,
       },
       where: ({ userId }) => eq(userId, user),
       orderBy: ({ createdAt }) => desc(createdAt),
     });
+
     const failedFightIds: string[] = [];
+    let score = 0;
+
     const history = rawHistory.map((x) => {
+      const scoreChange =
+        x.fight === null ? 0 : x.fight.winner === user ? x.score : -x.score;
+      score += scoreChange;
+
       if (x.fight === null) {
         failedFightIds.push(x.fightId);
         return {
           fightId: x.fightId,
           game: "???" as const,
-          opponentId: undefined,
           youWon: false,
-          score: x.score,
+          scoreChange,
+          score,
         };
       }
+
       return {
         fightId: x.fightId,
         game: x.fight.game as KnownGames,
-        opponentId: x.fight.participants.find((y) => y.userId !== user)?.userId,
         youWon: x.fight.winner === user,
-        score: x.score,
+        scoreChange,
+        score,
       };
     });
     return { history, failedFightIds };
+  }
+
+  public async getHistoryEntry(userId: string, fightId: string) {
+    const queryResult = await this.db
+      .select({
+        userId: score.userId,
+        fightId: fight.id,
+        game: fight.game,
+        score: score.score,
+        winner: fight.winner,
+      })
+      .from(score)
+      .innerJoin(fight, eq(score.fightId, fight.id))
+      .leftJoin(
+        usersToFight,
+        and(
+          eq(fight.id, usersToFight.fightId),
+          not(eq(usersToFight.userId, score.userId)),
+        ),
+      )
+      .where(eq(score.fightId, fightId));
+
+    if (queryResult.length === 0) {
+      return { success: false } as const;
+    }
+    if (queryResult.length !== 2) {
+      console.error(
+        `Found ${queryResult.length} history entry results for the user ${userId} and fight ${fightId}, which should be impossible`,
+      );
+      return { success: false } as const;
+    }
+    if (!queryResult.some((x) => x.userId === userId)) {
+      // userId is not used in the query, so data is retrieved even though the user may not have access to it.
+      // Therefore a manual check is needed
+      return { success: false } as const;
+    }
+
+    const data = queryResult.reduce(
+      (entry, result) => {
+        entry.youWon = result.winner === userId;
+        entry.game = result.game as KnownGames;
+
+        if (result.winner === result.userId) {
+          entry.winnerScore = result.score;
+          entry.winnerId = result.userId;
+        }
+
+        if (result.winner !== result.userId) {
+          entry.looserScore = result.score;
+          entry.looserId = result.userId;
+        }
+
+        return entry;
+      },
+      {} as {
+        winnerId: string;
+        looserId: string;
+        winnerScore: number;
+        looserScore: number;
+        youWon: boolean;
+        game: KnownGames;
+      },
+    );
+
+    return {
+      success: true,
+      data,
+    } as const;
   }
 
   public async getScoreFromGame(fight: string, user: string) {

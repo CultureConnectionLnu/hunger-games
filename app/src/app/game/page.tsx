@@ -139,8 +139,6 @@ function GameLobby({
         break;
       case "game-ended":
         if (lastEvent.event === "game-ended-score") {
-          // todo: move end screen to history, but as a highlight dialog
-          lobby = <EndScreen params={lastEvent.data} />;
           // todo: pass the fightId once the highlight dialog exists
           router.push("/history");
         } else {
@@ -331,50 +329,5 @@ function WaitForOtherPlayer() {
 function CalculatingScore() {
   return (
     <GameCard header={<CardTitle>Calculating Score</CardTitle>}></GameCard>
-  );
-}
-
-function EndScreen({
-  params,
-}: {
-  params: {
-    winnerName: string;
-    looserName: string;
-    winnerScore: number;
-    looserScore: number;
-    currentScore: number;
-    youWon: boolean;
-  };
-}) {
-  return (
-    <>
-      <GameCard
-        header={<CardTitle>You {params.youWon ? "Won" : "Lost"}</CardTitle>}
-      >
-        <div className="flex w-full justify-around">
-          <span>Current score</span>
-          <span>{params.currentScore}</span>
-        </div>
-      </GameCard>
-      <GameCard
-        header={<CardTitle>Game Result</CardTitle>}
-        footer={
-          <Link className="mx-auto" href="/qr-code">
-            <Button variant="outline">Return to QrCode</Button>
-          </Link>
-        }
-      >
-        <div className="flex w-full justify-around gap-4">
-          <span>Winner</span>
-          <div>{params.winnerName}</div>
-          <div className="text-green-500">+{params.winnerScore}</div>
-        </div>
-        <div className="flex w-full justify-around gap-4">
-          <span>Loser</span>
-          <div>{params.looserName}</div>
-          <div className="text-red-500">{params.looserScore}</div>
-        </div>
-      </GameCard>
-    </>
   );
 }

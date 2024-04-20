@@ -36,35 +36,46 @@ export const scoreRouter = createTRPCRouter({
       );
     }
 
-    const fightsMissingOpponent = history.filter(
-      (x) => x.opponentId === undefined,
-    );
-    if (fightsMissingOpponent.length > 0) {
-      console.error(
-        `[Score:History]: Could not find opponent of the following fights for the history of user '${ctx.user.clerkId}'`,
-        fightsMissingOpponent.map((x) => x.fightId),
-      );
-    }
-
-    const userNames = await UserHandler.instance.getUserNames(
-      history.map((x) => x.opponentId).filter(Boolean),
-    );
-    if (userNames.errors.length > 0) {
-      console.error(
-        `[Score:History]: Error fetching opponent user names for the history of user '${ctx.user.clerkId}'`,
-        userNames.errors,
-      );
-    }
-
-    return history.map(({ game, opponentId, score, youWon, fightId }) => ({
+    return history.map(({ game, score, youWon, fightId, scoreChange }) => ({
       fightId,
       game,
       score,
+      scoreChange,
       youWon,
-      opponent:
-        opponentId === undefined
-          ? UserHandler.backupUserName
-          : userNames.map[opponentId],
     }));
   }),
+
+  historyEntry: userProcedure
+    .input(z.object({ fightId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const result = await ScoreHandler.instance.getHistoryEntry(
+        ctx.user.clerkId,
+        input.fightId,
+      );
+
+      if (!result.success) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: `Could not find a history entry for the current user with fightId: ${input.fightId}`,
+        });
+      }
+      const { winnerId, looserId, ...data } = result.data;
+
+      const userNames = await UserHandler.instance.getUserNames([
+        winnerId,
+        looserId,
+      ]);
+      if (userNames.errors.length > 0) {
+        console.error(
+          `[Score:HistoryEntry]: Error fetching opponent user name for the history of user '${ctx.user.clerkId}'`,
+          userNames.errors,
+        );
+      }
+
+      return {
+        winnerName: userNames.map[winnerId]!,
+        looserName: userNames.map[looserId]!,
+        ...data,
+      };
+    }),
 });
