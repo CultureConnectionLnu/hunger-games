@@ -1,4 +1,7 @@
 // import { clerkClient } from "@clerk/nextjs";
+
+import { type User } from "@clerk/nextjs/server";
+
 /**
  * Hack to get rid of:
  * import { clerkClient } from "@clerk/nextjs";
@@ -10,6 +13,16 @@ const clerkModule = import("@clerk/nextjs");
 const globalForUserHandler = globalThis as unknown as {
   userHandler: UserHandler | undefined;
 };
+
+export type UserRoles = "admin" | "moderator" | "player";
+
+declare global {
+  interface CustomJwtSessionClaims {
+    metadata: {
+      role?: UserRoles;
+    };
+  }
+}
 
 export class UserHandler {
   static get instance() {
@@ -56,6 +69,40 @@ export class UserHandler {
   public useMockUserNames(data: Record<string, string>) {
     this.getUserName = mockGetUserName(data);
   }
+
+  public async getAllUsers() {
+    const { clerkClient } = await clerkModule;
+    try {
+      const users = await clerkClient.users.getUserList();
+      return {
+        success: true,
+        users: users.map((user) => {
+          const { id, publicMetadata } = user;
+          return {
+            userId: id,
+            name: userToName(user),
+            role: publicMetadata.role as UserRoles | undefined,
+          };
+        }),
+      } as const;
+    } catch (err) {
+      return { success: false, error: err } as const;
+    }
+  }
+
+  public async changeUserRole(id: string, role: UserRoles | undefined) {
+    const { clerkClient } = await clerkModule;
+    try {
+      await clerkClient.users.updateUser(id, {
+        publicMetadata: {
+          role,
+        },
+      });
+      return { success: true } as const;
+    } catch (err) {
+      return { success: false, error: err } as const;
+    }
+  }
 }
 
 function mockGetUserName(lookup: Record<string, string>) {
@@ -64,9 +111,13 @@ function mockGetUserName(lookup: Record<string, string>) {
 
 async function getUserName(id: string) {
   // todo: this feels like it should have caching for like 24h, but lets see if this is actually needed
-  // this could very well be included in the clerk code base already 
+  // this could very well be included in the clerk code base already
   const { clerkClient } = await clerkModule;
   const user = await clerkClient.users.getUser(id);
+  return userToName(user);
+}
+
+function userToName(user: User) {
   if (user.firstName && user.lastName) {
     return `${user.firstName} ${user.lastName}`;
   }
@@ -76,6 +127,5 @@ async function getUserName(id: string) {
   if (user.username) {
     return user.username;
   }
-
   return UserHandler.backupUserName;
 }
