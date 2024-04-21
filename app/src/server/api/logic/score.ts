@@ -63,7 +63,7 @@ export class ScoreHandler {
   public async getDashboard() {
     return await this.db
       .select({
-        rank: sql<number>`RANK() OVER (ORDER BY SUM(${score.score}) DESC)`,
+        rank: sql<number>`CAST(RANK() OVER (ORDER BY SUM(${score.score}) DESC) AS INTEGER)`,
         score: sum(score.score),
         userId: score.userId,
       })
@@ -79,7 +79,7 @@ export class ScoreHandler {
         game: sql<KnownGames>`${fight.game}`,
         scoreChange: score.score,
         youWon: sql<boolean>`CASE WHEN ${fight.winner} = ${score.userId} THEN true ELSE false END`,
-        score: sql<number>`SUM(${score.score}) OVER (PARTITION BY ${score.userId} ORDER BY ${fight.createdAt})`,
+        score: sql<number>`CAST(SUM(${score.score}) OVER (PARTITION BY ${score.userId} ORDER BY ${fight.createdAt}) AS INTEGER)`,
       })
       .from(fight)
       .innerJoin(score, eq(score.fightId, fight.id))

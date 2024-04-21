@@ -14,6 +14,7 @@ import {
   useRealUserNames,
 } from "./utils";
 import { staticScoringConfig } from "~/server/api/logic/score";
+import { randomUUID } from "crypto";
 
 export const scoreTests = () =>
   describe("Score", () => {
@@ -88,6 +89,24 @@ export const scoreTests = () =>
           const history = await getHistory("test_user_1");
 
           expect(history).toHaveLength(3);
+        }));
+    });
+
+    describe("historyEntry", () => {
+      it("should return the correct history entry", () =>
+        testFight(async ({ playGame, getHistoryEntry, getAllFightIds }) => {
+          await playGame("test_user_1");
+          const [fight] = getAllFightIds();
+          const entry = await getHistoryEntry("test_user_1", fight!);
+
+          expect(entry).toEqual({
+            winnerScore: 100,
+            looserScore: 0,
+            youWon: true,
+            game: "rock-paper-scissors",
+            winnerName: "Test User 1",
+            looserName: "Test User 2",
+          });
         }));
     });
   });
@@ -165,12 +184,16 @@ async function setupTest() {
   const getHistory = (userId: `test_user_${1 | 2}`) =>
     callers[userId].score.history();
 
+  const getHistoryEntry = (userId: `test_user_${1 | 2}`, fightId: string) =>
+    callers[userId].score.historyEntry({ fightId });
+
   return {
     callers,
     playGame,
     getAllFightIds,
     getDashboard,
     getHistory,
+    getHistoryEntry,
     getUserFromDashboard,
   };
 }
