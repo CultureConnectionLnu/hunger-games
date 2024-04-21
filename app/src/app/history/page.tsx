@@ -193,7 +193,7 @@ function HighlightedFight({
       <div className="flex w-full justify-around gap-4">
         <span>Loser</span>
         <div>{data.looserName}</div>
-        <div className="text-red-500">-{data.looserScore}</div>
+        <div className="text-red-500">{data.looserScore}</div>
       </div>
       <div className="flex w-full justify-around gap-4">
         <span>Current Score</span>

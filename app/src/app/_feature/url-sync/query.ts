@@ -1,11 +1,8 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import {
-  useEffect,
-  useRef,
-  useState,
-  type DependencyList,
-  type EffectCallback,
-} from "react";
+import { useEffect, useState } from "react";
+
+// inspired by: https://dev.to/jeffsalive/solving-the-challenge-of-state-persistence-in-nextjs-effortless-state-management-with-query-parameters-4a6p
+
 type SerializerFunction<T> = (value?: T) => string | undefined;
 type DeserializerFunction<T, Default> = (value: string) => T | Default;
 
@@ -59,22 +56,4 @@ export function useSearchParamState<
   }, [opts, pathname, router, searchParams, state, name]);
 
   return [state, setState] as const;
-}
-
-function useWatch(func: EffectCallback, deps: DependencyList | undefined) {
-  const mounted = useRef<boolean>(false);
-
-  useEffect(() => {
-    if (mounted.current === true) {
-      func();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, deps);
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
 }

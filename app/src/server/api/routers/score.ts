@@ -25,26 +25,9 @@ export const scoreRouter = createTRPCRouter({
     }));
   }),
 
-  history: userProcedure.query(async ({ ctx }) => {
-    const { history, failedFightIds } = await ScoreHandler.instance.getHistory(
-      ctx.user.clerkId,
-    );
-    if (failedFightIds.length > 0) {
-      console.error(
-        `[Score:History]: Unable to fetch following fight ids for the history of user '${ctx.user.clerkId}'`,
-        failedFightIds,
-      );
-    }
-
-    return history.map(({ game, score, youWon, fightId, scoreChange }) => ({
-      fightId,
-      game,
-      score,
-      scoreChange,
-      youWon,
-    }));
-  }),
-
+  history: userProcedure.query(
+    async ({ ctx }) => await ScoreHandler.instance.getHistory(ctx.user.clerkId),
+  ),
   historyEntry: userProcedure
     .input(z.object({ fightId: z.string() }))
     .query(async ({ ctx, input }) => {

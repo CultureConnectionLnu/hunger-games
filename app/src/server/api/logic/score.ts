@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, not, sum } from "drizzle-orm";
+import { and, asc, desc, eq, not, sql, sum } from "drizzle-orm";
 import { type DB, db } from "~/server/db";
 import { fight, score, usersToFight } from "~/server/db/schema";
 import { type KnownGames } from "./fight";
@@ -104,44 +104,20 @@ export class ScoreHandler {
   }
 
   public async getHistory(user: string) {
-    const rawHistory = await this.db.query.score.findMany({
-      with: {
-        fight: true,
-      },
-      where: ({ userId }) => eq(userId, user),
-      orderBy: ({ createdAt }) => asc(createdAt),
-    });
-
-    const failedFightIds: string[] = [];
-    let score = 0;
-
-    const history = rawHistory
-      .map((x) => {
-        const scoreChange =
-          x.fight === null ? 0 : x.fight.winner === user ? x.score : -x.score;
-        score += scoreChange;
-
-        if (x.fight === null) {
-          failedFightIds.push(x.fightId);
-          return {
-            fightId: x.fightId,
-            game: "???" as const,
-            youWon: false,
-            scoreChange,
-            score,
-          };
-        }
-
-        return {
-          fightId: x.fightId,
-          game: x.fight.game as KnownGames,
-          youWon: x.fight.winner === user,
-          scoreChange,
-          score,
-        };
+    return await this.db
+      .select({
+        fightId: fight.id,
+        game: fight.game,
+        scoreChange: score.score,
+        youWon: sql<boolean>`CASE WHEN ${fight.winner} = ${score.userId} THEN true ELSE false END`,
+        score: sql<number>`SUM(${score.score}) OVER (PARTITION BY ${score.userId} ORDER BY ${fight.createdAt})`,
       })
-      .reverse();
-    return { history, failedFightIds };
+      .from(fight)
+      .innerJoin(score, eq(score.fightId, fight.id))
+      .innerJoin(usersToFight, eq(fight.id, usersToFight.fightId))
+      .where(eq(score.userId, user))
+      .groupBy(fight.id, fight.game, fight.winner, score.score, score.userId)
+      .orderBy(desc(fight.createdAt));
   }
 
   public async getHistoryEntry(userId: string, fightId: string) {
