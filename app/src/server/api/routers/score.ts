@@ -28,6 +28,7 @@ export const scoreRouter = createTRPCRouter({
   history: userProcedure.query(
     async ({ ctx }) => await ScoreHandler.instance.getHistory(ctx.user.clerkId),
   ),
+
   historyEntry: userProcedure
     .input(z.object({ fightId: z.string() }))
     .query(async ({ ctx, input }) => {

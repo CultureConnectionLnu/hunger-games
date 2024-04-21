@@ -33,14 +33,6 @@ export type GeneralGameEvents = EventTemplate<
       winnerId: string;
       looserId: string;
     };
-    "game-ended-score": {
-      winnerName: string;
-      looserName: string;
-      winnerScore: number;
-      looserScore: number;
-      currentScore: number;
-      youWon: boolean;
-    };
     "game-halted": {
       disconnected: string[];
     };
@@ -60,7 +52,6 @@ export type GeneralGameEvents = EventTemplate<
   | "start-timer"
   | "disconnect-timer"
   | "game-in-progress"
-  | "game-ended-score"
   | "game-ended"
   | "game-halted"
   | "game-resume"
@@ -103,7 +94,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
     this.setupPlayers(playerTuple);
     this.setupGameStartListener();
 
-    const eventing = new GameEventingHandler({
+    const eventing = new GameEventingHandler<GeneralGameEvents>({
       emit: this.emit.bind(this),
       fightId,
       playerIds: playerTuple.map((x) => x.id),
@@ -114,7 +105,6 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
         "disconnect-timer",
         "game-in-progress",
         "game-ended",
-        "game-ended-score",
         "game-halted",
         "game-resume",
         "canceled",
@@ -220,23 +210,6 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
         `Could not get score for fight ${this.fightId} of player ${winner.id} or ${looser.id}`,
       );
       return;
-    }
-
-    for (const player of this.players.values()) {
-      this.emitEvent(
-        {
-          event: "game-ended-score",
-          data: {
-            winnerName: winner.name,
-            looserName: looser.name,
-            winnerScore: winnerScoreResult.score,
-            looserScore: looserScoreResult.score,
-            currentScore: await ScoreHandler.instance.currentScore(player.id),
-            youWon: player.id === winnerId,
-          },
-        },
-        player.id,
-      );
     }
   }
 

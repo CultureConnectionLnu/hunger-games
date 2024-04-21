@@ -3,21 +3,26 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { BaseEvent, GenericEventEmitter } from "~/lib/event-emitter";
-import type { OnlyPlayerEvents, UnspecificPlayerEventData } from "../types";
+import type {
+  OnlyPlayerEvents,
+  OnlyPlayerEventsNames,
+  OnlyServerEventsNames,
+  UnspecificPlayerEventData,
+} from "../types";
 
-type Input = Readonly<{
+type Input<T> = Readonly<{
   emit: GenericEventEmitter<BaseEvent>["emit"];
   fightId: string;
   playerIds: string[];
   getView: (playerId: string) => string;
-  playerSpecificEvents: string[];
-  serverSpecificEvents: string[];
+  playerSpecificEvents: OnlyPlayerEventsNames<T>[];
+  serverSpecificEvents: OnlyServerEventsNames<T>[];
 }>;
 
 export class GameEventingHandler<T extends BaseEvent> {
   private readonly eventHistory: Record<string, OnlyPlayerEvents<T>[]> = {};
 
-  constructor(private readonly input: Input) {
+  constructor(private readonly input: Input<T>) {
     this.input.playerIds.forEach((playerId) => {
       this.eventHistory[playerId] = [];
     });
@@ -73,10 +78,14 @@ export class GameEventingHandler<T extends BaseEvent> {
   }
 
   private isPlayerEvent(event: { event: string }) {
-    return this.input.playerSpecificEvents.includes(event.event);
+    return this.input.playerSpecificEvents.includes(
+      event.event as OnlyPlayerEventsNames<T>,
+    );
   }
 
   private isServerEvent(event: { event: string }) {
-    return this.input.serverSpecificEvents.includes(event.event);
+    return this.input.serverSpecificEvents.includes(
+      event.event as OnlyServerEventsNames<T>,
+    );
   }
 }

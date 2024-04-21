@@ -106,8 +106,9 @@ function GameLobby({
           return handleEvent(data.event, data.data, "Disconnect Timeout");
         default:
           setLastEvent(data);
-          // make sure that the end screen does not disappear because of random event
-          if (data.event === "game-ended-score") {
+
+          if (data.event === "game-ended") {
+            // make sure that the end screen does not disappear because of random event
             setGameEnded(true);
           }
       }
