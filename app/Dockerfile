@@ -4,17 +4,13 @@
 FROM --platform=linux/amd64 node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 AS deps 
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
+RUN yarn global add pnpm@8.14.0
 
 # Install dependencies based on the preferred package manager
 
 COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml\* ./
 
-RUN \
-    if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-    elif [ -f package-lock.json ]; then npm ci; \
-    elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && pnpm i; \
-    else echo "Lockfile not found." && exit 1; \
-    fi
+RUN pnpm install --frozen-lockfile
 
 ##### BUILDER
 
@@ -24,6 +20,7 @@ ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_NODE_ENV
 ARG NEXT_PUBLIC_WS_LOCATION
 ARG NEXT_PUBLIC_FEATURE_MANUAL_JOIN
+RUN npm install --global pnpm@8.14.0
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -31,12 +28,7 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
 
-RUN \
-    if [ -f yarn.lock ]; then SKIP_ENV_VALIDATION=1 yarn build; \
-    elif [ -f package-lock.json ]; then SKIP_ENV_VALIDATION=1 npm run build; \
-    elif [ -f pnpm-lock.yaml ]; then yarn global add pnpm && SKIP_ENV_VALIDATION=1 pnpm run build; \
-    else echo "Lockfile not found." && exit 1; \
-    fi
+RUN SKIP_ENV_VALIDATION=1 pnpm run build
 
 ##### RUNNER
 
