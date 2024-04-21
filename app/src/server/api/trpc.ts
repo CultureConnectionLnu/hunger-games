@@ -32,14 +32,6 @@ if (!globalForEE.ee) {
   globalForEE.ee = new TypedEventEmitter();
 }
 
-declare global {
-  interface CustomJwtSessionClaims {
-    metadata: {
-      role?: "admin" | "moderator" | "player";
-    };
-  }
-}
-
 export async function createCommonContext(opts: {
   ee: TypedEventEmitter;
   userId: string | undefined;

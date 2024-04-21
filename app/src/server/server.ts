@@ -20,12 +20,12 @@ void app.prepare().then(() => {
     void handle(req, res, parsedUrl);
   });
 
-  bootstrapWS({ dev, server });
+  bootstrapWS({ dev });
 
   server.listen(port);
 
   console.log(
-    `> Server listening at http://localhost:${port} as ${
+    `✅ Server listening at http://0.0.0.0:${port} as ${
       dev ? "development" : env.NEXT_PUBLIC_NODE_ENV
     }`,
   );

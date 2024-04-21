@@ -1,33 +1,24 @@
 import { applyWSSHandler } from "@trpc/server/adapters/ws";
-import type { Server } from "http";
 import { WebSocketServer } from "ws";
 import { env } from "~/env";
 import { appRouter } from "./api/root";
 import { createWebSocketContext } from "./api/trpc";
 
-export function bootstrapWS({ dev, server }: { dev: boolean; server: Server }) {
+export function bootstrapWS({ dev }: { dev: boolean }) {
   const host = "0.0.0.0";
   const port = Number(env.WS_PORT ?? 3001);
   const wss = new WebSocketServer({
     host,
     port,
   });
-  console.log(`✅ WebSocket Server listening on ws://${host}:${port}`);
+  console.log(
+    `✅ WebSocketServer listening on ws://${host}:${port} as ${dev ? "development" : env.NEXT_PUBLIC_NODE_ENV}`,
+  );
 
-  /* My use-case is TRPC Websocket adapter, you can customize your websocket handling as you wish */
   const handler = applyWSSHandler({
     wss,
     router: appRouter,
     createContext: createWebSocketContext,
-  });
-
-  server.on("upgrade", (req, socket, head) => {
-    // https://github.com/vitejs/vite/discussions/14182#discussioncomment-6831085
-    if (req.headers["sec-websocket-protocol"] !== "vite-hmr") {
-      wss.handleUpgrade(req, socket, head, (ws) => {
-        wss.emit("connection", ws, req);
-      });
-    }
   });
 
   wss.on("connection", (ws) => {
