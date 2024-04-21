@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import { inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { TypedEventEmitter } from "~/lib/event-emitter";
@@ -6,43 +7,17 @@ import { appRouter } from "~/server/api/root";
 import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
-import { useAutomaticTimer, useManualTimer } from "./utils";
+import {
+  useAutomaticTimer,
+  useManualTimer,
+  useMockUserNames,
+  useRealUserNames,
+} from "./utils";
 import { staticScoringConfig } from "~/server/api/logic/score";
 import { randomUUID } from "crypto";
 
 export const scoreTests = () =>
   describe("Score", () => {
-    describe("currentScore", () => {
-      it("initially score is 0", () =>
-        testFight(async ({ getScoreOfUser }) => {
-          const score1 = await getScoreOfUser("test_user_1");
-          const score2 = await getScoreOfUser("test_user_2");
-          expect(score1).toEqual({ score: 0 });
-          expect(score2).toEqual({ score: 0 });
-        }));
-
-      it(`winner gets at least ${staticScoringConfig.winnerMinimumPointsBonus} points`, () =>
-        testFight(async ({ playGame, getScoreOfUser }) => {
-          await playGame("test_user_1");
-          const score1 = await getScoreOfUser("test_user_1");
-          const score2 = await getScoreOfUser("test_user_2");
-          expect(score1).toEqual({
-            score: staticScoringConfig.winnerMinimumPointsBonus,
-          });
-          expect(score2).toEqual({ score: 0 });
-        }));
-
-      it(`looser should loose ${staticScoringConfig.winnerGetsPercent}% of his points`, () =>
-        testFight(async ({ playGame, getScoreOfUser }) => {
-          await playGame("test_user_1");
-          await playGame("test_user_2");
-          const score1 = await getScoreOfUser("test_user_1");
-          const score2 = await getScoreOfUser("test_user_2");
-          expect(score1).toEqual({ score: 50 });
-          expect(score2).toEqual({ score: 100 });
-        }));
-    });
-
     describe("dashboard", () => {
       it("should be empty in the beginning", () =>
         testFight(async ({ getDashboard }) => {
@@ -70,13 +45,68 @@ export const scoreTests = () =>
         }));
     });
 
-    describe("scoreFromGame", () => {
-      it("should return the score from a specific game", () =>
-        testFight(async ({ getAllFightIds, playGame, getScoreFromGame }) => {
+    describe("history", () => {
+      it("should have no entries in history", () =>
+        testFight(async ({ getHistory }) => {
+          const history = await getHistory("test_user_1");
+
+          expect(history).toHaveLength(0);
+        }));
+
+      it("should have one entry after one match for both player", () =>
+        testFight(async ({ playGame, getHistory }) => {
           await playGame("test_user_1");
-          const fightId = getAllFightIds()[0]!;
-          const score = await getScoreFromGame(fightId, "test_user_1");
-          expect(score).toEqual(100);
+          const playerOneHistory = await getHistory("test_user_1");
+          const playerTwoHistory = await getHistory("test_user_2");
+
+          expect(playerOneHistory).toHaveLength(1);
+          expect(playerTwoHistory).toHaveLength(1);
+        }));
+
+      it(`should score the very first winner with ${staticScoringConfig.winnerMinimumPointsBonus} points`, () =>
+        testFight(async ({ playGame, getHistory }) => {
+          await playGame("test_user_1");
+          const [firstGame] = await getHistory("test_user_1");
+
+          expect(firstGame?.score).toBe(
+            staticScoringConfig.winnerMinimumPointsBonus,
+          );
+        }));
+
+      it(`should score the very first looser with 0 points`, () =>
+        testFight(async ({ playGame, getHistory }) => {
+          await playGame("test_user_1");
+          const [firstGame] = await getHistory("test_user_2");
+
+          expect(firstGame?.score).toBe(0);
+        }));
+
+      it(`should show all games`, () =>
+        testFight(async ({ playGame, getHistory }) => {
+          await playGame("test_user_1");
+          await playGame("test_user_1");
+          await playGame("test_user_1");
+          const history = await getHistory("test_user_1");
+
+          expect(history).toHaveLength(3);
+        }));
+    });
+
+    describe("historyEntry", () => {
+      it("should return the correct history entry", () =>
+        testFight(async ({ playGame, getHistoryEntry, getAllFightIds }) => {
+          await playGame("test_user_1");
+          const [fight] = getAllFightIds();
+          const entry = await getHistoryEntry("test_user_1", fight!);
+
+          expect(entry).toEqual({
+            winnerScore: 100,
+            looserScore: 0,
+            youWon: true,
+            game: "rock-paper-scissors",
+            winnerName: "Test User 1",
+            looserName: "Test User 2",
+          });
         }));
     });
   });
@@ -84,8 +114,8 @@ export const scoreTests = () =>
 async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   useManualTimer();
+  useMockUserNames();
   const args = await setupTest();
   // make sure that no scores for the player are present before the test
   return await test(args)
@@ -93,6 +123,7 @@ async function testFight(
     .catch((error: Error) => ({ pass: false, error }) as const)
     .then(async (x) => {
       useAutomaticTimer();
+      useRealUserNames();
       if (args.getAllFightIds().length !== 0) {
         await db.delete(fight).where(inArray(fight.id, args.getAllFightIds()));
       }
@@ -129,16 +160,14 @@ async function setupTest() {
     const { id } = await callers.test_user_1.fight.create({
       opponent: `test_user_2`,
     });
+    const looser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
     const fight = FightHandler.instance.getFight(id)!;
-    fight.lobby.endGame(winner);
+    fight.lobby.endGame(winner, looser);
     await fight.gameDone;
     state.allFightIds.push(id);
   };
 
   const getAllFightIds = () => state.allFightIds;
-
-  const getScoreOfUser = (userId: `test_user_${1 | 2}`) =>
-    callers[userId].score.currentScore();
 
   const getDashboard = async () => {
     const board = await callers.test_user_1.score.dashboard();
@@ -152,16 +181,19 @@ async function setupTest() {
     return board.find((x) => x.userId === userId);
   };
 
-  const getScoreFromGame = (fightId: string, userId: `test_user_${1 | 2}`) =>
-    callers[userId].score.scoreFromGame({ fightId, userId });
+  const getHistory = (userId: `test_user_${1 | 2}`) =>
+    callers[userId].score.history();
+
+  const getHistoryEntry = (userId: `test_user_${1 | 2}`, fightId: string) =>
+    callers[userId].score.historyEntry({ fightId });
 
   return {
     callers,
     playGame,
     getAllFightIds,
-    getScoreOfUser,
     getDashboard,
+    getHistory,
+    getHistoryEntry,
     getUserFromDashboard,
-    getScoreFromGame,
   };
 }

@@ -14,3 +14,4 @@ https://clerk.com/docs/backend-requests/handling/manual-jwt
 ## feature ideas:
 
 - find stale fights in admin panel, like older than 10 minutes
+- a player has a max disconnect time and this is counted down further every time he disconnects, instead of giving full time with each disconnect

@@ -2,7 +2,6 @@ import type { Observable } from "@trpc/server/observable";
 import { useState } from "react";
 import { FaSpinner } from "react-icons/fa";
 import { CardTitle } from "~/components/ui/card";
-import { Skeleton } from "~/components/ui/skeleton";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import { GameCard, GameContentLoading } from "./base";
@@ -79,11 +78,16 @@ function ViewContainer({
     case "chosen":
       return <WaitForOpponentToChoose />;
     case "show-result":
-      const { draw, yourWin } = params.result!;
+      const { outcome } = params.result!;
+      const titleMap = {
+        win: "You won",
+        draw: "Draw",
+        loose: "You lost",
+      } as const;
       return (
         <ShowResult
           params={{
-            title: draw ? "Draw" : yourWin ? "You won" : "You lost",
+            title: titleMap[outcome],
             ...params.result!,
           }}
         />
@@ -99,21 +103,10 @@ function ShowResult({
     anotherRound: boolean;
     wins: number;
     looses: number;
-    yourId: string;
-    opponentId: string;
+    yourName: string;
+    opponentName: string;
   };
 }) {
-  const { data: yourName, isLoading: yourNameLoading } =
-    api.user.getUserName.useQuery(
-      { id: params.yourId },
-      { staleTime: Infinity },
-    );
-  const { data: opponentName, isLoading: opponentNameLoading } =
-    api.user.getUserName.useQuery(
-      { id: params.opponentId },
-      { staleTime: Infinity },
-    );
-
   return (
     <GameCard
       header={
@@ -124,19 +117,11 @@ function ShowResult({
       footer={params.anotherRound ? "Next round coming up" : undefined}
     >
       <div className="flex w-full justify-between">
-        {yourNameLoading ? (
-          <Skeleton className="h-4 w-1/4" />
-        ) : (
-          <div>{yourName}</div>
-        )}
+        <div>{params.yourName}</div>
         <div>
           {params.wins} - {params.looses}
         </div>
-        {opponentNameLoading ? (
-          <Skeleton className="h-4 w-1/4" />
-        ) : (
-          <div>{opponentName}</div>
-        )}
+        <div>{params.opponentName}</div>
       </div>
     </GameCard>
   );

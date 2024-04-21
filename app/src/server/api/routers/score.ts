@@ -2,30 +2,64 @@ import { z } from "zod";
 import { ScoreHandler } from "../logic/score";
 import { createTRPCRouter, userProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
+import { UserHandler } from "../logic/user";
 
 export const scoreRouter = createTRPCRouter({
-  currentScore: userProcedure.query(({ ctx }) =>
-    ScoreHandler.instance.currentScore(ctx.user.clerkId),
-  ),
-  dashboard: userProcedure.query(() => ScoreHandler.instance.getDashboard()),
-  scoreFromGame: userProcedure
-    .input(
-      z.object({
-        fightId: z.string(),
-        userId: z.string(),
-      }),
-    )
-    .query(async ({ input }) => {
-      const result = await ScoreHandler.instance.getScoreFromGame(
-        input.fightId,
-        input.userId,
+  dashboard: userProcedure.query(async () => {
+    const dashboardData = await ScoreHandler.instance.getDashboard();
+    const userNames = await UserHandler.instance.getUserNames(
+      dashboardData.map((x) => x.userId),
+    );
+    if (userNames.errors.length > 0) {
+      console.error(
+        "[Score:Dashboard] Error fetching user names:",
+        userNames.errors,
       );
-      if (result.success === false) {
+    }
+
+    return dashboardData.map(({ rank, score, userId }) => ({
+      rank,
+      score,
+      userId,
+      userName: userNames.map[userId],
+    }));
+  }),
+
+  history: userProcedure.query(
+    async ({ ctx }) => await ScoreHandler.instance.getHistory(ctx.user.clerkId),
+  ),
+
+  historyEntry: userProcedure
+    .input(z.object({ fightId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const result = await ScoreHandler.instance.getHistoryEntry(
+        ctx.user.clerkId,
+        input.fightId,
+      );
+
+      if (!result.success) {
         throw new TRPCError({
           code: "NOT_FOUND",
-          message: `No score available for the game: ${input.fightId}`,
+          message: `Could not find a history entry for the current user with fightId: ${input.fightId}`,
         });
       }
-      return result.score;
+      const { winnerId, looserId, ...data } = result.data;
+
+      const userNames = await UserHandler.instance.getUserNames([
+        winnerId,
+        looserId,
+      ]);
+      if (userNames.errors.length > 0) {
+        console.error(
+          `[Score:HistoryEntry]: Error fetching opponent user name for the history of user '${ctx.user.clerkId}'`,
+          userNames.errors,
+        );
+      }
+
+      return {
+        winnerName: userNames.map[winnerId]!,
+        looserName: userNames.map[looserId]!,
+        ...data,
+      };
     }),
 });

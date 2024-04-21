@@ -29,6 +29,10 @@ export type ToServerEventData<T> = ToUnion<
 
 export type OnlyPlayerEvents<T> = ToUnion<PlayerEventsOnly<T>>;
 
+type GetEventName<T> = T extends { event: infer Event } ? Event : never;
+export type OnlyPlayerEventsNames<T> = GetEventName<OnlyPlayerEvents<T>>;
+export type OnlyServerEventsNames<T> = keyof ServerEventsOnly<T>;
+
 export type GetTimerEvents<T> = ToUnion<{
   [Key in keyof T as FilterForTimeEvents<T[Key]> extends never
     ? never

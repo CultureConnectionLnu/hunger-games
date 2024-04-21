@@ -1,6 +1,7 @@
-import { and, eq, sum } from "drizzle-orm";
-import { type DB, db } from "~/server/db";
-import { score } from "~/server/db/schema";
+import { and, desc, eq, not, sql, sum } from "drizzle-orm";
+import { db, type DB } from "~/server/db";
+import { fight, score, usersToFight } from "~/server/db/schema";
+import { type KnownGames } from "./fight";
 
 export const staticScoringConfig = {
   lowestScore: 0,
@@ -30,9 +31,7 @@ export class ScoreHandler {
       .from(score)
       .where(eq(score.userId, userId));
 
-    return {
-      score: Number(totalScore[0]?.score ?? 0),
-    };
+    return Number(totalScore[0]?.score ?? 0);
   }
 
   public async updateScore(
@@ -42,9 +41,8 @@ export class ScoreHandler {
   ) {
     try {
       const currentLooserScore = await this.currentScore(looserId);
-      const { looserSubtraction, winnerAddition } = this.calculateScoreEntries(
-        currentLooserScore.score,
-      );
+      const { looserSubtraction, winnerAddition } =
+        this.calculateScoreEntries(currentLooserScore);
       await this.db.insert(score).values([
         {
           fightId,
@@ -63,45 +61,100 @@ export class ScoreHandler {
   }
 
   public async getDashboard() {
-    const queryResult = await this.db
+    return await this.db
       .select({
+        rank: sql<number>`CAST(RANK() OVER (ORDER BY SUM(${score.score}) DESC) AS INTEGER)`,
         score: sum(score.score),
         userId: score.userId,
       })
       .from(score)
-      .groupBy(score.userId);
+      .groupBy(score.userId)
+      .orderBy(desc(sum(score.score)));
+  }
 
-    const scoreMap = queryResult
-      // make sure it is the correct type
-      .map((x) => ({
-        score: Number(x.score ?? 0),
-        userId: x.userId,
-      }))
-      // order in descending order
-      .sort((a, b) => b.score - a.score)
-      // group by score
-      .reduce<Map<number, string[]>>((map, score) => {
-        const players = map.get(score.score) ?? [];
-        players.push(score.userId);
-        map.set(score.score, players);
-        return map;
-      }, new Map());
+  public async getHistory(user: string) {
+    return await this.db
+      .select({
+        fightId: fight.id,
+        game: sql<KnownGames>`${fight.game}`,
+        scoreChange: score.score,
+        youWon: sql<boolean>`CASE WHEN ${fight.winner} = ${score.userId} THEN true ELSE false END`,
+        score: sql<number>`CAST(SUM(${score.score}) OVER (PARTITION BY ${score.userId} ORDER BY ${fight.createdAt}) AS INTEGER)`,
+      })
+      .from(fight)
+      .innerJoin(score, eq(score.fightId, fight.id))
+      .innerJoin(usersToFight, eq(fight.id, usersToFight.fightId))
+      .where(eq(score.userId, user))
+      .groupBy(fight.id, fight.game, fight.winner, score.score, score.userId)
+      .orderBy(desc(fight.createdAt));
+  }
 
-    /**
-     * The rank is the position in the array + 1.
-     * If multiple players have the same rank, the rank is the same for all of them.
-     * The next player has the rank of the last player + the number of players with the same rank.
-     */
-    const rankedScores: { userId: string; score: number; rank: number }[] = [];
-    let rank = 1;
-    for (const [score, userIds] of scoreMap) {
-      for (const userId of userIds) {
-        rankedScores.push({ userId, score, rank });
-      }
-      rank += userIds.length;
+  public async getHistoryEntry(userId: string, fightId: string) {
+    const queryResult = await this.db
+      .select({
+        userId: score.userId,
+        fightId: fight.id,
+        game: fight.game,
+        score: score.score,
+        winner: fight.winner,
+      })
+      .from(score)
+      .innerJoin(fight, eq(score.fightId, fight.id))
+      .leftJoin(
+        usersToFight,
+        and(
+          eq(fight.id, usersToFight.fightId),
+          not(eq(usersToFight.userId, score.userId)),
+        ),
+      )
+      .where(eq(score.fightId, fightId));
+
+    if (queryResult.length === 0) {
+      return { success: false } as const;
+    }
+    if (queryResult.length !== 2) {
+      console.error(
+        `Found ${queryResult.length} history entry results for the user ${userId} and fight ${fightId}, which should be impossible`,
+      );
+      return { success: false } as const;
+    }
+    if (!queryResult.some((x) => x.userId === userId)) {
+      // userId is not used in the query, so data is retrieved even though the user may not have access to it.
+      // Therefore a manual check is needed
+      return { success: false } as const;
     }
 
-    return rankedScores;
+    const data = queryResult.reduce(
+      (entry, result) => {
+        entry.youWon = result.winner === userId;
+        entry.game = result.game as KnownGames;
+
+        if (result.winner === result.userId) {
+          entry.winnerScore = result.score;
+          entry.winnerId = result.userId;
+        }
+
+        if (result.winner !== result.userId) {
+          entry.looserScore = result.score;
+          entry.looserId = result.userId;
+        }
+
+        return entry;
+      },
+      {} as {
+        winnerId: string;
+        looserId: string;
+        winnerScore: number;
+        looserScore: number;
+        youWon: boolean;
+        game: KnownGames;
+      },
+    );
+
+    return {
+      success: true,
+      data,
+    } as const;
   }
 
   public async getScoreFromGame(fight: string, user: string) {

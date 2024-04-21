@@ -27,9 +27,10 @@ import { GameCard, GameContentLoading } from "../_game/base";
 import RockPaperScissorsGame from "../_game/rock-paper-scissors";
 import { Timer } from "../_feature/timer/timer";
 import { useTimers } from "../_feature/timer/timer-provider";
+import { useFight } from "../_feature/auto-join-game/fight-provider";
 
 type ServerEvent =
-  RouterOutputs["fight"]["onAction"] extends Observable<infer R, never>
+  RouterOutputs["fight"]["onGameAction"] extends Observable<infer R, never>
     ? R
     : never;
 
@@ -38,31 +39,25 @@ type GetSpecificEvent<T, Event extends ServerEvent["event"]> = T extends {
 }
   ? T
   : never;
-type WinnerEvent = GetSpecificEvent<ServerEvent, "game-ended">;
 type JoinedEvent = GetSpecificEvent<ServerEvent, "player-joined-readying">;
 
 export default function CurrentGame() {
   const { user, isLoaded: userLoaded } = useUser();
+  const { currentFight } = useFight();
 
-  const { data: currentFight, isLoading: currentFightLoading } =
-    api.fight.currentFight.useQuery(undefined, {
-      staleTime: Infinity,
-      refetchOnMount: "always",
-    });
-
-  if (currentFightLoading || !userLoaded) {
+  if (!userLoaded) {
     return <GameLoadingScreen />;
   }
 
-  if (currentFight!.success === false || user == null) {
+  if (currentFight === undefined || user == null) {
     return <NoFightOngoing />;
   }
 
   return (
     <JoiningGame
       params={{
-        gameName: currentFight!.fight.game,
-        fightId: currentFight!.fight.fightId,
+        gameName: currentFight.game,
+        fightId: currentFight.id,
         userId: user.id,
       }}
     />
@@ -102,7 +97,7 @@ function GameLobby({
   const [gameEnded, setGameEnded] = useState(false);
   const { handleEvent } = useTimers();
 
-  api.fight.onAction.useSubscription(params, {
+  api.fight.onGameAction.useSubscription(params, {
     onData(data) {
       switch (data.event) {
         case "start-timer":
@@ -111,8 +106,9 @@ function GameLobby({
           return handleEvent(data.event, data.data, "Disconnect Timeout");
         default:
           setLastEvent(data);
-          // make sure that the end screen does not disappear because of random event
+
           if (data.event === "game-ended") {
+            // make sure that the end screen does not disappear because of random event
             setGameEnded(true);
           }
       }
@@ -133,27 +129,17 @@ function GameLobby({
       case "joined":
       case "ready":
         const joinedData = lastEvent.data as JoinedEvent["data"];
-        const opponentId = joinedData.opponent;
-        const status = joinedData.ready.includes(opponentId)
-          ? "ready"
-          : joinedData.joined.includes(opponentId)
-            ? "joined"
-            : "none";
         const showReadyScreen = lastEvent.view === "joined";
         lobby = (
           <>
             {showReadyScreen ? <ReadyScreen /> : <WaitForOtherPlayer />}
-            <OtherPlayerLobbyStatus params={{ opponentId, status }} />{" "}
+            <OtherPlayerLobbyStatus params={joinedData} />{" "}
           </>
         );
         break;
       case "game-ended":
-        const data = lastEvent.data as WinnerEvent["data"];
-        lobby = (
-          <EndScreen
-            params={{ ...data, you: params.userId, fightId: params.fightId }}
-          />
-        );
+        // info: the auto join feature will transition the player to the end screen
+        lobby = <CalculatingScore />;
         break;
       // todo: add game-halted view
     }
@@ -313,16 +299,8 @@ function ReadyScreen() {
 function OtherPlayerLobbyStatus({
   params,
 }: {
-  params: { opponentId: string; status: "none" | "joined" | "ready" };
+  params: { opponentName: string; opponentStatus: "none" | "joined" | "ready" };
 }) {
-  const { data: opponentName, isLoading } = api.user.getUserName.useQuery(
-    {
-      id: params.opponentId,
-    },
-    {
-      staleTime: Infinity,
-    },
-  );
   const statusToText = {
     none: <div className="text-gray-400">Joining</div>,
     joined: <div>Joined</div>,
@@ -331,17 +309,8 @@ function OtherPlayerLobbyStatus({
   return (
     <GameCard header={<CardTitle>Opponent</CardTitle>}>
       <div className="flex w-full justify-between">
-        {isLoading ? (
-          <>
-            <Skeleton className="h-4 w-1/2" />
-            <Skeleton className="h-4 w-1/3" />
-          </>
-        ) : (
-          <>
-            <div>{opponentName}</div>
-            {statusToText[params.status]}
-          </>
-        )}
+        <div>{params.opponentName}</div>
+        {statusToText[params.opponentStatus]}
       </div>
     </GameCard>
   );
@@ -353,115 +322,8 @@ function WaitForOtherPlayer() {
   );
 }
 
-function EndScreen({
-  params,
-}: {
-  params: { winnerId: string; looserId: string; you: string; fightId: string };
-}) {
-  const { data: winnerName, isLoading: winnerLoading } =
-    api.user.getUserName.useQuery(
-      { id: params.winnerId },
-      { staleTime: Infinity },
-    );
-  const { data: looserName, isLoading: looserLoading } =
-    api.user.getUserName.useQuery(
-      { id: params.looserId },
-      { staleTime: Infinity },
-    );
-  const { data: currentScore, isLoading: currentScoreLoading } =
-    api.score.currentScore.useQuery(undefined, {
-      staleTime: Infinity,
-      refetchOnMount: "always",
-    });
-
-  const { data: winnerScore, isLoading: winnerScoreLoading } =
-    api.score.scoreFromGame.useQuery(
-      {
-        fightId: params.fightId,
-        userId: params.winnerId,
-      },
-      {
-        staleTime: Infinity,
-        refetchOnMount: "always",
-      },
-    );
-
-  const { data: looserScore, isLoading: looserScoreLoading } =
-    api.score.scoreFromGame.useQuery(
-      {
-        fightId: params.fightId,
-        userId: params.looserId,
-      },
-      {
-        staleTime: Infinity,
-        refetchOnMount: "always",
-      },
-    );
-  console.log({
-    text: "end screen",
-    params,
-    data: {
-      winnerName,
-      looserName,
-      currentScore,
-      winnerScore,
-      looserScore,
-    },
-  });
-
+function CalculatingScore() {
   return (
-    <>
-      <GameCard
-        header={
-          <CardTitle>
-            You {params.you === params.winnerId ? "Won" : "Lost"}
-          </CardTitle>
-        }
-      >
-        <div className="flex w-full justify-around">
-          <span>Current score</span>
-          {currentScoreLoading ? (
-            <Skeleton className="h-4 w-1/6" />
-          ) : (
-            <span>{currentScore?.score}</span>
-          )}
-        </div>
-      </GameCard>
-      <GameCard
-        header={<CardTitle>Game Result</CardTitle>}
-        footer={
-          <Link className="mx-auto" href="/qr-code">
-            <Button variant="outline">Return to QrCode</Button>
-          </Link>
-        }
-      >
-        <div className="flex w-full justify-around gap-4">
-          <span>Winner</span>
-          {winnerLoading ? (
-            <Skeleton className="h-4 w-1/4" />
-          ) : (
-            <div>{winnerName}</div>
-          )}
-          {winnerScoreLoading ? (
-            <Skeleton className="h-4 w-1/4 bg-green-500" />
-          ) : (
-            <div className="text-green-500">+{winnerScore}</div>
-          )}
-        </div>
-        <div className="flex w-full justify-around gap-4">
-          <span>Loser</span>
-          {looserLoading ? (
-            <Skeleton className="h-4 w-1/4" />
-          ) : (
-            <div>{looserName}</div>
-          )}
-          {looserScoreLoading ? (
-            <Skeleton className="h-4 w-1/4 bg-red-500" />
-          ) : (
-            <div className="text-red-500">{looserScore}</div>
-          )}
-        </div>
-      </GameCard>
-    </>
+    <GameCard header={<CardTitle>Calculating Score</CardTitle>}></GameCard>
   );
 }

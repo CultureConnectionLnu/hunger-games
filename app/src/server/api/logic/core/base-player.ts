@@ -1,6 +1,4 @@
-import {
-  GenericEventEmitter,
-} from "~/lib/event-emitter";
+import { GenericEventEmitter } from "~/lib/event-emitter";
 
 type GeneralState = "none" | "joined" | "ready" | "in-game" | "game-ended";
 type Identity = { id: string };
@@ -32,7 +30,10 @@ export class BasePlayer extends GenericEventEmitter<{
     return this._view !== "none" && this._view !== "joined";
   }
 
-  constructor(public id: string) {
+  constructor(
+    public readonly id: string,
+    public readonly name: string,
+  ) {
     super();
     this.identity = { id };
   }

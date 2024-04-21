@@ -44,3 +44,9 @@ Use SSL certificate
 Configure advanced for websocket connection
 
 ![Advanced tab](assets/add-proxy-advanced.png)
+
+```config
+location /api/ws {
+    proxy_pass http://app:3001;
+}
+```

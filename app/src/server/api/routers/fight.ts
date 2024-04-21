@@ -10,19 +10,22 @@ import {
 import type { BaseGamePlayerEvents } from "../logic/core/base-game";
 import { FightHandler } from "../logic/fight";
 
-const messageSchema = z.object({
-  fightId: z.string().uuid(),
-  game: z.string(),
-  players: z.array(z.string()).min(2).max(2),
-});
-type Message = Pick<z.TypeOf<typeof messageSchema>, "fightId" | "game">;
-
+type JoinMessage = {
+  type: "join";
+  fightId: string;
+  game: string;
+};
+type EndMessage = {
+  type: "end";
+  fightId: string;
+};
 declare module "~/lib/event-emitter" {
   type UserId = string;
   type FightId = string;
   // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
   interface KnownEvents {
-    [key: `fight.join.${UserId}`]: Message;
+    [key: `fight.join.${UserId}`]: JoinMessage;
+    [key: `fight.end.${UserId}`]: EndMessage;
   }
 }
 
@@ -102,22 +105,32 @@ export const fightRouter = createTRPCRouter({
         opponent.clerkId,
       );
 
-      const event = {
-        fightId: newFight.id,
-        game: newFight.game,
-      };
-      [ctx.user.clerkId, opponent.clerkId].forEach((player) => {
-        ctx.ee.emit(`fight.join.${player}`, event);
+      const players = [ctx.user.clerkId, opponent.clerkId];
+      players.forEach((player) => {
+        ctx.ee.emit(`fight.join.${player}`, {
+          type: "join",
+          fightId: newFight.lobby.fightId,
+          game: newFight.type,
+        });
+      });
+
+      newFight.lobby.on("game-ended", () => {
+        players.forEach((player) => {
+          ctx.ee.emit(`fight.end.${player}`, {
+            type: "end",
+            fightId: newFight.lobby.fightId,
+          });
+        });
       });
 
       console.log("New fight", {
-        id: newFight.id,
-        game: newFight.game,
+        id: newFight.lobby.fightId,
+        game: newFight.type,
         players: [ctx.user.clerkId, opponent.clerkId],
       });
 
       return {
-        id: newFight.id,
+        id: newFight.lobby.fightId,
       };
     }),
 
@@ -146,7 +159,7 @@ export const fightRouter = createTRPCRouter({
     return true;
   }),
 
-  onAction: publicProcedure
+  onGameAction: publicProcedure
     .input(
       z.object({
         userId: z.string(),
@@ -183,40 +196,38 @@ export const fightRouter = createTRPCRouter({
       });
     }),
 
-  canJoin: userProcedure
-    .input(z.object({ id: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const result = await ctx.db.query.fight.findFirst({
-        where: (matches, { and, eq, isNull }) =>
-          and(isNull(matches.winner), eq(matches.id, input.id)),
-        with: {
-          participants: true,
-        },
-      });
-      if (!result) {
-        return false;
-      }
-      return result.participants.some(
-        (participant) => participant.userId === ctx.user.clerkId,
-      );
-    }),
-
-  onInvite: publicProcedure
+  onFightUpdate: publicProcedure
     .input(
       z.object({
         id: z.string(),
       }),
     )
     .subscription(({ ctx, input }) => {
-      return observable<Message>((emit) => {
-        function onMessage(data: Message) {
+      type Messages = JoinMessage | EndMessage;
+      return observable<Messages>((emit) => {
+        function onMessage(data: Messages) {
           emit.next(data);
         }
 
+        FightHandler.instance
+          .getCurrentFight(input.id)
+          .then(({ fightId, game }) => {
+            onMessage({
+              type: "join",
+              fightId,
+              game,
+            });
+          })
+          .catch(() => {
+            // do nothing, because no fight exists
+          });
+
         ctx.ee.on(`fight.join.${input.id}`, onMessage);
+        ctx.ee.on(`fight.end.${input.id}`, onMessage);
 
         return () => {
           ctx.ee.off(`fight.join.${input.id}`, onMessage);
+          ctx.ee.off(`fight.end.${input.id}`, onMessage);
         };
       });
     }),

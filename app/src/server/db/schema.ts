@@ -2,7 +2,6 @@ import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   integer,
-  pgEnum,
   pgTableCreator,
   primaryKey,
   timestamp,
@@ -19,7 +18,6 @@ import {
  */
 export const createTable = pgTableCreator((name) => `hunger-games_${name}`);
 
-export const roleEnum = pgEnum("role_type", ["admin", "moderator", "user"]);
 const metadata = {
   createdAt: timestamp("created_at")
     .default(sql`CURRENT_TIMESTAMP`)
@@ -29,7 +27,6 @@ const metadata = {
 export const users = createTable("user", {
   clerkId: varchar("clerk_id", { length: 255 }).primaryKey(),
   isDeleted: boolean("is_deleted").default(false).notNull(),
-  role: roleEnum("role").notNull(),
   ...metadata,
 });
 
@@ -93,3 +90,10 @@ export const score = createTable(
     unq: unique().on(t.fightId, t.userId),
   }),
 );
+
+export const scoreFightRelation = relations(score, ({ one }) => ({
+  fight: one(fight, {
+    fields: [score.fightId],
+    references: [fight.id],
+  }),
+}));

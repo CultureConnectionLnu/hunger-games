@@ -5,8 +5,7 @@ import { fight, usersToFight } from "~/server/db/schema";
 import { BaseGame } from "./core/base-game";
 import { RpsGame } from "./games/rps";
 import { ScoreHandler } from "./score";
-
-// todo: remove force delete from here or only have it here
+import { UserHandler } from "./user";
 
 /**
  * insert a new entry for each game added
@@ -14,6 +13,7 @@ import { ScoreHandler } from "./score";
 const knownGames = {
   "rock-paper-scissors": RpsGame,
 };
+export type KnownGames = keyof typeof knownGames;
 
 const globalForFightHandler = globalThis as unknown as {
   fightHandler: FightHandler | undefined;
@@ -97,13 +97,19 @@ export class FightHandler {
       return newFight;
     });
 
+    const userName = await UserHandler.instance.getUserName(userId);
+    const opponentName = await UserHandler.instance.getUserName(opponentId);
+
     const wrapper = this.gameHandler.createGame(gameType, {
       fightId: newFight.id,
-      players: [userId, opponentId],
+      players: [
+        { id: userId, name: userName },
+        { id: opponentId, name: opponentName },
+      ],
     });
     wrapper.gameDone = this.registerEndListener(wrapper.lobby);
 
-    return newFight;
+    return wrapper;
   }
 
   public getFight(fightId: string) {
@@ -116,9 +122,12 @@ export class FightHandler {
 
   private async registerEndListener(game: BaseGame) {
     try {
-      const winner = await new Promise<string>((resolve, reject) => {
+      const { winnerId, looserId } = await new Promise<{
+        winnerId: string;
+        looserId: string;
+      }>((resolve, reject) => {
         game.once("game-ended", (event) => {
-          resolve(event.data.winnerId);
+          resolve(event.data);
         });
         game.once("destroy", () => {
           reject(new Error("Game destroyed before it ended"));
@@ -126,14 +135,13 @@ export class FightHandler {
       });
       await this.db
         .update(fight)
-        .set({ winner })
+        .set({ winner: winnerId })
         .where(eq(fight.id, game.fightId))
         .catch((error) => {
           throw new Error("Failed to update fight", { cause: error });
         });
 
-      const looser = game.playerIds.find((id) => id !== winner)!;
-      await ScoreHandler.instance.updateScore(winner, looser, game.fightId);
+      await ScoreHandler.instance.updateScore(winnerId, looserId, game.fightId);
     } catch (error) {
       console.log("Game completed with an error", error);
     }
@@ -173,7 +181,7 @@ class GameHandler {
 
   public createGame<T extends keyof typeof knownGames>(
     type: T,
-    props: { fightId: string; players: string[] },
+    props: { fightId: string; players: { id: string; name: string }[] },
   ): KnownGamesMap {
     const game = new knownGames[type](props.fightId, props.players);
     const lobby = new BaseGame(props.fightId, props.players, game);
