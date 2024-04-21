@@ -62,45 +62,15 @@ export class ScoreHandler {
   }
 
   public async getDashboard() {
-    const queryResult = await this.db
+    return await this.db
       .select({
+        rank: sql<number>`RANK() OVER (ORDER BY SUM(${score.score}) DESC)`,
         score: sum(score.score),
         userId: score.userId,
       })
       .from(score)
-      .groupBy(score.userId);
-
-    const scoreMap = queryResult
-      // make sure it is the correct type
-      .map((x) => ({
-        score: Number(x.score ?? 0),
-        userId: x.userId,
-      }))
-      // order in descending order
-      .sort((a, b) => b.score - a.score)
-      // group by score
-      .reduce<Map<number, string[]>>((map, score) => {
-        const players = map.get(score.score) ?? [];
-        players.push(score.userId);
-        map.set(score.score, players);
-        return map;
-      }, new Map());
-
-    /**
-     * The rank is the position in the array + 1.
-     * If multiple players have the same rank, the rank is the same for all of them.
-     * The next player has the rank of the last player + the number of players with the same rank.
-     */
-    const rankedScores: { userId: string; score: number; rank: number }[] = [];
-    let rank = 1;
-    for (const [score, userIds] of scoreMap) {
-      for (const userId of userIds) {
-        rankedScores.push({ userId, score, rank });
-      }
-      rank += userIds.length;
-    }
-
-    return rankedScores;
+      .groupBy(score.userId)
+      .orderBy(desc(sum(score.score)));
   }
 
   public async getHistory(user: string) {
