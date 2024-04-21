@@ -34,7 +34,7 @@ export default function FightProvider({
         switch (event.type) {
           case "join":
             setCurrentFight({ id: event.fightId, game: event.game });
-            void autoJoinGame();
+            autoJoinGame();
             break;
           case "end":
             showGameResult();
