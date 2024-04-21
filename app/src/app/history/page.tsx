@@ -23,8 +23,8 @@ import { useSearchParamState } from "../_feature/url-sync/query";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 type HistoryEntryProps = UnwrapArray<RouterOutputs["score"]["history"]>;
+
 const gameNameMap = {
-  "???": "Unknown Game",
   "rock-paper-scissors": "Rock Paper Scissors",
 } satisfies Record<HistoryEntryProps["game"], string>;
 
@@ -122,11 +122,6 @@ function HistoryEntry({
   params: HistoryEntryProps;
   onClick: () => void;
 }) {
-  const gameNameMap = {
-    "???": "Unknown Game",
-    "rock-paper-scissors": "Rock Paper Scissors",
-  } satisfies Record<HistoryEntryProps["game"], string>;
-
   return (
     <TableRow onClick={onClick}>
       <TableCell>{gameNameMap[params.game]}</TableCell>

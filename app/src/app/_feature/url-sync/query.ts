@@ -10,6 +10,7 @@ interface Options<T, Default> {
   serializer: SerializerFunction<T>;
   deserializer: DeserializerFunction<T, Default>;
 }
+
 export function useSearchParamState<
   T = string,
   Default extends T | undefined = undefined,

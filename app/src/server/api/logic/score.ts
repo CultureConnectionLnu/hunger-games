@@ -107,7 +107,7 @@ export class ScoreHandler {
     return await this.db
       .select({
         fightId: fight.id,
-        game: fight.game,
+        game: sql<KnownGames>`${fight.game}`,
         scoreChange: score.score,
         youWon: sql<boolean>`CASE WHEN ${fight.winner} = ${score.userId} THEN true ELSE false END`,
         score: sql<number>`SUM(${score.score}) OVER (PARTITION BY ${score.userId} ORDER BY ${fight.createdAt})`,
