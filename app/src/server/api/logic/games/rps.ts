@@ -137,7 +137,7 @@ export class RpsGame
     super();
     this.setupPlayers(playerTuple);
 
-    const eventing = new GameEventingHandler({
+    const eventing = new GameEventingHandler<RockPaperScissorsEvents>({
       emit: this.emit.bind(this),
       fightId,
       playerIds: playerTuple.map((x) => x.id),

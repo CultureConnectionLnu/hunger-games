@@ -7,8 +7,6 @@ import { RpsGame } from "./games/rps";
 import { ScoreHandler } from "./score";
 import { UserHandler } from "./user";
 
-// todo: remove force delete from here or only have it here
-
 /**
  * insert a new entry for each game added
  */
@@ -144,7 +142,6 @@ export class FightHandler {
         });
 
       await ScoreHandler.instance.updateScore(winnerId, looserId, game.fightId);
-      await game.informPlayerScore(winnerId, looserId);
     } catch (error) {
       console.log("Game completed with an error", error);
     }

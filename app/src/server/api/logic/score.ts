@@ -1,8 +1,7 @@
-import { and, asc, desc, eq, not, sql, sum } from "drizzle-orm";
-import { type DB, db } from "~/server/db";
+import { and, desc, eq, not, sql, sum } from "drizzle-orm";
+import { db, type DB } from "~/server/db";
 import { fight, score, usersToFight } from "~/server/db/schema";
 import { type KnownGames } from "./fight";
-import { UserHandler } from "./user";
 
 export const staticScoringConfig = {
   lowestScore: 0,

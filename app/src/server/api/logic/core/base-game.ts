@@ -11,7 +11,6 @@ import type {
   UnspecificPlayerEventData,
 } from "./types";
 import { generalGameConfig } from "../config";
-import { ScoreHandler } from "../score";
 
 export type BaseGameConfig = {
   startTimeoutInSeconds: number;
@@ -190,27 +189,6 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
 
   getPlayer(id: string) {
     return this.players.get(id);
-  }
-
-  public async informPlayerScore(winnerId: string, looserId: string) {
-    const looser = this.players.get(looserId)!;
-    const winner = this.players.get(winnerId)!;
-
-    const winnerScoreResult = await ScoreHandler.instance.getScoreFromGame(
-      this.fightId,
-      winner.id,
-    );
-    const looserScoreResult = await ScoreHandler.instance.getScoreFromGame(
-      this.fightId,
-      looser.id,
-    );
-
-    if (!winnerScoreResult.success || !looserScoreResult.success) {
-      console.error(
-        `Could not get score for fight ${this.fightId} of player ${winner.id} or ${looser.id}`,
-      );
-      return;
-    }
   }
 
   endGame(winnerId: string, looserId: string) {

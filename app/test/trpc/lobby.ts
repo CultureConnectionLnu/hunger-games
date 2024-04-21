@@ -408,18 +408,6 @@ export const lobbyTests = () =>
             ).toBeFalsy();
           }));
       });
-
-      it("should inform players about the score", () =>
-        testFight(
-          async ({ getLobby, startGame, firstListener, secondListener }) => {
-            await startGame();
-            getLobby().endGame("test_user_1", "test_user_2");
-            await new Promise((resolve) => getLobby().on("destroy", resolve));
-
-            expectEventEmitted(firstListener, "game-ended-score");
-            expectEventEmitted(secondListener, "game-ended-score");
-          },
-        ));
     });
   });
 
