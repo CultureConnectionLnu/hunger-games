@@ -1,18 +1,17 @@
 "use client";
 
-import { Form, FormProvider, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { FormProvider, useForm } from "react-hook-form";
 import { MdAdd } from "react-icons/md";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import { api } from "~/trpc/react";
-import { type RouterInputs } from "~/trpc/shared";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "~/components/ui/use-toast";
 import {
   FormControl,
   FormDescription,
@@ -22,8 +21,10 @@ import {
   FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { useState } from "react";
+import { toast } from "~/components/ui/use-toast";
 import { addHubSchema } from "~/lib/shared-schemas";
+import { api } from "~/trpc/react";
+import { type RouterInputs } from "~/trpc/shared";
 
 type AddHub = RouterInputs["quest"]["addHub"];
 
@@ -33,13 +34,13 @@ export function AddHub() {
   const addHub = api.quest.addHub.useMutation({
     onSuccess(data) {
       if (data.success) {
-        setOpen(false);
-        void utils.quest.allHubs.invalidate();
-        toast({
-          title: "Hub added",
-          description: "The hub was successfully added",
+        return utils.quest.allHubs.invalidate().then(() => {
+          setOpen(false);
+          toast({
+            title: "Hub added",
+            description: "The hub was successfully added",
+          });
         });
-        return;
       }
       toast({
         title: "Error adding hub",
@@ -52,6 +53,11 @@ export function AddHub() {
     resolver: zodResolver(addHubSchema),
     mode: "onChange",
   });
+
+  useEffect(() => {
+    if (open) return;
+    form.reset();
+  }, [form, open]);
 
   function onSubmit(data: AddHub) {
     addHub.mutate(data);
@@ -73,9 +79,9 @@ export function AddHub() {
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>Add Hub</DialogHeader>
         <FormProvider {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <DialogHeader>Add Hub</DialogHeader>
             <FormField
               control={form.control}
               name="name"
@@ -108,7 +114,9 @@ export function AddHub() {
                 </FormItem>
               )}
             />
-            <Button type="submit">Add Hub</Button>
+            <DialogFooter>
+              <Button type="submit">Add Hub</Button>
+            </DialogFooter>
           </form>
         </FormProvider>
       </DialogContent>

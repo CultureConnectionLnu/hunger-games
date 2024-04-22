@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,7 +19,10 @@ import {
 } from "~/components/ui/table";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
-import { useSearchParamState } from "../_feature/url-sync/query";
+import {
+  useSearchParamAsDialogState,
+  useSearchParamState,
+} from "../_feature/url-sync/query";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 type HistoryEntryProps = UnwrapArray<RouterOutputs["score"]["history"]>;
@@ -28,38 +31,16 @@ const gameNameMap = {
   "rock-paper-scissors": "Rock Paper Scissors",
 } satisfies Record<HistoryEntryProps["game"], string>;
 
-function usePrevious<T>(value: T) {
-  const ref = useRef<T>();
-
-  useEffect(() => {
-    ref.current = value;
-  }, [value]); // This effect runs after every render when `value` changes
-
-  return ref.current; // Return the previous value (before the current render)
-}
-
 export default function Dashboard() {
   const { isLoading, data } = api.score.history.useQuery(undefined, {
     refetchOnMount: true,
   });
-  const [open, setOpen] = useState(false);
-  const prevOpen = usePrevious(open);
   const [highlightedFight, setHighlightedFight] =
     useSearchParamState("fightId");
-
-  useEffect(() => {
-    // open and has no highlightedFight -> close
-    if (open && highlightedFight === undefined) {
-      setOpen(false);
-    }
-
-    if (!open) {
-      // remove from url if it was open before
-      if (prevOpen) setHighlightedFight(undefined);
-      // if closed and has highlighted -> open
-      else if (highlightedFight !== undefined) setOpen(true);
-    }
-  }, [prevOpen, open, highlightedFight, setHighlightedFight, setOpen]);
+  const [open, setOpen] = useSearchParamAsDialogState(
+    highlightedFight,
+    setHighlightedFight,
+  );
 
   const loadingFiller = (
     <TableRow>

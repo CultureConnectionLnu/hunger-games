@@ -2,6 +2,7 @@ import { addHubSchema } from "~/lib/shared-schemas";
 import { QuestHandler } from "../logic/quest";
 import { UserHandler } from "../logic/user";
 import { adminProcedure, createTRPCRouter } from "../trpc";
+import { z } from "zod";
 
 export const questRouter = createTRPCRouter({
   allHubs: adminProcedure.query(async () => {
@@ -41,4 +42,15 @@ export const questRouter = createTRPCRouter({
       } as const;
     }
   }),
+
+  removeHub: adminProcedure
+    .input(z.object({ hubId: z.string() }))
+    .mutation(async ({ input }) => {
+      try {
+        await QuestHandler.instance.removeHub(input.hubId);
+        return { success: true } as const;
+      } catch (err) {
+        return { success: false, error: String(err) } as const;
+      }
+    }),
 });

@@ -1,48 +1,21 @@
 import { redirect } from "next/navigation";
-import { AddHub } from "~/app/_feature/hub/add-hub";
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import { checkRole } from "~/lib/role-check";
-import { api } from "~/trpc/server";
+import { AddHub } from "./_components/add-hub";
+import { HubTable } from "./_components/hub-table";
 
 export default async function UsersOverview() {
   if (!(await checkRole("admin"))) {
     redirect("/");
   }
 
-  const hubs = await api.quest.allHubs.query();
-
   return (
-    <>
-      <AddHub />
-      <Table>
-        <TableCaption>All users</TableCaption>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>User ID</TableHead>
-            <TableHead>Role</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {hubs.map((hub) => (
-            <TableRow key={hub.id}>
-              <TableCell>{hub.name}</TableCell>
-              <TableCell>{hub.description}</TableCell>
-              <TableCell>
-                {hub.assignedModerator ? hub.assignedModerator.name : "-"}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </>
+    <div className="flex h-full flex-col pb-4">
+      <div className="flex-grow">
+        <HubTable />
+      </div>
+      <div className="flex flex-row-reverse px-4">
+        <AddHub />
+      </div>
+    </div>
   );
 }

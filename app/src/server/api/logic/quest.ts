@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { type DB, db } from "~/server/db";
 import { hub } from "~/server/db/schema";
 
@@ -20,5 +21,9 @@ export class QuestHandler {
 
   public async addHub(data: { name: string; description?: string }) {
     await this.db.insert(hub).values(data);
+  }
+
+  public async removeHub(hubId: string) {
+    await this.db.delete(hub).where(eq(hub.id, hubId));
   }
 }

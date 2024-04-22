@@ -30,7 +30,14 @@ export default function RootLayout({
           <TRPCReactProvider>
             <FightProvider>
               <Header />
-              <div>{children}</div>
+              <div
+                style={{
+                  // 56px is the height of the header
+                  height: "calc(100vh - 56px)",
+                }}
+              >
+                {children}
+              </div>
             </FightProvider>
           </TRPCReactProvider>
         </body>
