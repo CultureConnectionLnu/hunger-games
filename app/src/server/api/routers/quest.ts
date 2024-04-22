@@ -1,3 +1,4 @@
+import { addHubSchema } from "~/lib/shared-schemas";
 import { QuestHandler } from "../logic/quest";
 import { UserHandler } from "../logic/user";
 import { adminProcedure, createTRPCRouter } from "../trpc";
@@ -25,5 +26,19 @@ export const questRouter = createTRPCRouter({
           }
         : undefined,
     }));
+  }),
+
+  addHub: adminProcedure.input(addHubSchema).mutation(async ({ input }) => {
+    try {
+      await QuestHandler.instance.addHub(input);
+      return {
+        success: true,
+      } as const;
+    } catch (err) {
+      return {
+        success: false,
+        error: String(err),
+      } as const;
+    }
   }),
 });

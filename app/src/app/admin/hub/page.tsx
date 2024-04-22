@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { AddHub } from "~/app/_feature/hub/add-hub";
 import {
   Table,
   TableBody,
@@ -19,26 +20,29 @@ export default async function UsersOverview() {
   const hubs = await api.quest.allHubs.query();
 
   return (
-    <Table>
-      <TableCaption>All users</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>User ID</TableHead>
-          <TableHead>Role</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {hubs.map((hub) => (
-          <TableRow key={hub.id}>
-            <TableCell>{hub.name}</TableCell>
-            <TableCell>{hub.description}</TableCell>
-            <TableCell>
-              {hub.assignedModerator ? hub.assignedModerator.name : "-"}
-            </TableCell>
+    <>
+      <AddHub />
+      <Table>
+        <TableCaption>All users</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>User ID</TableHead>
+            <TableHead>Role</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {hubs.map((hub) => (
+            <TableRow key={hub.id}>
+              <TableCell>{hub.name}</TableCell>
+              <TableCell>{hub.description}</TableCell>
+              <TableCell>
+                {hub.assignedModerator ? hub.assignedModerator.name : "-"}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </>
   );
 }

@@ -101,7 +101,7 @@ export const scoreFightRelation = relations(score, ({ one }) => ({
 export const hub = createTable("hub", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
-  description: varchar("description", { length: 255 }),
+  description: varchar("description", { length: 1023 }),
   assignedModeratorId: varchar("assigned_moderator_id", {
     length: 255,
   }).references(() => users.clerkId, {
