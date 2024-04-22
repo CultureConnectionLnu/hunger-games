@@ -40,12 +40,12 @@ export function HubTable() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <Table>
-        <TableCaption>All users</TableCaption>
+        <TableCaption>All Hubs</TableCaption>
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>User ID</TableHead>
-            <TableHead>Role</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead>Moderator</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -63,8 +63,9 @@ export function HubTable() {
         </TableBody>
       </Table>
       <UpdateHub
-        params={{ hub: data?.find((x) => x.id === hubId) }}
+        params={{ hub: data?.find((x) => x.id === hubId), open }}
         onDelete={() => setHubId(undefined)}
+        onUpdate={() => setHubId(undefined)}
       />
     </Dialog>
   );

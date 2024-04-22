@@ -26,4 +26,12 @@ export class QuestHandler {
   public async removeHub(hubId: string) {
     await this.db.delete(hub).where(eq(hub.id, hubId));
   }
+
+  public async updateHub(data: { id: string; name?: string; description?: string }) {
+    return this.db
+      .update(hub)
+      .set(data)
+      .where(eq(hub.id, data.id))
+      .returning({ id: hub.id });
+  }
 }
