@@ -73,7 +73,6 @@ async function syncUsersWithClerk() {
 
 async function addNewUsers(newUsers: string[]) {
   if (newUsers.length === 0) {
-    console.log("No new users to sync");
     return;
   }
 
@@ -85,7 +84,6 @@ async function addNewUsers(newUsers: string[]) {
 
 async function removeOutdatedUsers(outdatedUsers: string[]) {
   if (outdatedUsers.length === 0) {
-    console.log("No outdated users to remove");
     return;
   }
 
