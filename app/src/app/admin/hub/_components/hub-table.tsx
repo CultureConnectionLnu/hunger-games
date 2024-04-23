@@ -15,15 +15,35 @@ import {
   TableRow,
 } from "~/components/ui/table";
 import { type RouterOutputs } from "~/trpc/shared";
-import { UpdateHub } from "./update-hub";
+import { UpdateHubForm } from "./form";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type UnwrapArray<T> = T extends Array<infer U> ? U : T;
+type Hub = UnwrapArray<RouterOutputs["quest"]["allHubs"]>;
 
 export function HubTable({
   params,
 }: {
-  params: { hubs: RouterOutputs["quest"]["allHubs"] };
+  params: {
+    allUsers: { id: string; name: string }[];
+    hubs: Hub[];
+  };
 }) {
+  const router = useRouter();
   const [hubId, setHubId] = useSearchParamState("hubId");
   const [open, setOpen] = useSearchParamAsDialogState(hubId, setHubId);
+  const [hub, setHub] = useState<Hub>();
+
+  useEffect(() => {
+    const existingHub = params.hubs.find((x) => x.id === hubId);
+    if (!existingHub) {
+      setHubId(undefined);
+      return;
+    }
+
+    setHub(existingHub);
+  }, [setHub, hubId, setHubId, params.hubs]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -48,11 +68,19 @@ export function HubTable({
           ))}
         </TableBody>
       </Table>
-      <UpdateHub
-        params={{ hub: params.hubs.find((x) => x.id === hubId), open }}
-        onDelete={() => setHubId(undefined)}
-        onUpdate={() => setHubId(undefined)}
-      />
+      {hub && (
+        <UpdateHubForm
+          params={{
+            allUsers: params.allUsers,
+            hub,
+            open,
+          }}
+          onDone={() => {
+            setHubId(undefined);
+            router.refresh();
+          }}
+        />
+      )}
     </Dialog>
   );
 }

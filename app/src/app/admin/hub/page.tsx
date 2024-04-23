@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { checkRole } from "~/lib/role-check";
 import { api } from "~/trpc/server";
-import { AddHub } from "./_components/add-hub";
 import { HubTable } from "./_components/hub-table";
+import { AddHubForm } from "./_components/form";
 
 export default async function UsersOverview() {
   if (!(await checkRole("admin"))) {
@@ -11,16 +11,17 @@ export default async function UsersOverview() {
 
   const users = await api.user.allUsers.query();
   const hubs = await api.quest.allHubs.query();
+  const allUsers = users.map(({ name, userId }) => ({ id: userId, name }));
 
   return (
     <div className="flex h-full flex-col pb-4">
       <div className="flex-grow">
-        <HubTable params={{ hubs }} />
+        <HubTable params={{ hubs, allUsers }} />
       </div>
       <div className="flex flex-row-reverse px-4">
-        <AddHub
+        <AddHubForm
           params={{
-            allUsers: users.map(({ name, userId }) => ({ id: userId, name })),
+            allUsers,
           }}
         />
       </div>
