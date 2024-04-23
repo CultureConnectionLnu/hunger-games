@@ -74,12 +74,7 @@ export function AddHubForm({
   function onSubmit(data: AddHub) {
     addHub.mutate(data);
     toast({
-      title: "You submitted these values",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
+      title: "Request send to create new Hub",
     });
   }
 
@@ -156,12 +151,7 @@ export function UpdateHubForm({
     if (!params.hub) return;
     updateHub.mutate({ ...data, id: params.hub.id });
     toast({
-      title: "You submitted these values",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
+      title: "Request send to update Hub",
     });
   }
 
