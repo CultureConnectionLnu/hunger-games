@@ -14,7 +14,8 @@
     "lint-non-code-files": "prettier --check \"**/*.{json,yaml,yml,md}\"",
     "format-non-code-files": "prettier --write \"**/*.{json,yaml,yml,md}\"",
     "test": "dotenv cross-env NODE_ENV=development vitest run",
-    "test:watch": "dotenv cross-env NODE_ENV=development vitest"
+    "test:watch": "dotenv cross-env NODE_ENV=development vitest",
+    "ts": "tsc --noEmit --incremental"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^0.3.6",
