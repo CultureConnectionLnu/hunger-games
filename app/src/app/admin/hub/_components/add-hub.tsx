@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { MdAdd } from "react-icons/md";
@@ -36,18 +37,18 @@ export function AddHub({
     allUsers: { id: string; name: string }[];
   };
 }) {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const utils = api.useUtils();
   const addHub = api.quest.addHub.useMutation({
     onSuccess(data) {
       if (data.success) {
-        return utils.quest.allHubs.invalidate().then(() => {
-          setOpen(false);
-          toast({
-            title: "Hub added",
-            description: "The hub was successfully added",
-          });
+        setOpen(false);
+        toast({
+          title: "Hub added",
+          description: "The hub has been added successfully",
         });
+        router.refresh();
+        return;
       }
       toast({
         title: "Error adding hub",
@@ -127,7 +128,7 @@ export function AddHub({
               name="assignedModeratorId"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Resource group</FormLabel>
+                  <FormLabel>Assigned Moderator</FormLabel>
                   <Combobox
                     options={params.allUsers.map((user) => ({
                       value: user.id,
@@ -138,14 +139,12 @@ export function AddHub({
                       search: "Search user...",
                       notFound: "No user with that name found.",
                     }}
-                    onChange={(value) => {
-                      form.setValue("assignedModeratorId", value);
-                    }}
+                    onChange={field.onChange}
                     onBlur={field.onBlur}
                     value={field.value}
                   />
                   <FormDescription>
-                    This is the user that is assinged to the Hub
+                    This is the user that is assigned to the Hub
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

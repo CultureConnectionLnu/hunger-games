@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import {
@@ -46,17 +47,17 @@ export function UpdateHub({
   onDelete?: () => void;
   onUpdate?: () => void;
 }) {
-  const utils = api.useUtils();
+  const router = useRouter();
   const removeHub = api.quest.removeHub.useMutation({
     onSuccess(data) {
       if (data.success) {
-        return utils.quest.allHubs.invalidate().then(() => {
-          onDelete?.();
-          toast({
-            title: "Hub deleted",
-            description: "The hub was successfully deleted",
-          });
+        onDelete?.();
+        toast({
+          title: "Hub deleted",
+          description: "The hub was successfully deleted",
         });
+        router.refresh();
+        return;
       }
       toast({
         title: "Error deleting hub",
@@ -69,13 +70,13 @@ export function UpdateHub({
   const updateHub = api.quest.updateHub.useMutation({
     onSuccess(data) {
       if (data.success) {
-        return utils.quest.allHubs.invalidate().then(() => {
-          onUpdate?.();
-          toast({
-            title: "Hub updated",
-            description: "The hub was successfully updated",
-          });
+        onUpdate?.();
+        toast({
+          title: "Hub updated",
+          description: "The hub was successfully updated",
         });
+        router.refresh();
+        return;
       }
       toast({
         title: "Error updating hub",

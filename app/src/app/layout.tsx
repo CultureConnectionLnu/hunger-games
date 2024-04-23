@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import { TRPCReactProvider } from "~/trpc/react";
 import Header from "./_feature/header/header";
 import FightProvider from "./_feature/auto-join-game/fight-provider";
+import { Toaster } from "~/components/ui/toaster";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,6 +39,7 @@ export default function RootLayout({
               >
                 {children}
               </div>
+              <Toaster />
             </FightProvider>
           </TRPCReactProvider>
         </body>
