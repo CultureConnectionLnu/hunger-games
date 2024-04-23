@@ -235,12 +235,7 @@ function GameContainer({
         {header}
         {param?.noGameRunning ?? true ? leave : alertLeave}
       </header>
-      <main
-        className="flex flex-col px-4"
-        style={{
-          height: "calc(100vh - 56px)",
-        }}
-      >
+      <main className="flex h-full flex-col px-4">
         <section className="flex flex-row gap-4">
           {(timers ? [...timers.values()] : []).map((timer) => (
             <Timer key={timer.id} params={{ id: timer.id }} />

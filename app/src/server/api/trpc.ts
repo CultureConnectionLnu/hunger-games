@@ -10,10 +10,10 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
+import { UserHandler } from "./logic/user";
 
 import { TypedEventEmitter } from "~/lib/event-emitter";
 import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
 // import { auth } from "@clerk/nextjs";
 /**
  * Hack to get rid of:
@@ -44,24 +44,14 @@ export async function createCommonContext(opts: {
   }
 
   try {
-    let user = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.clerkId, userId),
-    });
+    let user = await UserHandler.instance.getUser(userId);
     if (!user) {
       /**
        * make sure the clerkId is in the users table.
        * this is only needed in development, so that the already registered users are added to the system.
        * in production the webhook in `clerk.ts` will handle this for us
        */
-      const newUser = await db
-        .insert(users)
-        .values({ clerkId: userId })
-        .returning({
-          createdAt: users.createdAt,
-          clerkId: users.clerkId,
-          isDeleted: users.isDeleted,
-        });
-      user = newUser[0]!;
+      user = await UserHandler.instance.createUser(userId);
     }
     return {
       ...base,

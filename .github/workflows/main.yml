@@ -11,6 +11,40 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  typescript:
+    name: Type Check 🔍
+    runs-on: ubuntu-latest
+    container:
+      image: node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 # node:20-alpine
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm ⚙️
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: cache .pnpm-store 📦
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashfiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install 📦
+        run: |
+          pnpm install
+        working-directory: ./app
+
+      - name: Lint 🔍
+        run: |
+          pnpm ts
+        working-directory: ./app
+
   lint:
     name: Lint 📝
     runs-on: ubuntu-latest

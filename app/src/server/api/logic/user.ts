@@ -1,6 +1,9 @@
 // import { clerkClient } from "@clerk/nextjs";
 
 import { type User } from "@clerk/nextjs/server";
+import { eq } from "drizzle-orm";
+import { type DB, db } from "~/server/db";
+import { users } from "~/server/db/schema";
 
 /**
  * Hack to get rid of:
@@ -27,11 +30,14 @@ declare global {
 export class UserHandler {
   static get instance() {
     if (!globalForUserHandler.userHandler) {
-      globalForUserHandler.userHandler = new UserHandler();
+      globalForUserHandler.userHandler = new UserHandler(db);
     }
     return globalForUserHandler.userHandler;
   }
   static readonly backupUserName = "Anonymous User";
+
+  constructor(private db: DB) {}
+
   public getUserName = getUserName;
 
   public async getUserNames(ids: string[]) {
@@ -70,10 +76,10 @@ export class UserHandler {
     this.getUserName = mockGetUserName(data);
   }
 
-  public async getAllUsers() {
+  public async getAllClerkUsers() {
     const { clerkClient } = await clerkModule;
     try {
-      const users = await clerkClient.users.getUserList();
+      const users = await clerkClient.users.getUserList({ limit: 500 });
       return {
         success: true,
         users: users.map((user) => {
@@ -88,6 +94,32 @@ export class UserHandler {
     } catch (err) {
       return { success: false, error: err } as const;
     }
+  }
+
+  public async getAllUsers() {
+    return db.query.users.findMany();
+  }
+
+  public getUser(id: string) {
+    return db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.clerkId, id),
+    });
+  }
+
+  public async createUser(userId: string) {
+    const newUser = await db
+      .insert(users)
+      .values({ clerkId: userId })
+      .returning({
+        createdAt: users.createdAt,
+        clerkId: users.clerkId,
+        isDeleted: users.isDeleted,
+      });
+    return newUser[0]!;
+  }
+
+  public async deleteUser(userId: string) {
+    return db.delete(users).where(eq(users.clerkId, userId));
   }
 
   public async changeUserRole(id: string, role: UserRoles | undefined) {

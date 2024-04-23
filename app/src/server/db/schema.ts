@@ -97,3 +97,22 @@ export const scoreFightRelation = relations(score, ({ one }) => ({
     references: [fight.id],
   }),
 }));
+
+export const hub = createTable("hub", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: varchar("description", { length: 1023 }),
+  assignedModeratorId: varchar("assigned_moderator_id", {
+    length: 255,
+  }).references(() => users.clerkId, {
+    onDelete: "cascade",
+  }),
+  ...metadata,
+});
+
+export const hubUserRelation = relations(hub, ({ one }) => ({
+  assignedModerator: one(users, {
+    fields: [hub.assignedModeratorId],
+    references: [users.clerkId],
+  }),
+}));

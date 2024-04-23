@@ -6,6 +6,7 @@ import { Inter } from "next/font/google";
 import { TRPCReactProvider } from "~/trpc/react";
 import Header from "./_feature/header/header";
 import FightProvider from "./_feature/auto-join-game/fight-provider";
+import { Toaster } from "~/components/ui/toaster";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,7 +31,15 @@ export default function RootLayout({
           <TRPCReactProvider>
             <FightProvider>
               <Header />
-              <div>{children}</div>
+              <div
+                style={{
+                  // 56px is the height of the header
+                  height: "calc(100vh - 56px)",
+                }}
+              >
+                {children}
+              </div>
+              <Toaster />
             </FightProvider>
           </TRPCReactProvider>
         </body>
