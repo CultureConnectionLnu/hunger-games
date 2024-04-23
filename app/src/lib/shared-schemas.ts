@@ -13,4 +13,5 @@ export const addHubSchema = z.object({
     .string()
     .max(1023, "Hub description can't be longer than 255 characters.")
     .optional(),
+  assignedModeratorId: z.string().optional(),
 });

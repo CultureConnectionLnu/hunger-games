@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { MdAdd } from "react-icons/md";
+import { Combobox } from "~/app/_feature/combobox/combobox";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -28,7 +29,13 @@ import { type RouterInputs } from "~/trpc/shared";
 
 type AddHub = RouterInputs["quest"]["addHub"];
 
-export function AddHub() {
+export function AddHub({
+  params,
+}: {
+  params: {
+    allUsers: { id: string; name: string }[];
+  };
+}) {
   const [open, setOpen] = useState(false);
   const utils = api.useUtils();
   const addHub = api.quest.addHub.useMutation({
@@ -70,6 +77,7 @@ export function AddHub() {
       ),
     });
   }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -109,6 +117,35 @@ export function AddHub() {
                   </FormControl>
                   <FormDescription>
                     This description can be up to 1023 characters long.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="assignedModeratorId"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Resource group</FormLabel>
+                  <Combobox
+                    options={params.allUsers.map((user) => ({
+                      value: user.id,
+                      label: user.name,
+                    }))}
+                    texts={{
+                      emptySelect: "Select user...",
+                      search: "Search user...",
+                      notFound: "No user with that name found.",
+                    }}
+                    onChange={(value) => {
+                      form.setValue("assignedModeratorId", value);
+                    }}
+                    onBlur={field.onBlur}
+                    value={field.value}
+                  />
+                  <FormDescription>
+                    This is the user that is assinged to the Hub
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

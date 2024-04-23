@@ -19,15 +19,31 @@ export class QuestHandler {
     return this.db.query.hub.findMany();
   }
 
-  public async addHub(data: { name: string; description?: string }) {
-    await this.db.insert(hub).values(data);
+  public async addHub({
+    name,
+    description,
+    assignedModeratorId,
+  }: {
+    name: string;
+    description?: string;
+    assignedModeratorId?: string;
+  }) {
+    await this.db.insert(hub).values({
+      name,
+      description,
+      assignedModeratorId,
+    });
   }
 
   public async removeHub(hubId: string) {
     await this.db.delete(hub).where(eq(hub.id, hubId));
   }
 
-  public async updateHub(data: { id: string; name?: string; description?: string }) {
+  public async updateHub(data: {
+    id: string;
+    name?: string;
+    description?: string;
+  }) {
     return this.db
       .update(hub)
       .set(data)

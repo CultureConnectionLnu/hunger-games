@@ -73,7 +73,7 @@ export class UserHandler {
   public async getAllUsers() {
     const { clerkClient } = await clerkModule;
     try {
-      const users = await clerkClient.users.getUserList();
+      const users = await clerkClient.users.getUserList({ limit: 500 });
       return {
         success: true,
         users: users.map((user) => {
