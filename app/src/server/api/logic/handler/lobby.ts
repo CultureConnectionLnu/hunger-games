@@ -9,6 +9,7 @@ import { scoreHandler } from "./score";
 import { getHandler } from "./base";
 import { gameStateHandler } from "./game-state";
 import { OMGame } from "../games/om";
+import { TypingGame } from "../games/typing";
 
 /**
  * insert a new entry for each game added
@@ -16,6 +17,7 @@ import { OMGame } from "../games/om";
 const knownGames = {
   "rock-paper-scissors": RpsGame,
   "ordered-memory": OMGame,
+  typing: TypingGame,
 };
 export type KnownGames = keyof typeof knownGames;
 
