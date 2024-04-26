@@ -4,7 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Inter } from "next/font/google";
 
 import { TRPCReactProvider } from "~/trpc/react";
-import Header from "./_feature/header/header";
+import Header from "./_components/header";
 import FightProvider from "./_feature/auto-join-game/fight-provider";
 import { Toaster } from "~/components/ui/toaster";
 

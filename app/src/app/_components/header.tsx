@@ -33,7 +33,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "~/components/ui/sheet";
-import { useFight } from "../auto-join-game/fight-provider";
+import { useFight } from "../_feature/auto-join-game/fight-provider";
 
 export default function Header() {
   const { currentFight } = useFight();
