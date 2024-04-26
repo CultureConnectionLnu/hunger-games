@@ -1,4 +1,3 @@
-import { redirect } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -8,13 +7,9 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import { checkRole } from "~/lib/role-check";
 import { api } from "~/trpc/server";
 
 export default async function UsersOverview() {
-  if (!(await checkRole("admin"))) {
-    redirect("/");
-  }
   const users = await api.user.allUsers.query();
 
   return (
