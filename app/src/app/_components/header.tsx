@@ -1,5 +1,3 @@
-"use client";
-
 import {
   SignInButton,
   SignOutButton,
@@ -7,20 +5,9 @@ import {
   SignedOut,
 } from "@clerk/nextjs";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import * as React from "react";
-import {
-  MdBarChart,
-  MdLockOpen,
-  MdManageAccounts,
-  MdMap,
-  MdMenuBook,
-  MdOutlinePowerSettingsNew,
-  MdQrCode,
-  MdQrCodeScanner,
-  MdSettings,
-  MdHistory,
-} from "react-icons/md";
+import * as MdIcons from "react-icons/md";
+import { MdLockOpen } from "react-icons/md";
 import { Button } from "~/components/ui/button";
 import {
   NavigationMenu,
@@ -33,36 +20,116 @@ import {
   SheetContent,
   SheetTrigger,
 } from "~/components/ui/sheet";
-import { useFight } from "../_feature/auto-join-game/fight-provider";
+
+type HeaderConfig = {
+  groups: {
+    title: string;
+    require?: "sign-in" | "sign-out" | "none";
+    links: HeaderLinkConfig[];
+  }[];
+};
+
+type HeaderLinkConfig = {
+  title: string;
+  icon: keyof typeof MdIcons;
+  require?: "sign-in" | "sign-out" | "none";
+} & (
+  | { href: string; customLink?: undefined }
+  | {
+      href?: undefined;
+      customLink: (children: React.ReactNode) => React.ReactNode;
+    }
+);
 
 export default function Header() {
-  const { currentFight } = useFight();
-  const pathname = usePathname();
-
-  if (pathname.startsWith("/game")) {
-    return <></>;
-  }
-
   return (
     <header>
-      {currentFight !== undefined && <JoinRunningGame />}
       <div className="flex h-14 w-full items-center justify-between px-4">
-        <SideBar />
+        <SideBar
+          config={{
+            groups: [
+              {
+                title: "General",
+                links: [
+                  {
+                    title: "Overview",
+                    href: "/",
+                    icon: "MdMap",
+                    require: "none",
+                  },
+                  {
+                    title: "Rules 🏗️",
+                    href: "#",
+                    icon: "MdMenuBook",
+                    require: "none",
+                  },
+                ],
+              },
+              {
+                title: "Current Game",
+                require: "sign-in",
+                links: [
+                  {
+                    title: "Qr-Code",
+                    href: "/qr-code",
+                    icon: "MdQrCode",
+                  },
+                  {
+                    title: "Scan",
+                    href: "/scan",
+                    icon: "MdQrCodeScanner",
+                  },
+                  {
+                    title: "History",
+                    href: "/history",
+                    icon: "MdHistory",
+                  },
+                  {
+                    title: "Dashboard",
+                    href: "/dashboard",
+                    icon: "MdBarChart",
+                  },
+                ],
+              },
+              {
+                title: "Account",
+                links: [
+                  {
+                    title: "Profile",
+                    href: "/profile",
+                    icon: "MdManageAccounts",
+                    require: "sign-in",
+                  },
+                  {
+                    title: "Settings 🏗️",
+                    href: "#",
+                    icon: "MdSettings",
+                    require: "sign-in",
+                  },
+                  {
+                    title: "Sign Out",
+                    customLink: (children) => (
+                      <SignOutButton>{children}</SignOutButton>
+                    ),
+                    icon: "MdOutlinePowerSettingsNew",
+                    require: "sign-in",
+                  },
+                  {
+                    title: "Sign In",
+                    customLink: (children) => (
+                      <SignInButton>{children}</SignInButton>
+                    ),
+                    icon: "MdLockOpen",
+                    require: "sign-out",
+                  },
+                ],
+              },
+            ],
+          }}
+        />
         <NavigationBar />
       </div>
     </header>
-  );
-}
-
-function JoinRunningGame() {
-  return (
-    <div className="h-36 w-full bg-red-400 text-center">
-      <Link href="/game">
-        <div className="flex h-full w-full items-center justify-center">
-          Back to current game
-        </div>
-      </Link>
-    </div>
   );
 }
 
@@ -103,7 +170,7 @@ function NavigationBar() {
   );
 }
 
-function SideBar() {
+function SideBar({ config }: { config: HeaderConfig }) {
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -114,111 +181,51 @@ function SideBar() {
       </SheetTrigger>
       <SheetContent className="w-full" side="left">
         <List>
-          <ListGroup>
-            <ListGroupHeader>General</ListGroupHeader>
-            <ListGroupContent>
-              <SheetClose asChild>
-                <Link href="/">
-                  <Button variant="ghost" className="w-full justify-start">
-                    <MdMap className="mr-2 h-4 w-4" />
-                    Overview
-                  </Button>
-                </Link>
-              </SheetClose>
-              <SheetClose asChild>
-                <Link href="#">
-                  <Button variant="ghost" className="w-full justify-start">
-                    <MdMenuBook className="mr-2 h-4 w-4" />
-                    Rules 🏗️
-                  </Button>
-                </Link>
-              </SheetClose>
-            </ListGroupContent>
-          </ListGroup>
-
-          <SignedIn>
-            <ListGroup>
-              <ListGroupHeader>Current Game</ListGroupHeader>
-              <ListGroupContent>
-                <SheetClose asChild>
-                  <Link href="/qr-code">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdQrCode className="mr-2 h-4 w-4" />
-                      Qr-code
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="/scan">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdQrCodeScanner className="mr-2 h-4 w-4" />
-                      Scan
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="/history">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdHistory className="mr-2 h-4 w-4" />
-                      History
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="/dashboard">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdBarChart className="mr-2 h-4 w-4" />
-                      Dashboard
-                    </Button>
-                  </Link>
-                </SheetClose>
-              </ListGroupContent>
-            </ListGroup>
-          </SignedIn>
-
-          <ListGroup>
-            <ListGroupHeader>Account</ListGroupHeader>
-            <SignedIn>
-              <ListGroupContent>
-                <SheetClose asChild>
-                  <Link href="/profile">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdManageAccounts className="mr-2 h-4 w-4" />
-                      Profile
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="#">
-                    <Button variant="ghost" className="w-full justify-start">
-                      <MdSettings className="mr-2 h-4 w-4" />
-                      Settings 🏗️
-                    </Button>
-                  </Link>
-                </SheetClose>
-                <SheetClose asChild>
-                  <Link href="/">
-                    <SignOutButton>
+          {config.groups.map((group) => {
+            const groupContent = (
+              <ListGroup key={group.title}>
+                <ListGroupHeader>{group.title}</ListGroupHeader>
+                <ListGroupContent>
+                  {group.links.map((link) => {
+                    const Icon = MdIcons[link.icon];
+                    const button = (
                       <Button variant="ghost" className="w-full justify-start">
-                        <MdOutlinePowerSettingsNew className="mr-2 h-4 w-4" />
-                        Sign Out
+                        <Icon className="mr-2 h-4 w-4"></Icon>
+                        {link.title}
                       </Button>
-                    </SignOutButton>
-                  </Link>
-                </SheetClose>
-              </ListGroupContent>
-            </SignedIn>
-            <SignedOut>
-              <ListGroupContent>
-                <SignInButton>
-                  <Button variant="ghost" className="w-full justify-start">
-                    <MdLockOpen className="mr-2 h-4 w-4" />
-                    Sign In
-                  </Button>
-                </SignInButton>
-              </ListGroupContent>
-            </SignedOut>
-          </ListGroup>
+                    );
+                    const itemContent = (
+                      <SheetClose asChild key={link.title}>
+                        {link.customLink ? (
+                          link.customLink(button)
+                        ) : (
+                          <Link href={link.href}>{button}</Link>
+                        )}
+                      </SheetClose>
+                    );
+                    if (link.require === "none" || link.require === undefined) {
+                      return itemContent;
+                    }
+                    if (link.require === "sign-in") {
+                      return (
+                        <SignedIn key={link.title}>{itemContent}</SignedIn>
+                      );
+                    }
+                    return (
+                      <SignedOut key={link.title}>{itemContent}</SignedOut>
+                    );
+                  })}
+                </ListGroupContent>
+              </ListGroup>
+            );
+            if (group.require === "none" || group.require === undefined) {
+              return groupContent;
+            }
+            if (group.require === "sign-in") {
+              return <SignedIn key={group.title}>{groupContent}</SignedIn>;
+            }
+            return <SignedOut key={group.title}>{groupContent}</SignedOut>;
+          })}
         </List>
       </SheetContent>
     </Sheet>

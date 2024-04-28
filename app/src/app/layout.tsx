@@ -3,10 +3,10 @@ import "~/styles/globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Inter } from "next/font/google";
 
-import { TRPCReactProvider } from "~/trpc/react";
-import Header from "./_components/header";
-import FightProvider from "./_feature/auto-join-game/fight-provider";
 import { Toaster } from "~/components/ui/toaster";
+import { TRPCReactProvider } from "~/trpc/react";
+import ClientHeader from "./_components/client-header";
+import FightProvider from "./_feature/auto-join-game/fight-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,7 +30,7 @@ export default function RootLayout({
         <body className={`font-sans ${inter.variable}`}>
           <TRPCReactProvider>
             <FightProvider>
-              <Header />
+              <ClientHeader />
               <div
                 style={{
                   // 56px is the height of the header
