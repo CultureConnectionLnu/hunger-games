@@ -21,11 +21,13 @@ import {
   SheetContent,
   SheetTrigger,
 } from "~/components/ui/sheet";
+import { type UserRoles } from "~/server/api/logic/user";
+import { useCheckRole } from "../_feature/auth/role-check";
 
 type HeaderConfig = {
   groups: {
     title: string;
-    require?: "sign-in" | "sign-out" | "none";
+    require?: "sign-in" | "sign-out" | "role-admin" | "none";
     links: HeaderLinkConfig[];
   }[];
 };
@@ -125,6 +127,22 @@ export default function Header() {
                   },
                 ],
               },
+              {
+                title: "Admin",
+                require: "role-admin",
+                links: [
+                  {
+                    title: "Hub Configuration",
+                    icon: "MdSettings",
+                    href: "/admin/hub",
+                  },
+                  {
+                    title: "User Overview",
+                    icon: "MdSettings",
+                    href: "/admin/users",
+                  },
+                ],
+              },
             ],
           }}
         />
@@ -167,7 +185,60 @@ function NavigationBar() {
   );
 }
 
-function SideBar({ config }: { config: HeaderConfig }) {
+async function SideBar({ config }: { config: HeaderConfig }) {
+  const listContent = config.groups.map((group) => {
+    const groupContent = (
+      <ListGroup key={group.title}>
+        <ListGroupHeader>{group.title}</ListGroupHeader>
+        <ListGroupContent>
+          {group.links.map((link) => {
+            const Icon = MdIcons[link.icon];
+            const button = (
+              <Button variant="ghost" className="w-full justify-start">
+                <Icon className="mr-2 h-4 w-4"></Icon>
+                {link.title}
+              </Button>
+            );
+            const itemContent = (
+              <SheetClose asChild key={link.title}>
+                {link.customLink ? (
+                  link.customLink(button)
+                ) : (
+                  <Link href={link.href}>{button}</Link>
+                )}
+              </SheetClose>
+            );
+            if (link.require === "none" || link.require === undefined) {
+              return itemContent;
+            }
+            if (link.require === "sign-in") {
+              return <SignedIn key={link.title}>{itemContent}</SignedIn>;
+            }
+            return <SignedOut key={link.title}>{itemContent}</SignedOut>;
+          })}
+        </ListGroupContent>
+      </ListGroup>
+    );
+    if (group.require === "none" || group.require === undefined) {
+      return groupContent;
+    }
+    if (group.require === "sign-in") {
+      return <SignedIn key={group.title}>{groupContent}</SignedIn>;
+    }
+    if (group.require === "sign-out") {
+      return <SignedOut key={group.title}>{groupContent}</SignedOut>;
+    }
+    if (group.require === "role-admin") {
+      return (
+        <RenderOnRole key={group.title} role="admin">
+          {groupContent}
+        </RenderOnRole>
+      );
+    }
+
+    group.require satisfies never;
+    return undefined;
+  });
   return (
     <Sheet>
       <SheetTrigger asChild>
@@ -177,53 +248,7 @@ function SideBar({ config }: { config: HeaderConfig }) {
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full" side="left">
-        <List>
-          {config.groups.map((group) => {
-            const groupContent = (
-              <ListGroup key={group.title}>
-                <ListGroupHeader>{group.title}</ListGroupHeader>
-                <ListGroupContent>
-                  {group.links.map((link) => {
-                    const Icon = MdIcons[link.icon];
-                    const button = (
-                      <Button variant="ghost" className="w-full justify-start">
-                        <Icon className="mr-2 h-4 w-4"></Icon>
-                        {link.title}
-                      </Button>
-                    );
-                    const itemContent = (
-                      <SheetClose asChild key={link.title}>
-                        {link.customLink ? (
-                          link.customLink(button)
-                        ) : (
-                          <Link href={link.href}>{button}</Link>
-                        )}
-                      </SheetClose>
-                    );
-                    if (link.require === "none" || link.require === undefined) {
-                      return itemContent;
-                    }
-                    if (link.require === "sign-in") {
-                      return (
-                        <SignedIn key={link.title}>{itemContent}</SignedIn>
-                      );
-                    }
-                    return (
-                      <SignedOut key={link.title}>{itemContent}</SignedOut>
-                    );
-                  })}
-                </ListGroupContent>
-              </ListGroup>
-            );
-            if (group.require === "none" || group.require === undefined) {
-              return groupContent;
-            }
-            if (group.require === "sign-in") {
-              return <SignedIn key={group.title}>{groupContent}</SignedIn>;
-            }
-            return <SignedOut key={group.title}>{groupContent}</SignedOut>;
-          })}
-        </List>
+        <List>{listContent}</List>
       </SheetContent>
     </Sheet>
   );
@@ -271,4 +296,18 @@ function MenuIcon({ className }: { className: string }) {
       <line x1="4" x2="20" y1="18" y2="18" />
     </svg>
   );
+}
+
+function RenderOnRole({
+  children,
+  role,
+}: {
+  role: UserRoles;
+  children: React.ReactNode;
+}) {
+  const [hasRole] = useCheckRole(role);
+  if (!hasRole) {
+    return <></>;
+  }
+  return <>{children}</>;
 }
