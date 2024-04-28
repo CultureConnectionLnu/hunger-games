@@ -11,6 +11,7 @@ import { MdLockOpen } from "react-icons/md";
 import { Button } from "~/components/ui/button";
 import {
   NavigationMenu,
+  NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
 } from "~/components/ui/navigation-menu";
@@ -138,31 +139,27 @@ function NavigationBar() {
     <NavigationMenu>
       <NavigationMenuList>
         <SignedOut>
-          <NavigationMenuLink>
+          <NavigationMenuItem>
             <SignInButton>
               <Button variant="ghost" className="w-full justify-start">
                 <MdLockOpen className="mr-2 h-4 w-4" />
                 Sign In
               </Button>
             </SignInButton>
-          </NavigationMenuLink>
+          </NavigationMenuItem>
         </SignedOut>
         <SignedIn>
-          <NavigationMenuLink>
-            <Link
-              className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-              href="/qr-code"
-            >
-              Qr-Code
-            </Link>
+          <NavigationMenuLink
+            className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+            href="/qr-code"
+          >
+            Qr-Code
           </NavigationMenuLink>
-          <NavigationMenuLink>
-            <Link
-              className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-              href="/scan"
-            >
-              Scan
-            </Link>
+          <NavigationMenuLink
+            className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+            href="/scan"
+          >
+            Scan
           </NavigationMenuLink>
         </SignedIn>
       </NavigationMenuList>
