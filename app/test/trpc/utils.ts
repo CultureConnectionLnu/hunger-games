@@ -7,14 +7,8 @@ import { users } from "~/server/db/schema";
 
 export function provideTestUsers() {
   beforeAll(async () => {
-    await db.insert(users).values([
-      {
-        clerkId: "test_user_1",
-      },
-      {
-        clerkId: "test_user_2",
-      },
-    ]);
+    await UserHandler.instance.createUser("test_user_1");
+    await UserHandler.instance.createUser("test_user_2");
   });
 
   afterAll(async () => {

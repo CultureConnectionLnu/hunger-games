@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { UserHandler } from "../logic/user";
-import { adminProcedure, createTRPCRouter } from "../trpc";
+import { adminProcedure, createTRPCRouter, userProcedure } from "../trpc";
 
 export const userRouter = createTRPCRouter({
   allUsers: adminProcedure.query(async () => {
@@ -13,5 +13,9 @@ export const userRouter = createTRPCRouter({
       });
     }
     return result.users;
+  }),
+
+  getYourRoles: userProcedure.query(({ ctx }) => {
+    return UserHandler.instance.getUserRoles(ctx.user.clerkId);
   }),
 });

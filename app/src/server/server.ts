@@ -2,10 +2,10 @@ import next from "next";
 import { createServer } from "node:http";
 import { parse } from "node:url";
 
-import { isNull } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 import { env } from "~/env";
 import { db } from "./db";
-import { fight } from "./db/schema";
+import { fight, roles, users } from "./db/schema";
 import { bootstrapWS } from "./wssServer";
 import { UserHandler } from "./api/logic/user";
 
@@ -43,6 +43,9 @@ void app.prepare().then(() => {
   });
   void syncUsersWithClerk().then(() => {
     console.log("Clerk sync complete");
+  });
+  void syncRoles().then(() => {
+    console.log("Role sync complete");
   });
 });
 
@@ -90,6 +93,26 @@ async function removeOutdatedUsers(outdatedUsers: string[]) {
   console.log("Outdated users to remove: ", outdatedUsers.length);
   for (const outdatedUser of outdatedUsers) {
     await UserHandler.instance.deleteUser(outdatedUser);
+  }
+}
+
+async function syncRoles() {
+  // get all players that do not have a roles entry
+  const notSyncedUsers = await db
+    .select({
+      userId: users.clerkId,
+    })
+    .from(users)
+    .leftJoin(roles, eq(users.clerkId, roles.userId))
+    .where(isNull(roles.userId));
+
+  if (notSyncedUsers.length === 0) return;
+
+  console.log(
+    `There are ${notSyncedUsers.length} users that do not have a role entry`,
+  );
+  for (const user of notSyncedUsers) {
+    await UserHandler.instance.createRoles(user.userId);
   }
 }
 

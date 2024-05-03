@@ -3,14 +3,38 @@
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import type { UserRoles } from "~/server/api/logic/user";
+import { api } from "~/trpc/react";
 
 export function useCheckRole(role: UserRoles) {
   const { user } = useUser();
   const [state, setState] = useState(false);
+  const { data } = api.user.getYourRoles.useQuery(undefined, {
+    enabled: Boolean(user) && role !== "admin",
+  });
 
   useEffect(() => {
-    setState(user?.publicMetadata.role === role);
-  }, [user, setState, role]);
+    if (role === "admin") {
+      setState(Boolean(user?.publicMetadata.isAdmin));
+      return;
+    }
+    if (!data) {
+      setState(false);
+      return;
+    }
+
+    if (role === "moderator") {
+      setState(data.isModerator);
+      return;
+    }
+    if (role === "player") {
+      setState(data.isPlayer);
+      return;
+    }
+
+    // should be dead code
+    setState(false);
+    role satisfies never;
+  }, [user, setState, role, data]);
 
   return [state] as const;
 }

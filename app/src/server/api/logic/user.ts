@@ -1,9 +1,9 @@
 // import { clerkClient } from "@clerk/nextjs";
 
 import { type User } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { type DB, db } from "~/server/db";
-import { users } from "~/server/db/schema";
+import { hub, roles, users } from "~/server/db/schema";
 
 /**
  * Hack to get rid of:
@@ -22,7 +22,7 @@ export type UserRoles = "admin" | "moderator" | "player";
 declare global {
   interface CustomJwtSessionClaims {
     metadata: {
-      role?: UserRoles;
+      isAdmin?: boolean;
     };
   }
 }
@@ -87,7 +87,7 @@ export class UserHandler {
           return {
             userId: id,
             name: userToName(user),
-            role: publicMetadata.role as UserRoles | undefined,
+            isAdmin: publicMetadata.isAdmin ?? false,
           };
         }),
       } as const;
@@ -106,34 +106,44 @@ export class UserHandler {
     });
   }
 
+  public async getUserRoles(id: string) {
+    const result = await db
+      .select({
+        isModerator: sql<boolean>`EXISTS (SELECT 1 FROM ${users} JOIN ${hub} ON ${users.clerkId} = ${hub.assignedModeratorId} WHERE ${users.clerkId} = ${id})`,
+        isPlayer: roles.isPlayer,
+        id: users.clerkId,
+      })
+      .from(users)
+      .innerJoin(roles, eq(users.clerkId, roles.userId))
+      .where(eq(users.clerkId, id));
+
+    return result[0];
+  }
+
   public async createUser(userId: string) {
-    const newUser = await db
-      .insert(users)
-      .values({ clerkId: userId })
-      .returning({
-        createdAt: users.createdAt,
-        clerkId: users.clerkId,
-        isDeleted: users.isDeleted,
-      });
-    return newUser[0]!;
+    return this.db.transaction(async (tx) => {
+      const newUserResult = await tx
+        .insert(users)
+        .values({ clerkId: userId })
+        .returning({
+          createdAt: users.createdAt,
+          clerkId: users.clerkId,
+          isDeleted: users.isDeleted,
+        });
+
+      const newUser = newUserResult[0]!;
+      await this.createRoles(newUser.clerkId, tx);
+
+      return newUser;
+    });
   }
 
   public async deleteUser(userId: string) {
     return db.delete(users).where(eq(users.clerkId, userId));
   }
 
-  public async changeUserRole(id: string, role: UserRoles | undefined) {
-    const { clerkClient } = await clerkModule;
-    try {
-      await clerkClient.users.updateUser(id, {
-        publicMetadata: {
-          role,
-        },
-      });
-      return { success: true } as const;
-    } catch (err) {
-      return { success: false, error: err } as const;
-    }
+  public async createRoles(userId: string, db = this.db) {
+    return db.insert(roles).values({ userId });
   }
 }
 

@@ -1,4 +1,4 @@
-import { type UserRoles } from "~/server/api/logic/user";
+import { UserHandler, type UserRoles } from "~/server/api/logic/user";
 
 /**
  * Hack to get rid of:
@@ -10,7 +10,18 @@ const clerkModule = import("@clerk/nextjs");
 
 export const checkRole = async (role: UserRoles) => {
   const { auth } = await clerkModule;
-  const { sessionClaims } = auth();
+  const { sessionClaims, userId } = auth();
 
-  return sessionClaims?.metadata.role === role;
+  if (userId === null) return false;
+  if (role === "admin") return sessionClaims?.metadata.isAdmin ?? false;
+
+  const user = await UserHandler.instance.getUserRoles(userId);
+  if (!user) return false;
+
+  if (role === "moderator") return user.isModerator;
+  if (role === "player") return user.isPlayer;
+
+  // should be dead code
+  role satisfies never;
+  return false;
 };

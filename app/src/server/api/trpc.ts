@@ -14,6 +14,7 @@ import { UserHandler } from "./logic/user";
 
 import { TypedEventEmitter } from "~/lib/event-emitter";
 import { db } from "~/server/db";
+import { checkRole } from "~/lib/role-check";
 // import { auth } from "@clerk/nextjs";
 /**
  * Hack to get rid of:
@@ -35,7 +36,7 @@ if (!globalForEE.ee) {
 export async function createCommonContext(opts: {
   ee: TypedEventEmitter;
   userId: string | undefined;
-  role?: CustomJwtSessionClaims["metadata"]["role"];
+  role?: CustomJwtSessionClaims["metadata"]["isAdmin"];
 }) {
   const base = { db, user: undefined, ...opts };
   const { userId } = opts;
@@ -83,7 +84,7 @@ export const createTRPCContext = async () => {
   return createCommonContext({
     ee: globalForEE.ee!,
     userId: session.userId ?? undefined,
-    role: session.sessionClaims?.metadata.role,
+    role: session.sessionClaims?.metadata.isAdmin,
   });
 };
 
@@ -163,8 +164,8 @@ export const userProcedure = t.procedure.use(({ ctx, next }) => {
 /**
  * Protected (authenticated) procedure for players
  */
-export const playerProcedure = userProcedure.use(({ ctx, next }) => {
-  if (!["moderator", "admin", "player"].includes(ctx.role)) {
+export const playerProcedure = userProcedure.use(async ({ ctx, next }) => {
+  if (!(await checkRole("player"))) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a player" });
   }
 
@@ -183,7 +184,7 @@ export const playerProcedure = userProcedure.use(({ ctx, next }) => {
  * Protected (authenticated) procedure for moderators
  */
 export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!["moderator", "admin"].includes(ctx.role)) {
+  if (!(await checkRole("moderator"))) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a moderator" });
   }
 
@@ -194,7 +195,7 @@ export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
  * Protected (authenticated) procedure for admins
  */
 export const adminProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!["admin"].includes(ctx.role)) {
+  if (!(await checkRole("admin"))) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not an admin" });
   }
 
