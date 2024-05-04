@@ -14,7 +14,6 @@ import { UserHandler } from "./logic/user";
 
 import { TypedEventEmitter } from "~/lib/event-emitter";
 import { db } from "~/server/db";
-import { checkRole } from "~/lib/role-check";
 // import { auth } from "@clerk/nextjs";
 /**
  * Hack to get rid of:
@@ -165,7 +164,7 @@ export const userProcedure = t.procedure.use(({ ctx, next }) => {
  * Protected (authenticated) procedure for players
  */
 export const playerProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!(await checkRole("player"))) {
+  if (!(await UserHandler.instance.checkRole("player", ctx.user.clerkId))) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a player" });
   }
 
@@ -184,7 +183,7 @@ export const playerProcedure = userProcedure.use(async ({ ctx, next }) => {
  * Protected (authenticated) procedure for moderators
  */
 export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!(await checkRole("moderator"))) {
+  if (!(await UserHandler.instance.checkRole("moderator", ctx.user.clerkId))) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a moderator" });
   }
 
@@ -195,7 +194,7 @@ export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
  * Protected (authenticated) procedure for admins
  */
 export const adminProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!(await checkRole("admin"))) {
+  if (!(await UserHandler.instance.checkRole("admin", ctx.user.clerkId))) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not an admin" });
   }
 

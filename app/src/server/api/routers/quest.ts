@@ -1,9 +1,9 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 import { addHubSchema } from "~/lib/shared-schemas";
 import { QuestHandler } from "../logic/quest";
 import { UserHandler } from "../logic/user";
 import { adminProcedure, createTRPCRouter } from "../trpc";
-import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 
 export const questRouter = createTRPCRouter({
   allHubs: adminProcedure.query(async () => {
@@ -32,6 +32,17 @@ export const questRouter = createTRPCRouter({
 
   addHub: adminProcedure.input(addHubSchema).mutation(async ({ input }) => {
     try {
+      if (
+        input.assignedModeratorId &&
+        (await UserHandler.instance.checkRole("moderator"))
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message:
+            "The person is already a moderator for another hub, so he can't be assigned to this hub.",
+        });
+      }
+
       await QuestHandler.instance.addHub(input);
       return {
         success: true,
@@ -59,6 +70,16 @@ export const questRouter = createTRPCRouter({
     .input(addHubSchema.partial().and(z.object({ id: z.string() })))
     .mutation(async ({ input }) => {
       try {
+        if (
+          input.assignedModeratorId &&
+          (await UserHandler.instance.checkRole("moderator"))
+        ) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "The person is already a moderator for another hub, so he can't be assigned to this hub.",
+          });
+        }
         const res = await QuestHandler.instance.updateHub(input);
         if (res.length === 0) {
           throw new TRPCError({

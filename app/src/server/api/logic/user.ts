@@ -39,6 +39,7 @@ export class UserHandler {
   constructor(private db: DB) {}
 
   public getUserName = getUserName;
+  public isAdmin = isAdmin;
 
   public async getUserNames(ids: string[]) {
     const data = {
@@ -76,6 +77,14 @@ export class UserHandler {
     this.getUserName = mockGetUserName(data);
   }
 
+  public useRealIsAdmin() {
+    this.isAdmin = isAdmin;
+  }
+
+  public useMockIsAdmin(data: Record<string, boolean>) {
+    this.isAdmin = mockIsAdmin(data);
+  }
+
   public async getAllClerkUsers() {
     const { clerkClient } = await clerkModule;
     try {
@@ -87,13 +96,36 @@ export class UserHandler {
           return {
             userId: id,
             name: userToName(user),
-            isAdmin: publicMetadata.isAdmin ?? false,
+            isAdmin: Boolean(publicMetadata.isAdmin),
           };
         }),
       } as const;
     } catch (err) {
       return { success: false, error: err } as const;
     }
+  }
+
+  public async currentUserId() {
+    const { auth } = await clerkModule;
+    return auth().userId;
+  }
+
+  public async checkRole(role: UserRoles, userId?: string) {
+    const currentUserId = userId ?? (await this.currentUserId());
+    if (!currentUserId) return false;
+    if (role === "admin") {
+      return this.isAdmin(currentUserId);
+    }
+
+    const user = await this.getUserRoles(currentUserId);
+    if (!user) return false;
+
+    if (role === "moderator") return user.isModerator;
+    if (role === "player") return user.isPlayer;
+
+    // should be dead code
+    role satisfies never;
+    return false;
   }
 
   public async getAllUsers() {
@@ -170,4 +202,21 @@ function userToName(user: User) {
     return user.username;
   }
   return UserHandler.backupUserName;
+}
+
+function mockIsAdmin(lookup: Record<string, boolean>) {
+  return async (id: string) => lookup[id] ?? false;
+}
+
+async function isAdmin(userId: string) {
+  const { auth } = await clerkModule;
+  const { sessionClaims, userId: currentUser } = auth();
+
+  if (userId !== currentUser) {
+    console.error(
+      `NOT implemented admin check for a different user than the current one`,
+    );
+    return false;
+  }
+  return sessionClaims?.metadata.isAdmin ?? false;
 }
