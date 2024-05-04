@@ -1,0 +1,42 @@
+"use client";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
+import type { RouterOutputs } from "~/trpc/shared";
+
+type UnwrapArray<T> = T extends Array<infer U> ? U : T;
+type User = UnwrapArray<RouterOutputs["user"]["allUsers"]>;
+
+export function UserTable({ params }: { params: { users: User[] } }) {
+  return (
+    <Table>
+      <TableCaption>All users</TableCaption>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>User ID</TableHead>
+          <TableHead>Is Admin</TableHead>
+          <TableHead>Is Moderator</TableHead>
+          <TableHead>Is Player</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {params.users.map((user) => (
+          <TableRow key={user.userId}>
+            <TableCell>{user.name}</TableCell>
+            <TableCell>{user.userId}</TableCell>
+            <TableCell>{user.isAdmin ? "✅" : "❌"}</TableCell>
+            <TableCell>{user.isModerator ? "✅" : "❌"}</TableCell>
+            <TableCell>{user.isPlayer ? "✅" : "❌"}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}
