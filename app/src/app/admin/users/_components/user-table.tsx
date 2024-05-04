@@ -18,6 +18,11 @@ import {
 } from "~/components/ui/table";
 import type { RouterOutputs } from "~/trpc/shared";
 import { UpdateUserForm } from "./form";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "~/components/ui/tooltip";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 type User = UnwrapArray<RouterOutputs["user"]["allUsers"]>;
@@ -45,7 +50,6 @@ export function UserTable({ params }: { params: { users: User[] } }) {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>User ID</TableHead>
             <TableHead>Is Admin</TableHead>
             <TableHead>Is Moderator</TableHead>
             <TableHead>Is Player</TableHead>
@@ -54,8 +58,12 @@ export function UserTable({ params }: { params: { users: User[] } }) {
         <TableBody>
           {params.users.map((user) => (
             <TableRow key={user.userId} onClick={() => setUserId(user.userId)}>
-              <TableCell>{user.name}</TableCell>
-              <TableCell>{user.userId}</TableCell>
+              <TableCell>
+                <Tooltip>
+                  <TooltipTrigger>{user.name}</TooltipTrigger>
+                  <TooltipContent>{user.userId}</TooltipContent>
+                </Tooltip>
+              </TableCell>
               <TableCell>{user.isAdmin ? "✅" : "❌"}</TableCell>
               <TableCell>{user.isModerator ? "✅" : "❌"}</TableCell>
               <TableCell>{user.isPlayer ? "✅" : "❌"}</TableCell>

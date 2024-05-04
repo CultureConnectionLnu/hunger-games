@@ -39,14 +39,12 @@ export function QrCode({
       ) : (
         <>
           <div className="flex aspect-square w-full flex-col items-center justify-center overflow-hidden">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <QRCode value={currentUrl} />
-                </TooltipTrigger>
-                <TooltipContent>{currentUrl}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <QRCode value={currentUrl} />
+              </TooltipTrigger>
+              <TooltipContent>{currentUrl}</TooltipContent>
+            </Tooltip>
           </div>
           <p className="flex flex-col items-center text-center text-sm font-medium not-italic text-gray-500">
             When the opponent scans this QR code with his phone, then you start
