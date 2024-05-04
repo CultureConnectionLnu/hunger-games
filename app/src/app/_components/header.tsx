@@ -23,6 +23,7 @@ import {
 } from "~/components/ui/sheet";
 import { type UserRoles } from "~/server/api/logic/user";
 import { useCheckRole } from "../_feature/auth/role-check";
+import { LucideLink } from "lucide-react";
 
 type HeaderConfig = {
   groups: {
@@ -35,7 +36,7 @@ type HeaderConfig = {
 type HeaderLinkConfig = {
   title: string;
   icon: keyof typeof MdIcons;
-  require?: "sign-in" | "sign-out" | "none";
+  require?: "sign-in" | "sign-out" | "role-player" | "none";
 } & (
   | { href: string; customLink?: undefined }
   | {
@@ -76,16 +77,19 @@ export default function Header() {
                     title: "Qr-Code",
                     href: "/qr-code",
                     icon: "MdQrCode",
+                    require: "role-player",
                   },
                   {
                     title: "Scan",
                     href: "/scan",
                     icon: "MdQrCodeScanner",
+                    require: "role-player",
                   },
                   {
                     title: "History",
                     href: "/history",
                     icon: "MdHistory",
+                    require: "role-player",
                   },
                   {
                     title: "Dashboard",
@@ -214,7 +218,19 @@ async function SideBar({ config }: { config: HeaderConfig }) {
             if (link.require === "sign-in") {
               return <SignedIn key={link.title}>{itemContent}</SignedIn>;
             }
-            return <SignedOut key={link.title}>{itemContent}</SignedOut>;
+            if (link.require === "sign-out") {
+              return <SignedOut key={link.title}>{itemContent}</SignedOut>;
+            }
+            if (link.require === "role-player") {
+              return (
+                <RenderOnRole key={link.title} role="player">
+                  {itemContent}
+                </RenderOnRole>
+              );
+            }
+
+            link.require satisfies never;
+            return undefined;
           })}
         </ListGroupContent>
       </ListGroup>

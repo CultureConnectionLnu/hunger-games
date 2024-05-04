@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ScoreHandler } from "../logic/score";
-import { createTRPCRouter, userProcedure } from "../trpc";
+import { createTRPCRouter, playerProcedure, userProcedure } from "../trpc";
 import { TRPCError } from "@trpc/server";
 import { UserHandler } from "../logic/user";
 
@@ -25,11 +25,11 @@ export const scoreRouter = createTRPCRouter({
     }));
   }),
 
-  history: userProcedure.query(
+  history: playerProcedure.query(
     async ({ ctx }) => await ScoreHandler.instance.getHistory(ctx.user.clerkId),
   ),
 
-  historyEntry: userProcedure
+  historyEntry: playerProcedure
     .input(z.object({ fightId: z.string() }))
     .query(async ({ ctx, input }) => {
       const result = await ScoreHandler.instance.getHistoryEntry(

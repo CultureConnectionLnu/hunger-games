@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 import {
   createTRPCRouter,
+  playerProcedure,
   publicProcedure,
   userProcedure,
 } from "~/server/api/trpc";
@@ -32,7 +33,7 @@ declare module "~/lib/event-emitter" {
 /**
  * makes sure that a user is in a fight
  */
-export const inFightProcedure = userProcedure.use(async ({ ctx, next }) => {
+export const inFightProcedure = playerProcedure.use(async ({ ctx, next }) => {
   const currentFight = await FightHandler.instance.getCurrentFight(
     ctx.user.clerkId,
   );
@@ -81,7 +82,7 @@ export function catchMatchError(fn: () => void) {
 }
 
 export const fightRouter = createTRPCRouter({
-  create: userProcedure
+  create: playerProcedure
     .input(
       z.object({
         opponent: z.string(),
@@ -134,7 +135,7 @@ export const fightRouter = createTRPCRouter({
       };
     }),
 
-  currentFight: userProcedure.query(async ({ ctx }) => {
+  currentFight: playerProcedure.query(async ({ ctx }) => {
     try {
       return {
         fight: await FightHandler.instance.getCurrentFight(ctx.user.clerkId),
