@@ -19,7 +19,9 @@ export default async function UsersOverview() {
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>User ID</TableHead>
-          <TableHead>Role</TableHead>
+          <TableHead>Is Admin</TableHead>
+          <TableHead>Is Moderator</TableHead>
+          <TableHead>Is Player</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -27,7 +29,9 @@ export default async function UsersOverview() {
           <TableRow key={user.userId}>
             <TableCell>{user.name}</TableCell>
             <TableCell>{user.userId}</TableCell>
-            <TableCell>{user.role}</TableCell>
+            <TableCell>{user.isAdmin ? "✅" : "❌"}</TableCell>
+            <TableCell>{user.isModerator ? "✅" : "❌"}</TableCell>
+            <TableCell>{user.isPlayer ? "✅" : "❌"}</TableCell>
           </TableRow>
         ))}
       </TableBody>

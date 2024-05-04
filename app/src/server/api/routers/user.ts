@@ -12,7 +12,19 @@ export const userRouter = createTRPCRouter({
         cause: result.error,
       });
     }
-    return result.users;
+    const allRoles = (
+      await Promise.all(
+        result.users.map((x) => UserHandler.instance.getUserRoles(x.userId)),
+      )
+    ).filter(Boolean);
+    return result.users.map((user) => {
+      const roles = allRoles.find((y) => y.id === user.userId);
+      return {
+        ...user,
+        isModerator: roles?.isModerator ?? false,
+        isPlayer: roles?.isPlayer ?? false,
+      };
+    });
   }),
 
   getYourRoles: userProcedure.query(({ ctx }) => {
