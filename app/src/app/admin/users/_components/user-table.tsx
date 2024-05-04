@@ -34,14 +34,8 @@ export function UserTable({ params }: { params: { users: User[] } }) {
   const [user, setUser] = useState<User>();
 
   useEffect(() => {
-    const existingUser = params.users.find((x) => x.userId === userId);
-    if (!existingUser) {
-      setUserId(undefined);
-      return;
-    }
-
-    setUser(existingUser);
-  }, [setUser, setUserId, params.users, userId]);
+    setUser(params.users.find((x) => x.userId === userId));
+  }, [setUser, params.users, userId]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
