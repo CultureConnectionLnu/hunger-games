@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { UserHandler } from "../logic/user";
 import { adminProcedure, createTRPCRouter, userProcedure } from "../trpc";
+import { z } from "zod";
 
 export const userRouter = createTRPCRouter({
   allUsers: adminProcedure.query(async () => {
@@ -30,4 +31,25 @@ export const userRouter = createTRPCRouter({
   getYourRoles: userProcedure.query(({ ctx }) => {
     return UserHandler.instance.getUserRoles(ctx.user.clerkId);
   }),
+
+  changePlayerState: adminProcedure
+    .input(
+      z.object({
+        id: z.string(),
+        isPlayer: z.boolean(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const result = await UserHandler.instance.changePlayerState(
+        input.id,
+        input.isPlayer,
+      );
+      if (!result.success) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Failed to update player state",
+        });
+      }
+      return true;
+    }),
 });

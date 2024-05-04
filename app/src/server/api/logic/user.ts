@@ -129,17 +129,17 @@ export class UserHandler {
   }
 
   public async getAllUsers() {
-    return db.query.users.findMany();
+    return this.db.query.users.findMany();
   }
 
   public getUser(id: string) {
-    return db.query.users.findFirst({
+    return this.db.query.users.findFirst({
       where: (users, { eq }) => eq(users.clerkId, id),
     });
   }
 
   public async getUserRoles(id: string) {
-    const result = await db
+    const result = await this.db
       .select({
         isModerator: sql<boolean>`EXISTS (SELECT 1 FROM ${users} JOIN ${hub} ON ${users.clerkId} = ${hub.assignedModeratorId} WHERE ${users.clerkId} = ${id})`,
         isPlayer: roles.isPlayer,
@@ -150,6 +150,22 @@ export class UserHandler {
       .where(eq(users.clerkId, id));
 
     return result[0];
+  }
+
+  public async changePlayerState(id: string, isPlayer: boolean) {
+    const result = await this.db
+      .update(roles)
+      .set({ isPlayer })
+      .where(eq(roles.userId, id));
+    if (result.length === 0) {
+      return {
+        success: false,
+        reason: "not-found" as const,
+      };
+    }
+    return {
+      success: true,
+    };
   }
 
   public async createUser(userId: string) {
@@ -171,7 +187,7 @@ export class UserHandler {
   }
 
   public async deleteUser(userId: string) {
-    return db.delete(users).where(eq(users.clerkId, userId));
+    return this.db.delete(users).where(eq(users.clerkId, userId));
   }
 
   public async createRoles(userId: string, db = this.db) {
