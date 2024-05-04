@@ -1,12 +1,20 @@
-import { QrCodeScanner } from "../_feature/qrcode/qr-code-scanner";
-import { unstable_noStore as noStore } from "next/cache";
+"use client";
 
-export default async function MatchOverviewPage() {
-  noStore();
+import { useRouter } from "next/navigation";
+import { QrCodeScanner } from "../_feature/qrcode/qr-code-scanner";
+import { Card, CardHeader } from "~/components/ui/card";
+
+export default function MatchOverviewPage() {
+  const router = useRouter();
+
   return (
-    <div className="flex flex-col items-center">
-      <h1>Scan the QR code of your opponent</h1>
-      <QrCodeScanner/>
-    </div>
+    <Card className="border-0">
+      <CardHeader className="text-center">
+        Scan the QR code of your opponent
+      </CardHeader>
+      <QrCodeScanner
+        onReadUserId={(userId) => router.push(`/qr-code?userId=${userId}`)}
+      />
+    </Card>
   );
 }

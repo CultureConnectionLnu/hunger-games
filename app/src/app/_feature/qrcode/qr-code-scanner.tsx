@@ -1,15 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { QrReader } from "react-qr-reader";
 
-export function QrCodeScanner() {
-  const router = useRouter();
-  const [navigationDone, setNavigationDone] = useState(false);
+export function QrCodeScanner({
+  onReadUserId,
+}: {
+  onReadUserId?: (userId: string) => void;
+}) {
   return (
     <QrReader
-      className="h-screen w-screen p-4"
       onResult={(result, error) => {
         if (error) {
           console.info(error);
@@ -18,18 +17,21 @@ export function QrCodeScanner() {
         if (!result) {
           return;
         }
-        const url = result.getText();
-        if (!navigationDone && checkIfNavigationIsAllowed(url)) {
-          router.push(url);
-          setNavigationDone(true);
+        const rawUrl = result.getText();
+        try {
+          const url = new URL(rawUrl, "http://base.url");
+          const userId = url.searchParams.get("userId");
+          if (!userId) {
+            console.info("no userId in URL", rawUrl);
+            return;
+          }
+          onReadUserId?.(userId);
+        } catch (error) {
+          // not a valid url
+          console.info("read not valid URL", rawUrl);
         }
       }}
       constraints={{ facingMode: "environment" }}
     />
   );
-}
-
-function checkIfNavigationIsAllowed(url: string) {
-  // TODO: check in detail if navigation is ok here
-  return url.startsWith("/");
 }
