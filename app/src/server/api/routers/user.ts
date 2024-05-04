@@ -40,16 +40,21 @@ export const userRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const result = await UserHandler.instance.changePlayerState(
-        input.id,
-        input.isPlayer,
-      );
-      if (!result.success) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Failed to update player state",
-        });
+      try {
+        const result = await UserHandler.instance.changePlayerState(
+          input.id,
+          input.isPlayer,
+        );
+        if (!result.success) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Failed to update player state",
+          });
+        }
+        return { success: true } as const;
+      } catch (error) {
+        console.error('failed to update player state because: ', error)
+        return { success: false, error: String(error) } as const;
       }
-      return true;
     }),
 });

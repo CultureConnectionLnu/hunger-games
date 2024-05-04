@@ -157,7 +157,7 @@ export class UserHandler {
       .update(roles)
       .set({ isPlayer })
       .where(eq(roles.userId, id));
-    if (result.length === 0) {
+    if (result.count === 0) {
       return {
         success: false,
         reason: "not-found" as const,
