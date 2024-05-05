@@ -269,7 +269,7 @@ function NoFightOngoing() {
           </CardTitle>
         }
       >
-        <Link className="mx-auto" href="/qr-code">
+        <Link className="mx-auto" href="/game/qr-code">
           <Button variant="outline">Return to QrCode</Button>
         </Link>
       </GameCard>
