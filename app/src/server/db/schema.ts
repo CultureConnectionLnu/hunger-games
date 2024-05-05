@@ -37,7 +37,7 @@ export const userRelations = relations(users, ({ many, one }) => ({
     fields: [users.clerkId],
     references: [roles.userId],
   }),
-  questsToUsers: many(questToUser),
+  quests: many(quest),
 }));
 
 export const roles = createTable("role", {
@@ -128,47 +128,27 @@ export const hubUserRelation = relations(hub, ({ one }) => ({
 }));
 
 export const questKind = pgEnum("quest_kind", ["walk-1", "walk-2", "walk-3"]);
-
-export const quest = createTable("quest", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  kind: questKind("kind").notNull(),
-  scoreForCompletion: integer("score_for_completion").notNull(),
-  ...metadata,
-});
-export const questRelations = relations(quest, ({ many }) => ({
-  questsToUsers: many(questToUser),
-}));
-
 export const questOutcome = pgEnum("quest_outcome", [
   "completed",
   "lost-in-battle",
 ]);
 
-export const questToUser = createTable("quest_to_user", {
-  questId: uuid("quest_id")
-    .references(() => quest.id, { onDelete: "cascade" })
-    .notNull(),
+export const quest = createTable("quest", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: questKind("kind").notNull(),
   userId: varchar("user_id", { length: 255 })
     .references(() => users.clerkId, { onDelete: "cascade" })
     .notNull(),
   outcome: questOutcome("outcome"),
   /**
-   * depending on the kind of quest the progress is interpreted differently
+   * walkQuests: which places need to be visited and what the progress is
    */
-  progress: integer("progress").notNull().default(0),
-  /**
-   * in case of walk quest, contains which hubs need to be visited as json
-   */
-  additionalInformation: json("additional_information"),
+  additionalInformation: json("additional_information").notNull(),
   ...metadata,
 });
-export const questToUserRelations = relations(questToUser, ({ one }) => ({
-  quest: one(quest, {
-    fields: [questToUser.questId],
-    references: [quest.id],
-  }),
+export const questRelations = relations(quest, ({ one }) => ({
   user: one(users, {
-    fields: [questToUser.userId],
+    fields: [quest.userId],
     references: [users.clerkId],
   }),
 }));
