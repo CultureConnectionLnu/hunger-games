@@ -23,7 +23,7 @@ export default function FightProvider({
   const router = useRouter();
   const { user } = useUser();
 
-  const autoJoinGame = () => router.push(`/game`);
+  const autoJoinGame = () => router.push(`/game/fight`);
   const showGameResult = () =>
     router.push(`/history?fightId=${currentFight?.id}`);
 
