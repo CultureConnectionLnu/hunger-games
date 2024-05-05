@@ -6,7 +6,6 @@ import {
   createTRPCRouter,
   playerProcedure,
   publicProcedure,
-  userProcedure,
 } from "~/server/api/trpc";
 import type { BaseGamePlayerEvents } from "../logic/core/base-game";
 import { FightHandler } from "../logic/fight";
