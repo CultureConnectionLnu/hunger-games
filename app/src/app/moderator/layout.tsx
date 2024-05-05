@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { UserHandler } from "~/server/api/logic/user";
 
 export default async function AdminLayout({
@@ -7,7 +7,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   if (!(await UserHandler.instance.checkRole("moderator"))) {
-    redirect("/404");
+    notFound();
   }
   return <>{children}</>;
 }
