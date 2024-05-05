@@ -1,36 +1,23 @@
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "~/components/ui/table";
 import { api } from "~/trpc/server";
+import { UserTable } from "./_components/user-table";
+import { FindUser } from "./_components/find-user";
+import { ScrollArea } from "~/components/ui/scroll-area";
 
 export default async function UsersOverview() {
   const users = await api.user.allUsers.query();
 
   return (
-    <Table>
-      <TableCaption>All users</TableCaption>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>User ID</TableHead>
-          <TableHead>Role</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {users.map((user) => (
-          <TableRow key={user.userId}>
-            <TableCell>{user.name}</TableCell>
-            <TableCell>{user.userId}</TableCell>
-            <TableCell>{user.role}</TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <div className="flex h-full flex-col gap-4 pb-4">
+      <ScrollArea className="h-full">
+        <UserTable params={{ users }} />
+      </ScrollArea>
+      <div className="flex flex-row-reverse px-4">
+        <FindUser
+          params={{
+            users,
+          }}
+        />
+      </div>
+    </div>
   );
 }

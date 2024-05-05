@@ -7,20 +7,24 @@ import { users } from "~/server/db/schema";
 
 export function provideTestUsers() {
   beforeAll(async () => {
-    await db.insert(users).values([
-      {
-        clerkId: "test_user_1",
-      },
-      {
-        clerkId: "test_user_2",
-      },
-    ]);
+    await UserHandler.instance.createUser("test_user_1");
+    await UserHandler.instance.createUser("test_user_2");
   });
 
   afterAll(async () => {
     await db
       .delete(users)
       .where(inArray(users.clerkId, ["test_user_1", "test_user_2"]));
+  });
+}
+
+export function makePlayer(user: `test_user_1` | `test_user_2`) {
+  beforeAll(async () => {
+    await UserHandler.instance.changePlayerState(user, true);
+  });
+
+  afterAll(async () => {
+    await UserHandler.instance.changePlayerState(user, false);
   });
 }
 

@@ -36,14 +36,8 @@ export function HubTable({
   const [hub, setHub] = useState<Hub>();
 
   useEffect(() => {
-    const existingHub = params.hubs.find((x) => x.id === hubId);
-    if (!existingHub) {
-      setHubId(undefined);
-      return;
-    }
-
-    setHub(existingHub);
-  }, [setHub, hubId, setHubId, params.hubs]);
+    setHub(params.hubs.find((x) => x.id === hubId));
+  }, [setHub, hubId, params.hubs]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

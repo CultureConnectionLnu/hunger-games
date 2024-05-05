@@ -1,8 +1,7 @@
 import { UserHandler } from "~/server/api/logic/user";
-import TimerProvider from "../_feature/timer/timer-provider";
 import { redirect } from "next/navigation";
 
-export default async function FightLayout({
+export default async function QrCodeLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -10,5 +9,5 @@ export default async function FightLayout({
   if (!(await UserHandler.instance.checkRole("player"))) {
     redirect("/no-player");
   }
-  return <TimerProvider>{children}</TimerProvider>;
+  return <>{children}</>;
 }

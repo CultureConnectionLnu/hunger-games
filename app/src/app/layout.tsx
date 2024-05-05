@@ -7,6 +7,7 @@ import { Toaster } from "~/components/ui/toaster";
 import { TRPCReactProvider } from "~/trpc/react";
 import ClientHeader from "./_components/client-header";
 import FightProvider from "./_feature/auto-join-game/fight-provider";
+import { TooltipProvider } from "~/components/ui/tooltip";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,16 +31,18 @@ export default function RootLayout({
         <body className={`font-sans ${inter.variable}`}>
           <TRPCReactProvider>
             <FightProvider>
-              <ClientHeader />
-              <div
-                style={{
-                  // 56px is the height of the header
-                  height: "calc(100vh - 56px)",
-                }}
-              >
-                {children}
-              </div>
-              <Toaster />
+              <TooltipProvider>
+                <ClientHeader />
+                <div
+                  style={{
+                    // 56px is the height of the header
+                    height: "calc(100vh - 56px)",
+                  }}
+                >
+                  {children}
+                </div>
+                <Toaster />
+              </TooltipProvider>
             </FightProvider>
           </TRPCReactProvider>
         </body>

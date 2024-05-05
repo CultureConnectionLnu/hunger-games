@@ -12,6 +12,7 @@ import {
   expectEventEmitted,
   getLastEventOf,
   getManualTimer,
+  makePlayer,
   runAllMacroTasks,
   useAutomaticTimer,
   useManualTimer,
@@ -22,6 +23,9 @@ import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 
 export const rpsTests = () =>
   describe("Rock Paper Scissors", () => {
+    makePlayer("test_user_1");
+    makePlayer("test_user_2");
+
     describe("Evaluation", () => {
       it("should be a draw if no one chooses", () =>
         testFight(async ({ startGame, firstRpsListener, timer }) => {

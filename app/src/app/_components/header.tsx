@@ -35,7 +35,7 @@ type HeaderConfig = {
 type HeaderLinkConfig = {
   title: string;
   icon: keyof typeof MdIcons;
-  require?: "sign-in" | "sign-out" | "none";
+  require?: "sign-in" | "sign-out" | "role-player" | "none";
 } & (
   | { href: string; customLink?: undefined }
   | {
@@ -76,16 +76,19 @@ export default function Header() {
                     title: "Qr-Code",
                     href: "/qr-code",
                     icon: "MdQrCode",
+                    require: "role-player",
                   },
                   {
                     title: "Scan",
                     href: "/scan",
                     icon: "MdQrCodeScanner",
+                    require: "role-player",
                   },
                   {
                     title: "History",
                     href: "/history",
                     icon: "MdHistory",
+                    require: "role-player",
                   },
                   {
                     title: "Dashboard",
@@ -167,18 +170,28 @@ function NavigationBar() {
           </NavigationMenuItem>
         </SignedOut>
         <SignedIn>
-          <NavigationMenuLink
-            className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-            href="/qr-code"
-          >
-            Qr-Code
-          </NavigationMenuLink>
-          <NavigationMenuLink
-            className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-            href="/scan"
-          >
-            Scan
-          </NavigationMenuLink>
+          <RenderOnRole roleCondition="player">
+            <NavigationMenuLink
+              className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+              href="/qr-code"
+            >
+              Qr-Code
+            </NavigationMenuLink>
+            <NavigationMenuLink
+              className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+              href="/scan"
+            >
+              Scan
+            </NavigationMenuLink>
+          </RenderOnRole>
+          <RenderOnRole roleCondition="not-player">
+            <NavigationMenuLink
+              className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+              href="/no-player"
+            >
+              No Player
+            </NavigationMenuLink>
+          </RenderOnRole>
         </SignedIn>
       </NavigationMenuList>
     </NavigationMenu>
@@ -214,7 +227,19 @@ async function SideBar({ config }: { config: HeaderConfig }) {
             if (link.require === "sign-in") {
               return <SignedIn key={link.title}>{itemContent}</SignedIn>;
             }
-            return <SignedOut key={link.title}>{itemContent}</SignedOut>;
+            if (link.require === "sign-out") {
+              return <SignedOut key={link.title}>{itemContent}</SignedOut>;
+            }
+            if (link.require === "role-player") {
+              return (
+                <RenderOnRole key={link.title} roleCondition="player">
+                  {itemContent}
+                </RenderOnRole>
+              );
+            }
+
+            link.require satisfies never;
+            return undefined;
           })}
         </ListGroupContent>
       </ListGroup>
@@ -230,7 +255,7 @@ async function SideBar({ config }: { config: HeaderConfig }) {
     }
     if (group.require === "role-admin") {
       return (
-        <RenderOnRole key={group.title} role="admin">
+        <RenderOnRole key={group.title} roleCondition="admin">
           {groupContent}
         </RenderOnRole>
       );
@@ -298,16 +323,27 @@ function MenuIcon({ className }: { className: string }) {
   );
 }
 
+type Roles = UserRoles | `not-${UserRoles}`;
+
 function RenderOnRole({
   children,
-  role,
+  roleCondition,
 }: {
-  role: UserRoles;
+  roleCondition: Roles;
   children: React.ReactNode;
 }) {
+  const role = roleCondition.replace("not-", "") as UserRoles;
+
   const [hasRole] = useCheckRole(role);
-  if (!hasRole) {
-    return <></>;
+  if (roleCondition.startsWith("not-")) {
+    if (hasRole) {
+      return <></>;
+    }
+    return <>{children}</>;
+  } else {
+    if (!hasRole) {
+      return <></>;
+    }
+    return <>{children}</>;
   }
-  return <>{children}</>;
 }

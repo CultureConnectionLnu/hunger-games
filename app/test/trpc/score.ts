@@ -3,21 +3,24 @@ import { inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { TypedEventEmitter } from "~/lib/event-emitter";
 import { FightHandler } from "~/server/api/logic/fight";
+import { staticScoringConfig } from "~/server/api/logic/score";
 import { appRouter } from "~/server/api/root";
 import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
 import {
+  makePlayer,
   useAutomaticTimer,
   useManualTimer,
   useMockUserNames,
   useRealUserNames,
 } from "./utils";
-import { staticScoringConfig } from "~/server/api/logic/score";
-import { randomUUID } from "crypto";
 
 export const scoreTests = () =>
   describe("Score", () => {
+    makePlayer("test_user_1");
+    makePlayer("test_user_2");
+
     describe("dashboard", () => {
       it("should be empty in the beginning", () =>
         testFight(async ({ getDashboard }) => {

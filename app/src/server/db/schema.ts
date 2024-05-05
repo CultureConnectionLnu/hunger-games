@@ -30,6 +30,21 @@ export const users = createTable("user", {
   ...metadata,
 });
 
+export const roles = createTable("role", {
+  userId: varchar("user_id", { length: 255 })
+    .references(() => users.clerkId, { onDelete: "cascade" })
+    .notNull(),
+  isPlayer: boolean("is_player").default(false).notNull(),
+  ...metadata,
+});
+
+export const userToRoleRelation = relations(users, ({ one }) => ({
+  roles: one(roles, {
+    fields: [users.clerkId],
+    references: [roles.userId],
+  }),
+}));
+
 export const userRelations = relations(users, ({ many }) => ({
   fights: many(usersToFight),
 }));

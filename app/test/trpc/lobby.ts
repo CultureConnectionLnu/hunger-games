@@ -16,6 +16,7 @@ import {
   expectNotEvenEmitted,
   getLastEventOf,
   getManualTimer,
+  makePlayer,
   runAllMacroTasks,
   useAutomaticTimer,
   useManualTimer,
@@ -25,6 +26,9 @@ import {
 
 export const lobbyTests = () =>
   describe("Lobby", () => {
+    makePlayer("test_user_1");
+    makePlayer("test_user_2");
+
     describe("currentFight", () => {
       it("should not find a match for current user", async () => {
         const caller = appRouter.createCaller(

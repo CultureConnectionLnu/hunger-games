@@ -1,31 +1,77 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 // inspired by: https://dev.to/jeffsalive/solving-the-challenge-of-state-persistence-in-nextjs-effortless-state-management-with-query-parameters-4a6p
 
-export function useSearchParamState(name: string) {
+export function useQueryParamMutation(paramKey: string) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+
+  const mutation = useCallback(
+    (newValue: string | undefined) => {
+      const params = new URLSearchParams(searchParams.toString());
+
+      if (newValue === undefined) {
+        params.delete(paramKey);
+      } else {
+        params.set(paramKey, newValue);
+      }
+      router.replace(pathname + "?" + params.toString());
+    },
+    [paramKey, pathname, router, searchParams],
+  );
+
+  return mutation;
+}
+
+export function useSearchParamState(paramKey: string) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
   const [state, setState] = useState<string | undefined>(() => {
-    const value = searchParams.get(name);
+    const value = searchParams.get(paramKey);
     if (value === null) {
       return undefined;
     }
     return value;
   });
+  const prevSearchParams = usePrevious(searchParams.toString());
+  const prevState = usePrevious(state);
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
+    const prevParams = new URLSearchParams(prevSearchParams);
 
-    if (state === undefined) {
-      params.delete(name);
-    } else {
-      params.set(name, state);
+    const paramHasChanged = params.get(paramKey) !== prevParams.get(paramKey);
+    const stateHasChanged = state !== prevState;
+
+    if (paramHasChanged && !stateHasChanged) {
+      // param has changed
+      setState(params.get(paramKey) ?? undefined);
+      return;
     }
-    router.replace(pathname + "?" + params.toString());
-  }, [pathname, router, searchParams, state, name]);
+
+    if (stateHasChanged && !paramHasChanged) {
+      // state has changed
+      if (state === undefined) {
+        params.delete(paramKey);
+      } else {
+        params.set(paramKey, state);
+      }
+      router.replace(pathname + "?" + params.toString());
+    }
+  }, [
+    pathname,
+    router,
+    searchParams,
+    state,
+    setState,
+    paramKey,
+    prevSearchParams,
+    prevState,
+  ]);
 
   return [state, setState] as const;
 }

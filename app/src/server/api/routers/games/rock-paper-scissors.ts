@@ -36,7 +36,6 @@ const rockPaperScissorsProcedure = inFightProcedure.use(({ ctx, next }) => {
   }
   return next({
     ctx: {
-      ...ctx,
       currentGame: ctx.fight.game,
     },
   });
