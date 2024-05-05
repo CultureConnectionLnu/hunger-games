@@ -7,7 +7,7 @@ export default async function AdminLayout({
   children: React.ReactNode;
 }) {
   if (!(await UserHandler.instance.checkRole("admin"))) {
-    redirect("/");
+    redirect("/404");
   }
   return <>{children}</>;
 }

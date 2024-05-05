@@ -23,7 +23,6 @@ import {
 } from "~/components/ui/sheet";
 import { type UserRoles } from "~/server/api/logic/user";
 import { useCheckRole } from "../_feature/auth/role-check";
-import { LucideLink } from "lucide-react";
 
 type HeaderConfig = {
   groups: {
@@ -171,18 +170,28 @@ function NavigationBar() {
           </NavigationMenuItem>
         </SignedOut>
         <SignedIn>
-          <NavigationMenuLink
-            className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-            href="/qr-code"
-          >
-            Qr-Code
-          </NavigationMenuLink>
-          <NavigationMenuLink
-            className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-            href="/scan"
-          >
-            Scan
-          </NavigationMenuLink>
+          <RenderOnRole roleCondition="player">
+            <NavigationMenuLink
+              className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+              href="/qr-code"
+            >
+              Qr-Code
+            </NavigationMenuLink>
+            <NavigationMenuLink
+              className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+              href="/scan"
+            >
+              Scan
+            </NavigationMenuLink>
+          </RenderOnRole>
+          <RenderOnRole roleCondition="not-player">
+            <NavigationMenuLink
+              className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+              href="/no-player"
+            >
+              No Player
+            </NavigationMenuLink>
+          </RenderOnRole>
         </SignedIn>
       </NavigationMenuList>
     </NavigationMenu>
@@ -223,7 +232,7 @@ async function SideBar({ config }: { config: HeaderConfig }) {
             }
             if (link.require === "role-player") {
               return (
-                <RenderOnRole key={link.title} role="player">
+                <RenderOnRole key={link.title} roleCondition="player">
                   {itemContent}
                 </RenderOnRole>
               );
@@ -246,7 +255,7 @@ async function SideBar({ config }: { config: HeaderConfig }) {
     }
     if (group.require === "role-admin") {
       return (
-        <RenderOnRole key={group.title} role="admin">
+        <RenderOnRole key={group.title} roleCondition="admin">
           {groupContent}
         </RenderOnRole>
       );
@@ -314,16 +323,27 @@ function MenuIcon({ className }: { className: string }) {
   );
 }
 
+type Roles = UserRoles | `not-${UserRoles}`;
+
 function RenderOnRole({
   children,
-  role,
+  roleCondition,
 }: {
-  role: UserRoles;
+  roleCondition: Roles;
   children: React.ReactNode;
 }) {
+  const role = roleCondition.replace("not-", "") as UserRoles;
+
   const [hasRole] = useCheckRole(role);
-  if (!hasRole) {
-    return <></>;
+  if (roleCondition.startsWith("not-")) {
+    if (hasRole) {
+      return <></>;
+    }
+    return <>{children}</>;
+  } else {
+    if (!hasRole) {
+      return <></>;
+    }
+    return <>{children}</>;
   }
-  return <>{children}</>;
 }
