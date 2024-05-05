@@ -74,19 +74,19 @@ export default function Header() {
                 links: [
                   {
                     title: "Qr-Code",
-                    href: "/qr-code",
+                    href: "/game/qr-code",
                     icon: "MdQrCode",
                     require: "role-player",
                   },
                   {
                     title: "Scan",
-                    href: "/scan",
+                    href: "/game/scan",
                     icon: "MdQrCodeScanner",
                     require: "role-player",
                   },
                   {
                     title: "History",
-                    href: "/history",
+                    href: "/game/history",
                     icon: "MdHistory",
                     require: "role-player",
                   },
@@ -173,13 +173,13 @@ function NavigationBar() {
           <RenderOnRole roleCondition="player">
             <NavigationMenuLink
               className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-              href="/qr-code"
+              href="/game/qr-code"
             >
               Qr-Code
             </NavigationMenuLink>
             <NavigationMenuLink
               className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
-              href="/scan"
+              href="/game/scan"
             >
               Scan
             </NavigationMenuLink>

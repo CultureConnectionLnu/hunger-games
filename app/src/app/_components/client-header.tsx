@@ -5,7 +5,7 @@ import Header from "./header";
 export default function ClientHeader() {
   const pathname = usePathname();
 
-  if (pathname.startsWith("/game")) {
+  if (pathname.startsWith("/game/fight")) {
     return null;
   }
 

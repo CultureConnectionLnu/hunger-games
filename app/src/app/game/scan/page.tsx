@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { QrCodeScanner } from "../_feature/qrcode/qr-code-scanner";
+import { QrCodeScanner } from "../../_feature/qrcode/qr-code-scanner";
 import { Card, CardHeader } from "~/components/ui/card";
 
 export default function MatchOverviewPage() {
@@ -13,7 +13,7 @@ export default function MatchOverviewPage() {
         Scan the QR code of your opponent
       </CardHeader>
       <QrCodeScanner
-        onReadUserId={(userId) => router.push(`/qr-code?userId=${userId}`)}
+        onReadUserId={(userId) => router.push(`/game/qr-code?userId=${userId}`)}
       />
     </Card>
   );
