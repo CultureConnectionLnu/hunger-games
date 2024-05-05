@@ -1,13 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { addHubSchema } from "~/lib/shared-schemas";
-import { QuestHandler } from "../logic/quest";
+import { HubHandler } from "../logic/hub";
 import { UserHandler } from "../logic/user";
 import { adminProcedure, createTRPCRouter } from "../trpc";
 
-export const questRouter = createTRPCRouter({
+export const hubRouter = createTRPCRouter({
   allHubs: adminProcedure.query(async () => {
-    const hubs = await QuestHandler.instance.getAllHubs();
+    const hubs = await HubHandler.instance.getAllHubs();
     const userNames = await UserHandler.instance.getUserNames(
       hubs.map((x) => x.assignedModeratorId).filter(Boolean),
     );
@@ -43,7 +43,7 @@ export const questRouter = createTRPCRouter({
         });
       }
 
-      await QuestHandler.instance.addHub(input);
+      await HubHandler.instance.addHub(input);
       return {
         success: true,
       } as const;
@@ -59,7 +59,7 @@ export const questRouter = createTRPCRouter({
     .input(z.object({ hubId: z.string() }))
     .mutation(async ({ input }) => {
       try {
-        await QuestHandler.instance.removeHub(input.hubId);
+        await HubHandler.instance.removeHub(input.hubId);
         return { success: true } as const;
       } catch (err) {
         return { success: false, error: String(err) } as const;
@@ -80,7 +80,7 @@ export const questRouter = createTRPCRouter({
               "The person is already a moderator for another hub, so he can't be assigned to this hub.",
           });
         }
-        const res = await QuestHandler.instance.updateHub(input);
+        const res = await HubHandler.instance.updateHub(input);
         if (res.length === 0) {
           throw new TRPCError({
             code: "NOT_FOUND",

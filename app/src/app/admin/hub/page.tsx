@@ -4,7 +4,7 @@ import { AddHubForm } from "./_components/form";
 
 export default async function UsersOverview() {
   const users = await api.user.allUsers.query();
-  const hubs = await api.quest.allHubs.query();
+  const hubs = await api.hub.allHubs.query();
   const allUsers = users.map(({ name, userId }) => ({ id: userId, name }));
 
   return (

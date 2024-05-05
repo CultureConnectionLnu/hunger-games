@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
-type Hub = UnwrapArray<RouterOutputs["quest"]["allHubs"]>;
+type Hub = UnwrapArray<RouterOutputs["hub"]["allHubs"]>;
 
 export function HubTable({
   params,

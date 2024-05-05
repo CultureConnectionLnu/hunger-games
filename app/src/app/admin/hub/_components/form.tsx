@@ -40,8 +40,8 @@ import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
-type Hub = UnwrapArray<RouterOutputs["quest"]["allHubs"]>;
-type AddHub = RouterInputs["quest"]["addHub"];
+type Hub = UnwrapArray<RouterOutputs["hub"]["allHubs"]>;
+type AddHub = RouterInputs["hub"]["addHub"];
 
 export function AddHubForm({
   params,
@@ -52,7 +52,7 @@ export function AddHubForm({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const addHub = api.quest.addHub.useMutation({
+  const addHub = api.hub.addHub.useMutation({
     onSuccess(data) {
       if (data.success) {
         setOpen(false);
@@ -111,7 +111,7 @@ export function UpdateHubForm({
   };
   onDone?: () => void;
 }) {
-  const removeHub = api.quest.removeHub.useMutation({
+  const removeHub = api.hub.removeHub.useMutation({
     onSuccess(data) {
       if (data.success) {
         onDone?.();
@@ -129,7 +129,7 @@ export function UpdateHubForm({
     },
   });
 
-  const updateHub = api.quest.updateHub.useMutation({
+  const updateHub = api.hub.updateHub.useMutation({
     onSuccess(data) {
       if (data.success) {
         onDone?.();

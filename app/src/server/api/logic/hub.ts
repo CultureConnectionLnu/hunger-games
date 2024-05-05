@@ -3,15 +3,15 @@ import { type DB, db } from "~/server/db";
 import { hub } from "~/server/db/schema";
 
 const globalForQuestHandler = globalThis as unknown as {
-  questHandler: QuestHandler | undefined;
+  hubHandler: HubHandler | undefined;
 };
 
-export class QuestHandler {
+export class HubHandler {
   static get instance() {
-    if (!globalForQuestHandler.questHandler) {
-      globalForQuestHandler.questHandler = new QuestHandler(db);
+    if (!globalForQuestHandler.hubHandler) {
+      globalForQuestHandler.hubHandler = new HubHandler(db);
     }
-    return globalForQuestHandler.questHandler;
+    return globalForQuestHandler.hubHandler;
   }
   private constructor(private db: DB) {}
 
