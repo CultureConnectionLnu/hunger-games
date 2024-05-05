@@ -4,6 +4,7 @@ import { rockPaperScissorsRouter } from "./routers/games/rock-paper-scissors";
 import { scoreRouter } from "./routers/score";
 import { userRouter } from "./routers/user";
 import { hubRouter } from "./routers/hub";
+import { questRouter } from "./routers/quest";
 
 /**
  * This is the primary router for your server.
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   score: scoreRouter,
   user: userRouter,
   hub: hubRouter,
+  quest: questRouter,
 });
 
 // export type definition of API

@@ -144,6 +144,11 @@ export default function Header() {
                     icon: "MdSettings",
                     href: "/admin/users",
                   },
+                  {
+                    title: "Ongoing Quest Overview",
+                    icon: "MdList",
+                    href: "/admin/quest",
+                  },
                 ],
               },
             ],
