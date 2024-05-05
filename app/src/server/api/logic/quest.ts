@@ -6,7 +6,7 @@ const globalForQuestHandler = globalThis as unknown as {
 
 export type WalkQuestInformation = {
   hubs: {
-    id: number;
+    id: string;
     visited: boolean;
   }[];
 };
@@ -21,18 +21,38 @@ export class QuestHandler {
   private constructor(private db: DB) {}
 
   public async allOngoingQuests() {
-    const quests = await this.getAllOnGoingQuests();
+    const quests = await this.getAllOngoingQuests();
     return this.parseQuests(quests);
   }
 
-  private getAllOnGoingQuests() {
+  public async getOngoingQuestsForModerator(moderatorId: string) {
+    const hubId = await this.db.query.hub.findFirst({
+      where: ({ assignedModeratorId }, { eq }) =>
+        eq(assignedModeratorId, moderatorId),
+    });
+    if (!hubId) {
+      console.error(
+        `[QuestHandler:getOnGoingQuestsForModerator] could not find hub for moderator ${moderatorId}`,
+      );
+      return [];
+    }
+    const rawQuests = await this.getAllOngoingQuests();
+    const allQuests = this.parseQuests(rawQuests);
+    return allQuests.filter((quest) =>
+      quest.additionalInformation.hubs.some(
+        (hub) => hub.id === hubId.id && !hub.visited,
+      ),
+    );
+  }
+
+  private getAllOngoingQuests() {
     return this.db.query.quest.findMany({
       where: ({ outcome }, { isNull }) => isNull(outcome),
     });
   }
 
   private parseQuests(
-    quests: Awaited<ReturnType<QuestHandler["getAllOnGoingQuests"]>>,
+    quests: Awaited<ReturnType<QuestHandler["getAllOngoingQuests"]>>,
   ) {
     return quests.map((quest) => ({
       ...quest,

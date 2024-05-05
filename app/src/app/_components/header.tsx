@@ -27,7 +27,7 @@ import { useCheckRole } from "../_feature/auth/role-check";
 type HeaderConfig = {
   groups: {
     title: string;
-    require?: "sign-in" | "sign-out" | "role-admin" | "none";
+    require?: "sign-in" | "sign-out" | "role-admin" | "role-moderator" | "none";
     links: HeaderLinkConfig[];
   }[];
 };
@@ -127,6 +127,17 @@ export default function Header() {
                     ),
                     icon: "MdLockOpen",
                     require: "sign-out",
+                  },
+                ],
+              },
+              {
+                title: "Moderator",
+                require: "role-moderator",
+                links: [
+                  {
+                    title: "Quest Overview",
+                    icon: "MdList",
+                    href: "/moderator/quest",
                   },
                 ],
               },
@@ -261,6 +272,13 @@ async function SideBar({ config }: { config: HeaderConfig }) {
     if (group.require === "role-admin") {
       return (
         <RenderOnRole key={group.title} roleCondition="admin">
+          {groupContent}
+        </RenderOnRole>
+      );
+    }
+    if (group.require === "role-moderator") {
+      return (
+        <RenderOnRole key={group.title} roleCondition="moderator">
           {groupContent}
         </RenderOnRole>
       );
