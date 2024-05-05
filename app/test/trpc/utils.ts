@@ -18,6 +18,16 @@ export function provideTestUsers() {
   });
 }
 
+export function makePlayer(user: `test_user_1` | `test_user_2`) {
+  beforeAll(async () => {
+    await UserHandler.instance.changePlayerState(user, true);
+  });
+
+  afterAll(async () => {
+    await UserHandler.instance.changePlayerState(user, false);
+  });
+}
+
 export function useManualTimer() {
   TimerFactory.instance.useManual();
 }
