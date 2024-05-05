@@ -59,7 +59,7 @@ export const typingRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       //   await new Promise((resolve) => setTimeout(resolve, 500));
-      ctx.currentGame.typeCharacter(input.char);
+      ctx.currentGame.typeCharacter(input.char, ctx.user.clerkId);
       return true;
     }),
 

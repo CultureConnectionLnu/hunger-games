@@ -102,11 +102,14 @@ export class TypingGame
     this.timerHandler = new GameTimerHandler<TypingEvents>(this.emitEvent, []);
   }
 
-  typeCharacter(char: string) {
-    this.emitEvent({
-      event: "type-character",
-      data: { character: char },
-    });
+  typeCharacter(char: string, playerid: string) {
+    this.emitEvent(
+      {
+        event: "type-character",
+        data: { character: char },
+      },
+      playerid,
+    );
   }
 
   getPlayer(id: string) {
