@@ -167,7 +167,7 @@ function GameLobby({
       game = <OrderedMemoryGame params={params} />;
       break;
     case "typing":
-      game = <TypingGame />;
+      game = <TypingGame params={params} />;
       break;
   }
 

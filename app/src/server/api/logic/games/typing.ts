@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { object, z } from "zod";
 import { GenericEventEmitter } from "~/lib/event-emitter";
 import { rockPaperScissorsConfig } from "../config";
 import type { SpecificGame } from "../core/base-game";
@@ -14,10 +14,21 @@ import type {
 export type TypingEvents = EventTemplate<
   {
     //TODO insert game events
+    //for all players at once
+    "type-character": {
+      character: string;
+    };
+    "start-typing": undefined;
+    "show-result": {
+      outcome: "win" | "loose";
+      yourName: string;
+      opponentName: string;
+    };
     destroy: undefined;
   },
   TypingPlayer["view"],
-  "destroy"
+  "destroy",
+  "start-typing" | "type-character"
 >;
 
 class TypingPlayer extends GenericEventEmitter<{}> {
@@ -40,6 +51,10 @@ class TypingPlayer extends GenericEventEmitter<{}> {
 
   showResult() {
     this._view = "show-result";
+  }
+
+  enableWrite() {
+    this._view = "start-typing";
   }
 
   cleanup() {
@@ -78,13 +93,20 @@ export class TypingGame
       fightId,
       playerIds: playerTuple.map((x) => x.id),
       getView: (playerId) => this.players.get(playerId)!.view,
-      playerSpecificEvents: [],
+      playerSpecificEvents: ["type-character"],
       serverSpecificEvents: ["destroy"],
     });
     this.emitEvent = eventing.emitEvent.bind(eventing);
     this.getEventHistory = eventing.getPlayerEvents.bind(eventing);
 
     this.timerHandler = new GameTimerHandler<TypingEvents>(this.emitEvent, []);
+  }
+
+  typeCharacter(char: string) {
+    this.emitEvent({
+      event: "type-character",
+      data: { character: char },
+    });
   }
 
   getPlayer(id: string) {
@@ -112,6 +134,15 @@ export class TypingGame
 
   resumeGame() {
     this.timerHandler.resumeAllTimers();
+  }
+
+  // Starts the game for both
+  private startWritingPart() {
+    this.players.forEach((player) => player.enableWrite());
+    this.emitEvent({
+      event: "start-typing",
+      data: undefined,
+    });
   }
 
   private setupPlayers(playerTuple: { id: string; name: string }[]) {
