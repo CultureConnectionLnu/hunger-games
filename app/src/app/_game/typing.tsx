@@ -1,5 +1,6 @@
 import { type Observable } from "@trpc/server/observable";
 import { useState } from "react";
+import { Input } from "~/components/ui/input";
 import { api } from "~/trpc/react"
 import { type RouterOutputs } from "~/trpc/shared";
 
@@ -27,10 +28,9 @@ export default function TypingGame({
   })
 
   return <div>
-    <input type="text" onKeyDown={(e) => {
+    <Input type="text" onKeyDown={(e) => {
       typingCharacterInput.mutate({char: e.key})
-    }} />
+    }}/>
     <p>{lastEvent?.event==="type-character" && lastEvent.data?.character}</p>
   </div>;
-
 }
