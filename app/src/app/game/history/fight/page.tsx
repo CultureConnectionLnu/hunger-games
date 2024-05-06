@@ -21,7 +21,7 @@ import { type RouterOutputs } from "~/trpc/shared";
 import {
   useSearchParamAsDialogState,
   useSearchParamState,
-} from "../../_feature/url-sync/query";
+} from "~/app/_feature/url-sync/query";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 type HistoryEntryProps = UnwrapArray<RouterOutputs["score"]["history"]>;

@@ -12,7 +12,7 @@ import {
 import { type RouterOutputs } from "~/trpc/shared";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
-type Quest = UnwrapArray<RouterOutputs["quest"]["allOngoingQuests"]>;
+type Quest = UnwrapArray<RouterOutputs["quest"]["getAllOngoingQuests"]>;
 
 export function QuestTable({
   params,

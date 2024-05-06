@@ -1,8 +1,8 @@
 import { api } from "~/trpc/server";
 import { QuestTable } from "./_components/quest-table";
 
-export default async function UsersOverview() {
-  const quests = await api.quest.getAllOngoingQuests.query();
+export default async function QuestHistory() {
+  const quests = await api.quest.getAllQuestsFromPlayer.query();
 
   return (
     <div className="flex h-full flex-col pb-4">

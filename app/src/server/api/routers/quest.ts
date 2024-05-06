@@ -1,10 +1,15 @@
 import { QuestHandler } from "../logic/quest";
 import { UserHandler } from "../logic/user";
-import { adminProcedure, createTRPCRouter, moderatorProcedure } from "../trpc";
+import {
+  adminProcedure,
+  createTRPCRouter,
+  moderatorProcedure,
+  playerProcedure,
+} from "../trpc";
 
 export const questRouter = createTRPCRouter({
-  allOngoingQuests: adminProcedure.query(async () => {
-    const quests = await QuestHandler.instance.allOngoingQuests();
+  getAllOngoingQuests: adminProcedure.query(async () => {
+    const quests = await QuestHandler.instance.getAllOngoingQuests();
     const userNames = await UserHandler.instance.getUserNames(
       quests.map((x) => x.userId),
     );
@@ -55,5 +60,9 @@ export const questRouter = createTRPCRouter({
         additionalInformation,
       }),
     );
+  }),
+
+  getAllQuestsFromPlayer: playerProcedure.query(async ({ ctx }) => {
+    return QuestHandler.instance.getAllQuestsFromPlayer(ctx.user.clerkId);
   }),
 });

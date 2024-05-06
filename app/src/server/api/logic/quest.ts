@@ -20,8 +20,8 @@ export class QuestHandler {
   }
   private constructor(private db: DB) {}
 
-  public async allOngoingQuests() {
-    const quests = await this.getAllOngoingQuests();
+  public async getAllOngoingQuests() {
+    const quests = await this.quertAllOngoingQuests();
     return this.parseQuests(quests);
   }
 
@@ -36,7 +36,7 @@ export class QuestHandler {
       );
       return [];
     }
-    const rawQuests = await this.getAllOngoingQuests();
+    const rawQuests = await this.quertAllOngoingQuests();
     const allQuests = this.parseQuests(rawQuests);
     return allQuests.filter((quest) =>
       quest.additionalInformation.hubs.some(
@@ -45,14 +45,21 @@ export class QuestHandler {
     );
   }
 
-  private getAllOngoingQuests() {
+  public async getAllQuestsFromPlayer(playerId: string) {
+    const quests = await this.db.query.quest.findMany({
+      where: ({ userId }, { eq }) => eq(userId, playerId),
+    });
+    return this.parseQuests(quests);
+  }
+
+  private quertAllOngoingQuests() {
     return this.db.query.quest.findMany({
       where: ({ outcome }, { isNull }) => isNull(outcome),
     });
   }
 
   private parseQuests(
-    quests: Awaited<ReturnType<QuestHandler["getAllOngoingQuests"]>>,
+    quests: Awaited<ReturnType<QuestHandler["quertAllOngoingQuests"]>>,
   ) {
     return quests.map((quest) => ({
       ...quest,
