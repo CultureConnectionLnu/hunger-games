@@ -1,10 +1,15 @@
 import { TRPCError } from "@trpc/server";
 import { UserHandler } from "../logic/user";
-import { adminProcedure, createTRPCRouter, userProcedure } from "../trpc";
+import {
+  adminProcedure,
+  createTRPCRouter,
+  moderatorProcedure,
+  userProcedure,
+} from "../trpc";
 import { z } from "zod";
 
 export const userRouter = createTRPCRouter({
-  allUsers: adminProcedure.query(async () => {
+  allUsers: moderatorProcedure.query(async () => {
     const result = await UserHandler.instance.getAllClerkUsers();
     if (!result.success) {
       throw new TRPCError({
@@ -53,7 +58,7 @@ export const userRouter = createTRPCRouter({
         }
         return { success: true } as const;
       } catch (error) {
-        console.error('failed to update player state because: ', error)
+        console.error("failed to update player state because: ", error);
         return { success: false, error: String(error) } as const;
       }
     }),

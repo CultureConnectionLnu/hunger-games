@@ -20,7 +20,17 @@ import { Card, CardHeader } from "~/components/ui/card";
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 type User = UnwrapArray<RouterOutputs["user"]["allUsers"]>;
 
-export function FindUser({ params }: { params: { users: User[] } }) {
+export function FindUser({
+  params,
+  text,
+}: {
+  params: { users: User[] };
+  text: {
+    dialogTrigger: string;
+    dialogHeader: string;
+    selectButton: string;
+  };
+}) {
   const [open, setOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
   const mutateUserId = useQueryParamMutation("userId");
@@ -34,11 +44,11 @@ export function FindUser({ params }: { params: { users: User[] } }) {
       <DialogTrigger asChild>
         <Button>
           <MdSearch className="mr-2 h-4 w-4" />
-          Find User
+          {text.dialogTrigger}
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>Find User</DialogHeader>
+        <DialogHeader>{text.dialogHeader}</DialogHeader>
         <Tabs>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="text">Text</TabsTrigger>
@@ -88,7 +98,7 @@ export function FindUser({ params }: { params: { users: User[] } }) {
               mutateUserId(selectedUserId);
             }}
           >
-            Open
+            {text.selectButton}
           </Button>
         </DialogFooter>
       </DialogContent>
