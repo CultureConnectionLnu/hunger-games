@@ -50,4 +50,20 @@ export class HubHandler {
       .where(eq(hub.id, data.id))
       .returning({ id: hub.id });
   }
+
+  public async getHubOfModerator(moderatorId: string) {
+    return this.db.query.hub.findFirst({
+      where: ({ assignedModeratorId }, { eq }) =>
+        eq(assignedModeratorId, moderatorId),
+    });
+  }
+
+  public async getHubs(hubIds: string[]) {
+    return this.db.query.hub.findMany({
+      where: ({ id }, { inArray }) => inArray(id, hubIds),
+      with: {
+        assignedModerator: true,
+      },
+    });
+  }
 }

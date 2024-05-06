@@ -11,6 +11,8 @@ export type WalkQuestInformation = {
   }[];
 };
 
+type UnwrapArray<T> = T extends Array<infer U> ? U : T;
+
 export class QuestHandler {
   static get instance() {
     if (!globalForQuestHandler.questHandler) {
@@ -25,22 +27,12 @@ export class QuestHandler {
     return this.parseQuests(quests);
   }
 
-  public async getOngoingQuestsForModerator(moderatorId: string) {
-    const hubId = await this.db.query.hub.findFirst({
-      where: ({ assignedModeratorId }, { eq }) =>
-        eq(assignedModeratorId, moderatorId),
-    });
-    if (!hubId) {
-      console.error(
-        `[QuestHandler:getOnGoingQuestsForModerator] could not find hub for moderator ${moderatorId}`,
-      );
-      return [];
-    }
+  public async getOngoingQuestsForModerator(hubId: string) {
     const rawQuests = await this.quertAllOngoingQuests();
     const allQuests = this.parseQuests(rawQuests);
     return allQuests.filter((quest) =>
       quest.additionalInformation.hubs.some(
-        (hub) => hub.id === hubId.id && !hub.visited,
+        (hub) => hub.id === hubId && !hub.visited,
       ),
     );
   }
@@ -52,6 +44,14 @@ export class QuestHandler {
     return this.parseQuests(quests);
   }
 
+  public async getCurrentQuestForPlayer(playerId: string) {
+    const quest = await this.db.query.quest.findFirst({
+      where: ({ userId, outcome }, { eq, isNull, and }) =>
+        and(eq(userId, playerId), isNull(outcome)),
+    });
+    return quest ? this.parseQuest(quest) : undefined;
+  }
+
   private quertAllOngoingQuests() {
     return this.db.query.quest.findMany({
       where: ({ outcome }, { isNull }) => isNull(outcome),
@@ -61,10 +61,18 @@ export class QuestHandler {
   private parseQuests(
     quests: Awaited<ReturnType<QuestHandler["quertAllOngoingQuests"]>>,
   ) {
-    return quests.map((quest) => ({
+    return quests.map((q) => this.parseQuest(q));
+  }
+
+  private parseQuest(
+    quest: UnwrapArray<
+      Awaited<ReturnType<QuestHandler["quertAllOngoingQuests"]>>
+    >,
+  ) {
+    return {
       ...quest,
       additionalInformation:
         quest.additionalInformation as WalkQuestInformation,
-    }));
+    };
   }
 }
