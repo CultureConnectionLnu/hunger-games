@@ -23,6 +23,7 @@ import {
 } from "~/components/ui/sheet";
 import { type UserRoles } from "~/server/api/logic/user";
 import { useCheckRole } from "../_feature/auth/role-check";
+import { ScrollArea } from "~/components/ui/scroll-area";
 
 type HeaderConfig = {
   groups: {
@@ -127,7 +128,9 @@ export default function Header() {
                   {
                     title: "Sign Out",
                     customLink: (children) => (
-                      <SignOutButton>{children}</SignOutButton>
+                      <SignOutButton>
+                        <Link href="/">{children}</Link>
+                      </SignOutButton>
                     ),
                     icon: "MdOutlinePowerSettingsNew",
                     require: "sign-in",
@@ -308,7 +311,9 @@ async function SideBar({ config }: { config: HeaderConfig }) {
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full" side="left">
-        <List>{listContent}</List>
+        <ScrollArea className="h-screen">
+          <List>{listContent}</List>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );
