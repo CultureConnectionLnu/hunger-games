@@ -30,7 +30,9 @@ export function UserDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {userId && <User params={{ userId }} />}
+      {userId && (
+        <User params={{ userId }} onClose={() => setUserId(undefined)} />
+      )}
     </Dialog>
   );
 }
