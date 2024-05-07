@@ -127,7 +127,10 @@ export const questRouter = createTRPCRouter({
 
       const quest = await convertQuestToClientOutput(result);
 
-      if (!quest.additionalInformation.some((x) => x.id === hub.id)) {
+      const currentHub = quest.additionalInformation.find(
+        (x) => x.id === hub.id,
+      );
+      if (!currentHub) {
         return {
           state: "quest-does-not-concern-this-hub",
           quest,
@@ -139,7 +142,38 @@ export const questRouter = createTRPCRouter({
         state: "quest-for-this-hub",
         quest,
         playerName,
+        currentHubVisited: currentHub.visited,
       } as const;
+    }),
+
+  markHubAsVisited: moderatorProcedure
+    .input(z.object({ playerId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const hub = await HubHandler.instance.getHubOfModerator(ctx.user.clerkId);
+      if (!hub) {
+        console.error(
+          "[Quest:markHubAsVisited] moderator has no hub assigned, which should be impossible",
+          ctx.user.clerkId,
+        );
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "You are not assigned as a hub moderator",
+        });
+      }
+
+      const result = await QuestHandler.instance.markHubAsVisited(
+        input.playerId,
+        hub.id,
+      );
+
+      if (!result.success) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: result.error,
+        });
+      }
+
+      return true;
     }),
 });
 

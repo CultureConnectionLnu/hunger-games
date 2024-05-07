@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FaSpinner } from "react-icons/fa";
 import { HubsTable } from "~/app/_feature/quest/hubs-table";
 import {
   useSearchParamAsDialogState,
@@ -17,6 +18,7 @@ import {
 } from "~/components/ui/dialog";
 import { Label } from "~/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
+import { toast } from "~/components/ui/use-toast";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
 
@@ -65,12 +67,18 @@ function User({
 
   return (
     <DialogContent>
-      <NoActiveQuest params={{ data, title }} closeButton={closeButton} />
+      <NoActiveQuest
+        params={{ data, title, playerId: params.userId }}
+        closeButton={closeButton}
+      />
+      <HandleQuest
+        params={{ data, title, playerId: params.userId }}
+        closeButton={closeButton}
+      />
       <DoesNotConcernThisHub
         params={{ data, title }}
         closeButton={closeButton}
       />
-      <HandleQuest params={{ data, title }} closeButton={closeButton} />
     </DialogContent>
   );
 }
@@ -79,7 +87,7 @@ function NoActiveQuest({
   params,
   closeButton,
 }: {
-  params: { data: QuestData; title: string };
+  params: { data: QuestData; title: string; playerId: string };
   closeButton: React.ReactNode;
 }) {
   const [questKind, setQuestKind] = useState<string>();
@@ -120,6 +128,52 @@ function NoActiveQuest({
   );
 }
 
+function HandleQuest({
+  params,
+  closeButton,
+}: {
+  params: { data: QuestData; title: string; playerId: string };
+  closeButton: React.ReactNode;
+}) {
+  const { isLoading, mutate } = api.quest.markHubAsVisited.useMutation({
+    onSuccess: () =>
+      toast({
+        title: "Hub marked as visited",
+      }),
+    onError: (err) =>
+      toast({
+        title: `Error marking hub as visited`,
+        description: err.message,
+        variant: "destructive",
+      }),
+  });
+  if (params.data.state !== "quest-for-this-hub") return;
+
+  const acceptButton = params.data.currentHubVisited ? (
+    <Button disabled>Already visited</Button>
+  ) : (
+    <Button onClick={() => mutate({ playerId: params.playerId })}>
+      {isLoading ? <FaSpinner className="animate-spin" /> : "Mark as visited"}
+    </Button>
+  );
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{params.title}</DialogTitle>
+        <DialogDescription>
+          The player has a quest for this hub
+        </DialogDescription>
+        <HubsTable hubs={params.data.quest.additionalInformation} />
+        <DialogFooter className="flex flex-row justify-between">
+          {closeButton}
+          {acceptButton}
+        </DialogFooter>
+      </DialogHeader>
+    </>
+  );
+}
+
 function DoesNotConcernThisHub({
   params,
   closeButton,
@@ -141,35 +195,6 @@ function DoesNotConcernThisHub({
       <DialogFooter className="flex flex-row justify-between">
         {closeButton}
       </DialogFooter>
-    </>
-  );
-}
-
-function HandleQuest({
-  params,
-  closeButton,
-}: {
-  params: { data: QuestData; title: string };
-  closeButton: React.ReactNode;
-}) {
-  if (params.data.state !== "quest-for-this-hub") return;
-
-  return (
-    <>
-      <DialogHeader>
-        <DialogTitle>{params.title}</DialogTitle>
-        <DialogDescription>
-          The player has a quest for this hub
-        </DialogDescription>
-        <HubsTable hubs={params.data.quest.additionalInformation} />
-        <DialogFooter className="flex flex-row justify-between">
-          {closeButton}
-
-          <Button onClick={() => console.log("accept quest")}>
-            accept quest
-          </Button>
-        </DialogFooter>
-      </DialogHeader>
     </>
   );
 }

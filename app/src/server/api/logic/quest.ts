@@ -1,4 +1,6 @@
+import { eq } from "drizzle-orm";
 import { db, type DB } from "~/server/db";
+import { quest } from "~/server/db/schema";
 
 const globalForQuestHandler = globalThis as unknown as {
   questHandler: QuestHandler | undefined;
@@ -23,12 +25,12 @@ export class QuestHandler {
   private constructor(private db: DB) {}
 
   public async getAllOngoingQuests() {
-    const quests = await this.quertAllOngoingQuests();
+    const quests = await this.queryAllOngoingQuests();
     return this.parseQuests(quests);
   }
 
   public async getOngoingQuestsForModerator(hubId: string) {
-    const rawQuests = await this.quertAllOngoingQuests();
+    const rawQuests = await this.queryAllOngoingQuests();
     const allQuests = this.parseQuests(rawQuests);
     return allQuests.filter((quest) =>
       quest.additionalInformation.hubs.some(
@@ -52,21 +54,68 @@ export class QuestHandler {
     return quest ? this.parseQuest(quest) : undefined;
   }
 
-  private quertAllOngoingQuests() {
+  public async markHubAsVisited(playerId: string, hubId: string) {
+    const currentQuest = await this.getCurrentQuestForPlayer(playerId);
+    if (!currentQuest) {
+      return {
+        success: false,
+        error: "The player does not have any ongoing quests",
+      };
+    }
+
+    const currentHub = currentQuest.additionalInformation.hubs.find(
+      (h) => h.id === hubId,
+    );
+    if (!currentHub) {
+      return {
+        success: false,
+        error: "The player does not have any quest for this hub",
+      };
+    }
+
+    if (currentHub.visited) {
+      return {
+        success: false,
+        error: "The player has already visited this hub",
+      };
+    }
+
+    const updatedHub = {
+      ...currentHub,
+      visited: true,
+    };
+    const updatedAdditionalInformation = {
+      hubs: currentQuest.additionalInformation.hubs.map((h) =>
+        h.id === updatedHub.id ? updatedHub : h,
+      ),
+    };
+    await this.db
+      .update(quest)
+      .set({
+        additionalInformation: updatedAdditionalInformation,
+      })
+      .where(eq(quest.id, currentQuest.id));
+
+    return {
+      success: true,
+    };
+  }
+
+  private queryAllOngoingQuests() {
     return this.db.query.quest.findMany({
       where: ({ outcome }, { isNull }) => isNull(outcome),
     });
   }
 
   private parseQuests(
-    quests: Awaited<ReturnType<QuestHandler["quertAllOngoingQuests"]>>,
+    quests: Awaited<ReturnType<QuestHandler["queryAllOngoingQuests"]>>,
   ) {
     return quests.map((q) => this.parseQuest(q));
   }
 
   private parseQuest(
     quest: UnwrapArray<
-      Awaited<ReturnType<QuestHandler["quertAllOngoingQuests"]>>
+      Awaited<ReturnType<QuestHandler["queryAllOngoingQuests"]>>
     >,
   ) {
     return {
