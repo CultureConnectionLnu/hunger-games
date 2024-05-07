@@ -128,6 +128,23 @@ export class UserHandler {
     return false;
   }
 
+  public async getAllRolesOfCurrentUser(): Promise<Record<UserRoles, boolean>> {
+    const currentUserId = await this.currentUserId();
+    if (!currentUserId)
+      return { player: false, moderator: false, admin: false };
+
+    const user = await this.getUserRoles(currentUserId);
+    if (!user) return { player: false, moderator: false, admin: false };
+
+    const { isModerator, isPlayer } = user;
+    const admin = await this.isAdmin(currentUserId);
+    return {
+      admin,
+      moderator: isModerator,
+      player: isPlayer,
+    };
+  }
+
   public async getAllUsers() {
     return this.db.query.users.findMany();
   }

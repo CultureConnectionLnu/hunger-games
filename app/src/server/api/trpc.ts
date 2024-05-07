@@ -10,7 +10,7 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { UserHandler } from "./logic/user";
+import { UserHandler, type UserRoles } from "./logic/user";
 
 import { TypedEventEmitter } from "~/lib/event-emitter";
 import { db } from "~/server/db";
@@ -160,43 +160,32 @@ export const userProcedure = t.procedure.use(({ ctx, next }) => {
   });
 });
 
+export const ifAnyRoleProcedure = (...roles: UserRoles[]) =>
+  userProcedure.use(async ({ ctx, next }) => {
+    const currentUserRoles =
+      await UserHandler.instance.getAllRolesOfCurrentUser();
+    if (!roles.some((role) => currentUserRoles[role])) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: `User does not have one of the required roles: ${JSON.stringify(roles)}`,
+      });
+    }
+
+    return next({
+      ctx     });
+  });
+
 /**
  * Protected (authenticated) procedure for players
  */
-export const playerProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!(await UserHandler.instance.checkRole("player", ctx.user.clerkId))) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a player" });
-  }
-
-  return next({
-    ctx: {
-      ...ctx,
-      user: {
-        ...ctx.user,
-        clerkId: ctx.user.clerkId,
-      },
-    },
-  });
-});
+export const playerProcedure = ifAnyRoleProcedure("player");
 
 /**
  * Protected (authenticated) procedure for moderators
  */
-export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!(await UserHandler.instance.checkRole("moderator", ctx.user.clerkId))) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a moderator" });
-  }
-
-  return next({ ctx });
-});
+export const moderatorProcedure = ifAnyRoleProcedure('moderator');
 
 /**
  * Protected (authenticated) procedure for admins
  */
-export const adminProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!(await UserHandler.instance.checkRole("admin", ctx.user.clerkId))) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not an admin" });
-  }
-
-  return next({ ctx });
-});
+export const adminProcedure = ifAnyRoleProcedure('admin')

@@ -2,6 +2,7 @@ import { api } from "~/trpc/server";
 import { QuestTable } from "./_components/quest-table";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { FindUser } from "~/app/_components/find-user";
+import { UserDialog } from "./_components/user-dialog";
 
 export default async function UsersOverview() {
   const quests = await api.quest.getOngoingQuestsForModerator.query();
@@ -23,6 +24,7 @@ export default async function UsersOverview() {
       <ScrollArea className="h-full">
         <QuestTable params={{ quests }} />
       </ScrollArea>
+      <UserDialog />
       <div className="flex flex-row-reverse px-4">
         <FindUser
           params={{

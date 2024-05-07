@@ -3,13 +3,13 @@ import { UserHandler } from "../logic/user";
 import {
   adminProcedure,
   createTRPCRouter,
-  moderatorProcedure,
+  ifAnyRoleProcedure,
   userProcedure,
 } from "../trpc";
 import { z } from "zod";
 
 export const userRouter = createTRPCRouter({
-  allUsers: moderatorProcedure.query(async () => {
+  allUsers: ifAnyRoleProcedure("moderator", "admin").query(async () => {
     const result = await UserHandler.instance.getAllClerkUsers();
     if (!result.success) {
       throw new TRPCError({
