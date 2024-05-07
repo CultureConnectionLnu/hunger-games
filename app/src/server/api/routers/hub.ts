@@ -34,7 +34,10 @@ export const hubRouter = createTRPCRouter({
     try {
       if (
         input.assignedModeratorId &&
-        (await UserHandler.instance.checkRole("moderator"))
+        (await UserHandler.instance.checkRole(
+          "moderator",
+          input.assignedModeratorId,
+        ))
       ) {
         throw new TRPCError({
           code: "CONFLICT",
@@ -72,7 +75,10 @@ export const hubRouter = createTRPCRouter({
       try {
         if (
           input.assignedModeratorId &&
-          (await UserHandler.instance.checkRole("moderator"))
+          (await UserHandler.instance.checkRole(
+            "moderator",
+            input.assignedModeratorId,
+          ))
         ) {
           throw new TRPCError({
             code: "CONFLICT",

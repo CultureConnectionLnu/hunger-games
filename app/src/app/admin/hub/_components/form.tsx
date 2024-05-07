@@ -93,7 +93,10 @@ export function AddHubForm({
             texts: { submitButton: "Add Hub", title: "Add Hub" },
           }}
           context={{ open }}
-          onSubmit={onSubmit}
+          submit={{
+            type: "full",
+            onSubmit,
+          }}
         />
       </DialogContent>
     </Dialog>
@@ -147,7 +150,7 @@ export function UpdateHubForm({
     },
   });
 
-  function onSubmit(data: AddHub) {
+  function onSubmit(data: Partial<AddHub>) {
     if (!params.hub) return;
     updateHub.mutate({ ...data, id: params.hub.id });
     toast({
@@ -170,7 +173,10 @@ export function UpdateHubForm({
             assignedModeratorId: params.hub.assignedModerator?.id,
           },
         }}
-        onSubmit={onSubmit}
+        submit={{
+          type: "partial",
+          onSubmit,
+        }}
         footerButton={
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -208,7 +214,7 @@ export function UpdateHubForm({
 function HubForm({
   params,
   context,
-  onSubmit,
+  submit,
   footerButton,
 }: {
   params: {
@@ -222,7 +228,15 @@ function HubForm({
     open: boolean;
     resetValue?: AddHub;
   };
-  onSubmit: (data: AddHub) => void;
+  submit:
+    | {
+        type: "partial";
+        onSubmit: (data: Partial<AddHub>) => void;
+      }
+    | {
+        type: "full";
+        onSubmit: (data: AddHub) => void;
+      };
   footerButton?: React.ReactNode;
 }) {
   const form = useForm<AddHub>({
@@ -241,7 +255,17 @@ function HubForm({
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form
+        onSubmit={form.handleSubmit((data) => {
+          if (submit.type === "full") return submit.onSubmit(data);
+          const changedDataOnly = getItemsDirtyData<AddHub>(
+            data,
+            form.formState.dirtyFields,
+          );
+          submit.onSubmit(changedDataOnly);
+        })}
+        className="space-y-8"
+      >
         <DialogHeader>{params.texts.title}</DialogHeader>
         <FormField
           control={form.control}
@@ -304,3 +328,27 @@ function HubForm({
     </FormProvider>
   );
 }
+
+const getItemsDirtyData = <
+  TData extends Record<keyof TDirtyItems, unknown>,
+  TDirtyItems extends Record<string, unknown> = Record<string, unknown>,
+>(
+  data: TData,
+  dirtyItems: TDirtyItems,
+): Partial<TData> => {
+  const dirtyItemsEntries = Object.entries(dirtyItems);
+
+  return dirtyItemsEntries.reduce((dirtyData, [name, value]) => {
+    if (typeof value !== "object") {
+      return { ...dirtyData, [name]: data[name] };
+    }
+
+    return {
+      ...dirtyData,
+      [name]: getItemsDirtyData(
+        data[name] as TData,
+        dirtyItems[name] as TDirtyItems,
+      ),
+    };
+  }, {});
+};
