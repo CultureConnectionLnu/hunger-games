@@ -20,7 +20,7 @@ import { Label } from "~/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "~/components/ui/radio-group";
 import { toast } from "~/components/ui/use-toast";
 import { api } from "~/trpc/react";
-import { type RouterOutputs } from "~/trpc/shared";
+import { type RouterOutputs, type RouterInputs } from "~/trpc/shared";
 
 type QuestData = NonNullable<RouterOutputs["quest"]["getCurrentQuestOfPlayer"]>;
 
@@ -90,7 +90,21 @@ function NoActiveQuest({
   params: { data: QuestData; title: string; playerId: string };
   closeButton: React.ReactNode;
 }) {
+  type QuestKind = RouterInputs["quest"]["assignQuest"]["questKind"];
   const [questKind, setQuestKind] = useState<string>();
+  const { isLoading, mutate } = api.quest.assignQuest.useMutation({
+    onSuccess: () =>
+      toast({
+        title: "Quest assigned",
+      }),
+    onError: (err) =>
+      toast({
+        title: `Error assigning quest`,
+        description: err.message,
+        variant: "destructive",
+      }),
+  });
+
   if (params.data.state !== "no-active-quest") return;
 
   return (
@@ -119,9 +133,14 @@ function NoActiveQuest({
         {closeButton}
         <Button
           disabled={!questKind}
-          onClick={() => console.log("assign quest", questKind)}
+          onClick={() =>
+            mutate({
+              playerId: params.playerId,
+              questKind: questKind as QuestKind,
+            })
+          }
         >
-          Assign Quest
+          {isLoading ? <FaSpinner className="animate-spin" /> : "Assign Quest"}
         </Button>
       </DialogFooter>
     </>

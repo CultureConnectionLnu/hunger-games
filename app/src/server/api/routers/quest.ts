@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { HubHandler } from "../logic/hub";
-import { QuestHandler } from "../logic/quest";
+import { QuestHandler, questKind } from "../logic/quest";
 import { UserHandler } from "../logic/user";
 import {
   adminProcedure,
@@ -164,6 +164,41 @@ export const questRouter = createTRPCRouter({
       const result = await QuestHandler.instance.markHubAsVisited(
         input.playerId,
         hub.id,
+      );
+
+      if (!result.success) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: result.error,
+        });
+      }
+
+      return true;
+    }),
+
+  assignQuest: moderatorProcedure
+    .input(z.object({ playerId: z.string(), questKind }))
+    .mutation(async ({ ctx, input }) => {
+      const hub = await HubHandler.instance.getHubOfModerator(ctx.user.clerkId);
+      if (!hub) {
+        console.error(
+          "[Quest:getOngoingQuestsForModerator] moderator has no hub assigned, which should be impossible",
+          ctx.user.clerkId,
+        );
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "You are not assigned as a hub moderator",
+        });
+      }
+
+      const allHubs = await HubHandler.instance.getAllHubs();
+      // exclude the current hub from the list of hubs
+      const allHubIds = allHubs.map((x) => x.id).filter((x) => x !== hub.id);
+
+      const result = await QuestHandler.instance.assignQuestToPlayer(
+        input.playerId,
+        allHubIds,
+        input.questKind,
       );
 
       if (!result.success) {

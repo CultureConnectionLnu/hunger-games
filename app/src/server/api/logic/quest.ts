@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { db, type DB } from "~/server/db";
 import { quest } from "~/server/db/schema";
 
@@ -6,12 +7,23 @@ const globalForQuestHandler = globalThis as unknown as {
   questHandler: QuestHandler | undefined;
 };
 
-export type WalkQuestInformation = {
-  hubs: {
-    id: string;
-    visited: boolean;
-  }[];
-};
+const walkQuestInformationSchema = z.object({
+  hubs: z.array(
+    z.object({
+      id: z.string(),
+      visited: z.boolean(),
+    }),
+  ),
+});
+
+export const questKind = z.union([
+  z.literal("walk-1"),
+  z.literal("walk-2"),
+  z.literal("walk-3"),
+]);
+
+export type WalkQuestInformation = z.infer<typeof walkQuestInformationSchema>;
+type QuestKind = z.infer<typeof questKind>;
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 
@@ -89,6 +101,13 @@ export class QuestHandler {
         h.id === updatedHub.id ? updatedHub : h,
       ),
     };
+    const parseResult = walkQuestInformationSchema.safeParse(
+      updatedAdditionalInformation,
+    );
+    if (!parseResult.success) {
+      return { success: false, error: parseResult.error.message };
+    }
+
     await this.db
       .update(quest)
       .set({
@@ -99,6 +118,36 @@ export class QuestHandler {
     return {
       success: true,
     };
+  }
+
+  public async assignQuestToPlayer(
+    playerId: string,
+    allHubIds: string[],
+    questKind: QuestKind,
+  ) {
+    const count = this.getNumberOfHubsForQuestKind(questKind);
+    const hubs = this.selectRandomHubs(allHubIds, count);
+    if (hubs.success === false) {
+      return { success: false, error: hubs.error } as const;
+    }
+
+    const additionalInformation = {
+      hubs: hubs.selectedHubs.map((id) => ({ id, visited: false })),
+    };
+    const parseResult = walkQuestInformationSchema.safeParse(
+      additionalInformation,
+    );
+    if (!parseResult.success) {
+      return { success: false, error: parseResult.error.message } as const;
+    }
+
+    await this.db.insert(quest).values({
+      userId: playerId,
+      kind: questKind,
+      additionalInformation,
+    });
+
+    return { success: true } as const;
   }
 
   private queryAllOngoingQuests() {
@@ -123,5 +172,44 @@ export class QuestHandler {
       additionalInformation:
         quest.additionalInformation as WalkQuestInformation,
     };
+  }
+
+  private getNumberOfHubsForQuestKind(kind: QuestKind) {
+    switch (kind) {
+      case "walk-1":
+        return 1;
+      case "walk-2":
+        return 2;
+      case "walk-3":
+        return 3;
+    }
+
+    kind satisfies never;
+    return 0;
+  }
+
+  private selectRandomHubs(allHubIds: string[], count: number) {
+    if (count < 0) {
+      return {
+        success: false,
+        error: "Cannot select negative number of hubs",
+      } as const;
+    }
+    if (count > allHubIds.length) {
+      return {
+        success: false,
+        error: "Cannot select more hubs than available",
+      } as const;
+    }
+
+    if (count === allHubIds.length) {
+      return { success: true, selectedHubs: allHubIds };
+    }
+
+    const shuffled = allHubIds.sort(() => Math.random() - 0.5);
+    return {
+      success: true,
+      selectedHubs: shuffled.slice(0, count),
+    } as const;
   }
 }
