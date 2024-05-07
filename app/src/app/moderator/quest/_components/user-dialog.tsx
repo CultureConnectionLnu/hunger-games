@@ -64,15 +64,30 @@ function User({
   }
 
   const title = `Player ${data.playerName}`;
+  function invalidateCurrentQuest() {
+    void api
+      .useUtils()
+      .quest.getCurrentQuestOfPlayer.invalidate({ userId: params.userId });
+  }
 
   return (
     <DialogContent>
       <NoActiveQuest
-        params={{ data, title, playerId: params.userId }}
+        params={{
+          data,
+          title,
+          playerId: params.userId,
+          onComplete: invalidateCurrentQuest,
+        }}
         closeButton={closeButton}
       />
       <HandleQuest
-        params={{ data, title, playerId: params.userId }}
+        params={{
+          data,
+          title,
+          playerId: params.userId,
+          onComplete: invalidateCurrentQuest,
+        }}
         closeButton={closeButton}
       />
       <DoesNotConcernThisHub
@@ -87,16 +102,23 @@ function NoActiveQuest({
   params,
   closeButton,
 }: {
-  params: { data: QuestData; title: string; playerId: string };
+  params: {
+    data: QuestData;
+    title: string;
+    playerId: string;
+    onComplete?: () => void;
+  };
   closeButton: React.ReactNode;
 }) {
   type QuestKind = RouterInputs["quest"]["assignQuest"]["questKind"];
   const [questKind, setQuestKind] = useState<string>();
   const { isLoading, mutate } = api.quest.assignQuest.useMutation({
-    onSuccess: () =>
+    onSuccess: () => {
       toast({
         title: "Quest assigned",
-      }),
+      });
+      params.onComplete?.();
+    },
     onError: (err) =>
       toast({
         title: `Error assigning quest`,
@@ -151,14 +173,21 @@ function HandleQuest({
   params,
   closeButton,
 }: {
-  params: { data: QuestData; title: string; playerId: string };
+  params: {
+    data: QuestData;
+    title: string;
+    playerId: string;
+    onComplete?: () => void;
+  };
   closeButton: React.ReactNode;
 }) {
   const { isLoading, mutate } = api.quest.markHubAsVisited.useMutation({
-    onSuccess: () =>
+    onSuccess: () => {
       toast({
         title: "Hub marked as visited",
-      }),
+      });
+      params.onComplete?.();
+    },
     onError: (err) =>
       toast({
         title: `Error marking hub as visited`,
