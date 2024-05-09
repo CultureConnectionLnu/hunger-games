@@ -367,10 +367,6 @@ export const questTests = () =>
             expect(quest).toBeUndefined();
           }));
       });
-
-      describe("scoring", () => {
-        it("should get points for ");
-      });
     });
   });
 
