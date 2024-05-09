@@ -8,7 +8,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import type { BaseGamePlayerEvents } from "../logic/core/base-game";
-import { lobbyHandler } from "../logic/handler";
+import { lobbyHandler, userHandler } from "../logic/handler";
 
 type JoinMessage = {
   type: "join";
@@ -92,6 +92,13 @@ export const lobbyRouter = createTRPCRouter({
         throw new TRPCError({
           code: "NOT_FOUND",
           message: "Opponent not found",
+        });
+      }
+      const isPlayer = await userHandler.checkRole("player", opponent.clerkId);
+      if (!isPlayer) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `The opponent with id '${opponent.clerkId}' is no player and can't start a fight`,
         });
       }
 

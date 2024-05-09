@@ -98,6 +98,7 @@ function User({
         params={{ data, title }}
         closeButton={closeButton}
       />
+      <NoPlayer params={{ data, title }} closeButton={closeButton} />
     </DialogContent>
   );
 }
@@ -247,6 +248,31 @@ function DoesNotConcernThisHub({
       <DialogFooter className="flex flex-row justify-between">
         {closeButton}
       </DialogFooter>
+    </>
+  );
+}
+
+function NoPlayer({
+  params,
+  closeButton,
+}: {
+  params: { data: QuestData; title: string };
+  closeButton: React.ReactNode;
+}) {
+  if (params.data.state !== "is-no-player") return;
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{params.title}</DialogTitle>
+        <DialogDescription>
+          The selected user is no player. Please forward the user to an admin so
+          that he can be registered.
+        </DialogDescription>
+        <DialogFooter className="flex flex-row justify-between">
+          {closeButton}
+        </DialogFooter>
+      </DialogHeader>
     </>
   );
 }

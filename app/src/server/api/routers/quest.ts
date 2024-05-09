@@ -5,6 +5,7 @@ import {
   hubHandler,
   questHandler,
   questKind,
+  userHandler,
 } from "../logic/handler";
 import {
   adminProcedure,
@@ -119,6 +120,14 @@ export const questRouter = createTRPCRouter({
         }
 
         const playerName = await clerkHandler.getUserName(input.userId);
+        const isPlayer = await userHandler.checkRole("player");
+        if (!isPlayer) {
+          return {
+            state: "is-no-player",
+            playerName,
+          } as const;
+        }
+
         const result = await questHandler.getCurrentQuestForPlayer(
           input.userId,
         );
@@ -191,6 +200,14 @@ export const questRouter = createTRPCRouter({
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: "You are not assigned as a hub moderator",
+          });
+        }
+
+        const isPlayer = await userHandler.checkRole("player");
+        if (!isPlayer) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `The user with id '${input.playerId}' is no player and can not be assigned to a quest`,
           });
         }
 
