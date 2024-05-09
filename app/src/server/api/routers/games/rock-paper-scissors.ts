@@ -2,13 +2,13 @@ import { TRPCError } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { FightHandler } from "../../logic/fight";
-import { catchMatchError, inFightProcedure } from "../fight";
+import { catchMatchError, inFightProcedure } from "../lobby";
 import {
   type RockPaperScissorsEvents,
   rockPaperScissorsItemsSchema,
 } from "../../logic/games/rps";
 import type { OnlyPlayerEvents } from "../../logic/core/types";
+import { lobbyHandler } from "../../logic/handler";
 
 export type RockPaperScissorsPlayerEvents =
   OnlyPlayerEvents<RockPaperScissorsEvents>;
@@ -60,7 +60,7 @@ export const rockPaperScissorsRouter = createTRPCRouter({
     )
     .subscription(({ input }) => {
       return observable<RockPaperScissorsPlayerEvents>((emit) => {
-        const match = FightHandler.instance.getFight(input.fightId)?.game;
+        const match = lobbyHandler.getFight(input.fightId)?.game;
         if (match?.getPlayer(input.userId) === undefined) {
           throw new TRPCError({
             code: "NOT_FOUND",

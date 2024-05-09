@@ -1,25 +1,21 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
-import { TypedEventEmitter } from "~/lib/event-emitter";
-import { FightHandler } from "~/server/api/logic/fight";
-import { appRouter } from "~/server/api/root";
+import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
+import { lobbyHandler } from "~/server/api/logic/handler";
 import type { RockPaperScissorsPlayerEvents } from "~/server/api/routers/games/rock-paper-scissors";
-import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
 import {
   expectEventEmitted,
   getLastEventOf,
   getManualTimer,
+  getTestUserCallers,
   makePlayer,
   runAllMacroTasks,
   useAutomaticTimer,
   useManualTimer,
-  useMockUserNames,
-  useRealUserNames,
 } from "./utils";
-import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 
 export const rpsTests = () =>
   describe("Rock Paper Scissors", () => {
@@ -333,7 +329,6 @@ async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
   useManualTimer();
-  useMockUserNames();
   const args = await setupTest();
 
   return await test(args)
@@ -342,7 +337,6 @@ async function testFight(
     .then(async (x) => {
       const id = args.getFightId();
       useAutomaticTimer();
-      useRealUserNames();
       if (id === undefined) return x;
 
       // finish the game properly before deleting
@@ -359,26 +353,13 @@ async function testFight(
 }
 
 async function setupTest() {
-  const callers = {
-    test_user_1: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_1",
-      }),
-    ),
-    test_user_2: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_2",
-      }),
-    ),
-  } as const;
+  const callers = await getTestUserCallers();
 
   const firstListener = vi.fn<[BaseGamePlayerEvents], void>();
   const secondListener = vi.fn<[BaseGamePlayerEvents], void>();
   const firstRpsListener = vi.fn<[RockPaperScissorsPlayerEvents], void>();
   const secondRpsListener = vi.fn<[RockPaperScissorsPlayerEvents], void>();
-  FightHandler.instance.defineNextGameType("rock-paper-scissors");
+  lobbyHandler.defineNextGameType("rock-paper-scissors");
 
   const { id: fightId } = await callers.test_user_1.fight.create({
     opponent: `test_user_2`,
@@ -389,7 +370,7 @@ async function setupTest() {
 
   const state = {
     fightId,
-    fight: FightHandler.instance.getFight(fightId),
+    fight: lobbyHandler.getFight(fightId),
     test_user_1: {
       base: (
         await callers.test_user_1.fight.onGameAction({

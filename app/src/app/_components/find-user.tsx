@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -16,14 +16,37 @@ import { useQueryParamMutation } from "~/app/_feature/url-sync/query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { QrCodeScanner } from "~/app/_feature/qrcode/qr-code-scanner";
 import { Card, CardHeader } from "~/components/ui/card";
+import { toast } from "~/components/ui/use-toast";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 type User = UnwrapArray<RouterOutputs["user"]["allUsers"]>;
 
-export function FindUser({ params }: { params: { users: User[] } }) {
+export function FindUser({
+  params,
+  text,
+}: {
+  params: { users: User[] };
+  text: {
+    dialogTrigger: string;
+    dialogHeader: string;
+    selectButton: string;
+  };
+}) {
   const [open, setOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
+  const [tab, setTab] = useState<string | undefined>();
   const mutateUserId = useQueryParamMutation("userId");
+
+  useEffect(() => {
+    if (selectedUserId === undefined) return;
+    if (tab !== "qr-code") return;
+    toast({
+      title: "User selected",
+      description: `User with id ${selectedUserId} selected`,
+    });
+    // in this case, I really only want an update in case the selectedUserId changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedUserId]);
 
   const selectedUser = params.users.find(
     (user) => user.userId === selectedUserId,
@@ -34,12 +57,12 @@ export function FindUser({ params }: { params: { users: User[] } }) {
       <DialogTrigger asChild>
         <Button>
           <MdSearch className="mr-2 h-4 w-4" />
-          Find User
+          {text.dialogTrigger}
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <DialogHeader>Find User</DialogHeader>
-        <Tabs>
+        <DialogHeader>{text.dialogHeader}</DialogHeader>
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="text">Text</TabsTrigger>
             <TabsTrigger value="qr-code">Qr Code</TabsTrigger>
@@ -88,7 +111,7 @@ export function FindUser({ params }: { params: { users: User[] } }) {
               mutateUserId(selectedUserId);
             }}
           >
-            Open
+            {text.selectButton}
           </Button>
         </DialogFooter>
       </DialogContent>

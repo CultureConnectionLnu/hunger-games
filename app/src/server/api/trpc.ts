@@ -10,18 +10,10 @@
 import { initTRPC, TRPCError } from "@trpc/server";
 import superjson from "superjson";
 import { ZodError } from "zod";
-import { UserHandler } from "./logic/user";
+import { clerkHandler, userHandler, type UserRoles } from "./logic/handler";
 
 import { TypedEventEmitter } from "~/lib/event-emitter";
-import { db } from "~/server/db";
-// import { auth } from "@clerk/nextjs";
-/**
- * Hack to get rid of:
- * import { auth } from "@clerk/nextjs";
- *          ^
- * SyntaxError: The requested module '@clerk/nextjs' does not provide an export named 'auth'
- */
-const clerkModule = import("@clerk/nextjs");
+import { randomUUID } from "node:crypto";
 
 const globalForEE = globalThis as unknown as {
   ee: TypedEventEmitter | undefined;
@@ -35,28 +27,26 @@ if (!globalForEE.ee) {
 export async function createCommonContext(opts: {
   ee: TypedEventEmitter;
   userId: string | undefined;
-  role?: CustomJwtSessionClaims["metadata"]["isAdmin"];
 }) {
-  const base = { db, user: undefined, ...opts };
+  const base = { user: undefined, ...opts };
   const { userId } = opts;
   if (!userId) {
     return base;
   }
 
   try {
-    let user = await UserHandler.instance.getUser(userId);
+    let user = await userHandler.getUser(userId);
     if (!user) {
       /**
        * make sure the clerkId is in the users table.
        * this is only needed in development, so that the already registered users are added to the system.
        * in production the webhook in `clerk.ts` will handle this for us
        */
-      user = await UserHandler.instance.createUser(userId);
+      user = await userHandler.createUser(userId);
     }
     return {
       ...base,
       user: user.isDeleted ? undefined : user,
-      role: opts.role ?? ("guest" as const),
     };
   } catch (e) {
     console.error(e);
@@ -78,12 +68,9 @@ export async function createCommonContext(opts: {
  */
 export const createTRPCContext = async () => {
   // HACK to get clerk working with web socket
-  const { auth } = await clerkModule;
-  const session = auth();
   return createCommonContext({
     ee: globalForEE.ee!,
-    userId: session.userId ?? undefined,
-    role: session.sessionClaims?.metadata.isAdmin,
+    userId: await clerkHandler.currentUserId(),
   });
 };
 
@@ -91,7 +78,6 @@ export const createWebSocketContext = async () => {
   return createCommonContext({
     ee: globalForEE.ee!,
     userId: undefined,
-    role: undefined,
   });
 };
 /**
@@ -151,52 +137,56 @@ export const userProcedure = t.procedure.use(({ ctx, next }) => {
 
   return next({
     ctx: {
-      ...ctx,
-      user: {
-        ...ctx.user,
-        clerkId: ctx.user.clerkId,
-      },
+      ee: ctx.ee,
+      user: ctx.user,
     },
   });
 });
+
+export const ifAnyRoleProcedure = (...roles: UserRoles[]) =>
+  userProcedure.use(async ({ ctx, next }) => {
+    const currentUserRoles = await userHandler.getAllRolesOfCurrentUser();
+    if (!roles.some((role) => currentUserRoles[role])) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: `User does not have one of the required roles: ${JSON.stringify(roles)}`,
+      });
+    }
+
+    return next({
+      ctx,
+    });
+  });
 
 /**
  * Protected (authenticated) procedure for players
  */
-export const playerProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!(await UserHandler.instance.checkRole("player", ctx.user.clerkId))) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a player" });
-  }
-
-  return next({
-    ctx: {
-      ...ctx,
-      user: {
-        ...ctx.user,
-        clerkId: ctx.user.clerkId,
-      },
-    },
-  });
-});
+export const playerProcedure = ifAnyRoleProcedure("player");
 
 /**
  * Protected (authenticated) procedure for moderators
  */
-export const moderatorProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!(await UserHandler.instance.checkRole("moderator", ctx.user.clerkId))) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not a moderator" });
-  }
-
-  return next({ ctx });
-});
+export const moderatorProcedure = ifAnyRoleProcedure("moderator");
 
 /**
  * Protected (authenticated) procedure for admins
  */
-export const adminProcedure = userProcedure.use(async ({ ctx, next }) => {
-  if (!(await UserHandler.instance.checkRole("admin", ctx.user.clerkId))) {
-    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not an admin" });
-  }
+export const adminProcedure = ifAnyRoleProcedure("admin");
 
-  return next({ ctx });
-});
+export const errorBoundary = async <T>(fn: () => Promise<T> | T) => {
+  try {
+    const maybePromise = fn();
+    return maybePromise instanceof Promise ? await maybePromise : maybePromise;
+  } catch (error) {
+    if (error instanceof TRPCError) {
+      throw error;
+    }
+    const errorId = randomUUID();
+    const trpcError = new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: `Request failed due to unknown reasons. Please contact the operators about the issue and provide the following error ID: ${errorId}`,
+    });
+    console.error("Error id: " + errorId, error, trpcError);
+    throw trpcError;
+  }
+};

@@ -21,13 +21,14 @@ import {
   SheetContent,
   SheetTrigger,
 } from "~/components/ui/sheet";
-import { type UserRoles } from "~/server/api/logic/user";
+import { type UserRoles } from "~/server/api/logic/handler";
 import { useCheckRole } from "../_feature/auth/role-check";
+import { ScrollArea } from "~/components/ui/scroll-area";
 
 type HeaderConfig = {
   groups: {
     title: string;
-    require?: "sign-in" | "sign-out" | "role-admin" | "none";
+    require?: "sign-in" | "sign-out" | "role-admin" | "role-moderator" | "none";
     links: HeaderLinkConfig[];
   }[];
 };
@@ -85,8 +86,20 @@ export default function Header() {
                     require: "role-player",
                   },
                   {
-                    title: "History",
-                    href: "/game/history",
+                    title: "Current Quest",
+                    href: "/game/quest",
+                    icon: "MdMap",
+                    require: "role-player",
+                  },
+                  {
+                    title: "Fight History",
+                    href: "/game/history/fight",
+                    icon: "MdHistory",
+                    require: "role-player",
+                  },
+                  {
+                    title: "Quest History",
+                    href: "/game/history/quest",
                     icon: "MdHistory",
                     require: "role-player",
                   },
@@ -115,7 +128,9 @@ export default function Header() {
                   {
                     title: "Sign Out",
                     customLink: (children) => (
-                      <SignOutButton>{children}</SignOutButton>
+                      <SignOutButton>
+                        <Link href="/">{children}</Link>
+                      </SignOutButton>
                     ),
                     icon: "MdOutlinePowerSettingsNew",
                     require: "sign-in",
@@ -127,6 +142,17 @@ export default function Header() {
                     ),
                     icon: "MdLockOpen",
                     require: "sign-out",
+                  },
+                ],
+              },
+              {
+                title: "Moderator",
+                require: "role-moderator",
+                links: [
+                  {
+                    title: "Quest Overview",
+                    icon: "MdList",
+                    href: "/moderator/quest",
                   },
                 ],
               },
@@ -143,6 +169,11 @@ export default function Header() {
                     title: "User Overview",
                     icon: "MdSettings",
                     href: "/admin/users",
+                  },
+                  {
+                    title: "Ongoing Quest Overview",
+                    icon: "MdList",
+                    href: "/admin/quest",
                   },
                 ],
               },
@@ -260,6 +291,13 @@ async function SideBar({ config }: { config: HeaderConfig }) {
         </RenderOnRole>
       );
     }
+    if (group.require === "role-moderator") {
+      return (
+        <RenderOnRole key={group.title} roleCondition="moderator">
+          {groupContent}
+        </RenderOnRole>
+      );
+    }
 
     group.require satisfies never;
     return undefined;
@@ -273,7 +311,9 @@ async function SideBar({ config }: { config: HeaderConfig }) {
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full" side="left">
-        <List>{listContent}</List>
+        <ScrollArea className="h-screen">
+          <List>{listContent}</List>
+        </ScrollArea>
       </SheetContent>
     </Sheet>
   );

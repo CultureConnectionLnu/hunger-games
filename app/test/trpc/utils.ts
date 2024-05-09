@@ -1,30 +1,85 @@
 import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, type Mock } from "vitest";
+import { TypedEventEmitter } from "~/lib/event-emitter";
 import { TimerFactory } from "~/server/api/logic/core/timer";
-import { UserHandler } from "~/server/api/logic/user";
+import { clerkHandler, userHandler } from "~/server/api/logic/handler";
+import { appRouter } from "~/server/api/root";
+import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 
+type MockUsers = Parameters<(typeof clerkHandler)["useMockImplementation"]>[0];
+export type MockUserIds = (typeof mockUsers)[number]["userId"];
+export const mockUsers = [
+  {
+    name: "Test User 1",
+    userId: "test_user_1",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test User 2",
+    userId: "test_user_2",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test Admin",
+    userId: "test_admin",
+    isAdmin: true,
+  } as const,
+  {
+    name: "Test Moderator 1",
+    userId: "test_moderator_1",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test Moderator 2",
+    userId: "test_moderator_2",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test Moderator 3",
+    userId: "test_moderator_3",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test Moderator 4",
+    userId: "test_moderator_4",
+    isAdmin: false,
+  } as const,
+] satisfies MockUsers;
+
+const mockClerkFunctions: Partial<
+  ReturnType<(typeof clerkHandler)["useMockImplementation"]>
+> = {};
+
 export function provideTestUsers() {
   beforeAll(async () => {
-    await UserHandler.instance.createUser("test_user_1");
-    await UserHandler.instance.createUser("test_user_2");
+    for (const mockUser of mockUsers) {
+      await userHandler.createUser(mockUser.userId);
+    }
+    const { setCurrentUserId } = clerkHandler.useMockImplementation(mockUsers);
+    mockClerkFunctions.setCurrentUserId = setCurrentUserId;
   });
 
   afterAll(async () => {
-    await db
-      .delete(users)
-      .where(inArray(users.clerkId, ["test_user_1", "test_user_2"]));
+    await db.delete(users).where(
+      inArray(
+        users.clerkId,
+        mockUsers.map((x) => x.userId),
+      ),
+    );
+    clerkHandler.useActualImplementation();
+    mockClerkFunctions.setCurrentUserId = undefined;
   });
 }
 
-export function makePlayer(user: `test_user_1` | `test_user_2`) {
+export function makePlayer(user: MockUserIds) {
   beforeAll(async () => {
-    await UserHandler.instance.changePlayerState(user, true);
+    await userHandler.changePlayerState(user, true);
   });
 
   afterAll(async () => {
-    await UserHandler.instance.changePlayerState(user, false);
+    await userHandler.changePlayerState(user, false);
   });
 }
 
@@ -34,16 +89,6 @@ export function useManualTimer() {
 
 export function useAutomaticTimer() {
   TimerFactory.instance.useAutomatic();
-}
-
-export function useMockUserNames() {
-  UserHandler.instance.useMockUserNames({
-    test_user_1: "Test User 1",
-    test_user_2: "Test User 2",
-  });
-}
-export function useRealUserNames() {
-  UserHandler.instance.useRealUserNames();
 }
 
 export function getManualTimer() {
@@ -83,6 +128,31 @@ export function getManualTimer() {
     getLastByName,
     simulateNormalTimeout,
   };
+}
+
+export async function getTestUserCallers() {
+  const callers = {} as Record<
+    MockUserIds,
+    ReturnType<typeof appRouter.createCaller>
+  >;
+  const ee = new TypedEventEmitter();
+  for (const mockUser of mockUsers) {
+    const caller = appRouter.createCaller(
+      await createCommonContext({
+        ee,
+        userId: mockUser.userId,
+      }),
+    );
+    Object.defineProperty(callers, mockUser.userId, {
+      get() {
+        mockClerkFunctions.setCurrentUserId?.(mockUser.userId);
+        return caller;
+      },
+      configurable: false,
+      enumerable: true,
+    });
+  }
+  return callers;
 }
 
 type FilterByEvent<T, Key> = T extends { event: Key } ? T : never;

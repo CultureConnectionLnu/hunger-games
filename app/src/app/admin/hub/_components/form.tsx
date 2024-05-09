@@ -40,8 +40,8 @@ import { api } from "~/trpc/react";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
-type Hub = UnwrapArray<RouterOutputs["quest"]["allHubs"]>;
-type AddHub = RouterInputs["quest"]["addHub"];
+type Hub = UnwrapArray<RouterOutputs["hub"]["allHubs"]>;
+type AddHub = RouterInputs["hub"]["addHub"];
 
 export function AddHubForm({
   params,
@@ -52,21 +52,20 @@ export function AddHubForm({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const addHub = api.quest.addHub.useMutation({
-    onSuccess(data) {
-      if (data.success) {
-        setOpen(false);
-        toast({
-          title: "Hub added",
-          description: "The hub has been added successfully",
-        });
-        router.refresh();
-        return;
-      }
+  const addHub = api.hub.addHub.useMutation({
+    onSuccess() {
+      setOpen(false);
+      toast({
+        title: "Hub added",
+        description: "The hub has been added successfully",
+      });
+      router.refresh();
+    },
+    onError(error) {
       toast({
         title: "Error adding hub",
         variant: "destructive",
-        description: data.error,
+        description: error.message,
       });
     },
   });
@@ -93,7 +92,10 @@ export function AddHubForm({
             texts: { submitButton: "Add Hub", title: "Add Hub" },
           }}
           context={{ open }}
-          onSubmit={onSubmit}
+          submit={{
+            type: "full",
+            onSubmit,
+          }}
         />
       </DialogContent>
     </Dialog>
@@ -111,43 +113,41 @@ export function UpdateHubForm({
   };
   onDone?: () => void;
 }) {
-  const removeHub = api.quest.removeHub.useMutation({
-    onSuccess(data) {
-      if (data.success) {
-        onDone?.();
-        toast({
-          title: "Hub deleted",
-          description: "The hub was successfully deleted",
-        });
-        return;
-      }
+  const removeHub = api.hub.removeHub.useMutation({
+    onSuccess() {
+      onDone?.();
+      toast({
+        title: "Hub deleted",
+        description: "The hub was successfully deleted",
+      });
+    },
+    onError(error) {
       toast({
         title: "Error deleting hub",
         variant: "destructive",
-        description: data.error,
+        description: error.message,
       });
     },
   });
 
-  const updateHub = api.quest.updateHub.useMutation({
-    onSuccess(data) {
-      if (data.success) {
-        onDone?.();
-        toast({
-          title: "Hub updated",
-          description: "The hub was successfully updated",
-        });
-        return;
-      }
+  const updateHub = api.hub.updateHub.useMutation({
+    onSuccess() {
+      onDone?.();
+      toast({
+        title: "Hub updated",
+        description: "The hub was successfully updated",
+      });
+    },
+    onError(error) {
       toast({
         title: "Error updating hub",
         variant: "destructive",
-        description: data.error,
+        description: error.message,
       });
     },
   });
 
-  function onSubmit(data: AddHub) {
+  function onSubmit(data: Partial<AddHub>) {
     if (!params.hub) return;
     updateHub.mutate({ ...data, id: params.hub.id });
     toast({
@@ -170,7 +170,10 @@ export function UpdateHubForm({
             assignedModeratorId: params.hub.assignedModerator?.id,
           },
         }}
-        onSubmit={onSubmit}
+        submit={{
+          type: "partial",
+          onSubmit,
+        }}
         footerButton={
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -208,7 +211,7 @@ export function UpdateHubForm({
 function HubForm({
   params,
   context,
-  onSubmit,
+  submit,
   footerButton,
 }: {
   params: {
@@ -222,7 +225,15 @@ function HubForm({
     open: boolean;
     resetValue?: AddHub;
   };
-  onSubmit: (data: AddHub) => void;
+  submit:
+    | {
+        type: "partial";
+        onSubmit: (data: Partial<AddHub>) => void;
+      }
+    | {
+        type: "full";
+        onSubmit: (data: AddHub) => void;
+      };
   footerButton?: React.ReactNode;
 }) {
   const form = useForm<AddHub>({
@@ -241,7 +252,17 @@ function HubForm({
 
   return (
     <FormProvider {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form
+        onSubmit={form.handleSubmit((data) => {
+          if (submit.type === "full") return submit.onSubmit(data);
+          const changedDataOnly = getItemsDirtyData<AddHub>(
+            data,
+            form.formState.dirtyFields,
+          );
+          submit.onSubmit(changedDataOnly);
+        })}
+        className="space-y-8"
+      >
         <DialogHeader>{params.texts.title}</DialogHeader>
         <FormField
           control={form.control}
@@ -304,3 +325,27 @@ function HubForm({
     </FormProvider>
   );
 }
+
+const getItemsDirtyData = <
+  TData extends Record<keyof TDirtyItems, unknown>,
+  TDirtyItems extends Record<string, unknown> = Record<string, unknown>,
+>(
+  data: TData,
+  dirtyItems: TDirtyItems,
+): Partial<TData> => {
+  const dirtyItemsEntries = Object.entries(dirtyItems);
+
+  return dirtyItemsEntries.reduce((dirtyData, [name, value]) => {
+    if (typeof value !== "object") {
+      return { ...dirtyData, [name]: data[name] };
+    }
+
+    return {
+      ...dirtyData,
+      [name]: getItemsDirtyData(
+        data[name] as TData,
+        dirtyItems[name] as TDirtyItems,
+      ),
+    };
+  }, {});
+};

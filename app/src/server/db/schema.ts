@@ -8,6 +8,8 @@ import {
   unique,
   uuid,
   varchar,
+  pgEnum,
+  json,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -29,6 +31,14 @@ export const users = createTable("user", {
   isDeleted: boolean("is_deleted").default(false).notNull(),
   ...metadata,
 });
+export const userRelations = relations(users, ({ many, one }) => ({
+  fights: many(usersToFight),
+  roles: one(roles, {
+    fields: [users.clerkId],
+    references: [roles.userId],
+  }),
+  quests: many(quest),
+}));
 
 export const roles = createTable("role", {
   userId: varchar("user_id", { length: 255 })
@@ -38,17 +48,6 @@ export const roles = createTable("role", {
   ...metadata,
 });
 
-export const userToRoleRelation = relations(users, ({ one }) => ({
-  roles: one(roles, {
-    fields: [users.clerkId],
-    references: [roles.userId],
-  }),
-}));
-
-export const userRelations = relations(users, ({ many }) => ({
-  fights: many(usersToFight),
-}));
-
 export const fight = createTable("fight", {
   id: uuid("id").primaryKey().defaultRandom(),
   game: varchar("game", { length: 255 }).notNull(),
@@ -57,7 +56,6 @@ export const fight = createTable("fight", {
   }),
   ...metadata,
 });
-
 export const fightRelations = relations(fight, ({ many }) => ({
   participants: many(usersToFight),
 }));
@@ -77,7 +75,6 @@ export const usersToFight = createTable(
     pk: primaryKey({ columns: [t.fightId, t.userId] }),
   }),
 );
-
 export const userToFightRelations = relations(usersToFight, ({ one }) => ({
   fight: one(fight, {
     fields: [usersToFight.fightId],
@@ -105,7 +102,6 @@ export const score = createTable(
     unq: unique().on(t.fightId, t.userId),
   }),
 );
-
 export const scoreFightRelation = relations(score, ({ one }) => ({
   fight: one(fight, {
     fields: [score.fightId],
@@ -124,10 +120,35 @@ export const hub = createTable("hub", {
   }),
   ...metadata,
 });
-
 export const hubUserRelation = relations(hub, ({ one }) => ({
   assignedModerator: one(users, {
     fields: [hub.assignedModeratorId],
+    references: [users.clerkId],
+  }),
+}));
+
+export const questKind = pgEnum("quest_kind", ["walk-1", "walk-2", "walk-3"]);
+export const questOutcome = pgEnum("quest_outcome", [
+  "completed",
+  "lost-in-battle",
+]);
+
+export const quest = createTable("quest", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: questKind("kind").notNull(),
+  userId: varchar("user_id", { length: 255 })
+    .references(() => users.clerkId, { onDelete: "cascade" })
+    .notNull(),
+  outcome: questOutcome("outcome"),
+  /**
+   * walkQuests: which places need to be visited and what the progress is
+   */
+  additionalInformation: json("additional_information").notNull(),
+  ...metadata,
+});
+export const questRelations = relations(quest, ({ one }) => ({
+  user: one(users, {
+    fields: [quest.userId],
     references: [users.clerkId],
   }),
 }));

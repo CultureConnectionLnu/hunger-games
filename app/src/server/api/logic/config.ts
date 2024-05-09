@@ -16,6 +16,12 @@ export const generalGameConfig: BaseGameConfig = {
   },
 };
 
+export const fightScoringConfig = {
+  lowestScore: 0,
+  winnerGetsPercent: 50,
+  winnerMinimumPointsBonus: 100,
+} as const;
+
 export const rockPaperScissorsConfig: RockPaperScissorsConfig = {
   get chooseTimeoutInSeconds() {
     return env.FEATURE_GAME_TIMEOUT ? 5 : longAssTime;

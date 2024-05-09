@@ -2,13 +2,10 @@
 import type { Unsubscribable } from "@trpc/server/observable";
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
-import { TypedEventEmitter } from "~/lib/event-emitter";
-import { FightHandler } from "~/server/api/logic/fight";
+import { lobbyHandler } from "~/server/api/logic/handler";
 
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 import type { TimerEvent } from "~/server/api/logic/core/timer";
-import { appRouter } from "~/server/api/root";
-import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
 import {
@@ -16,12 +13,11 @@ import {
   expectNotEvenEmitted,
   getLastEventOf,
   getManualTimer,
+  getTestUserCallers,
   makePlayer,
   runAllMacroTasks,
   useAutomaticTimer,
   useManualTimer,
-  useMockUserNames,
-  useRealUserNames,
 } from "./utils";
 
 export const lobbyTests = () =>
@@ -31,14 +27,9 @@ export const lobbyTests = () =>
 
     describe("currentFight", () => {
       it("should not find a match for current user", async () => {
-        const caller = appRouter.createCaller(
-          await createCommonContext({
-            ee: new TypedEventEmitter(),
-            userId: "test_user_1",
-          }),
-        );
+        const caller = await getTestUserCallers();
 
-        const result = await caller.fight.currentFight(undefined);
+        const result = await caller.test_user_1.fight.currentFight(undefined);
 
         expect(result).toEqual({ success: false });
       });
@@ -203,7 +194,7 @@ export const lobbyTests = () =>
           lobby.destroy();
           await runAllMacroTasks();
 
-          expect(FightHandler.instance.getFight(fightId)).toBeUndefined();
+          expect(lobbyHandler.getFight(fightId)).toBeUndefined();
         }));
 
       describe("Timeout", () => {
@@ -419,7 +410,6 @@ async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
   useManualTimer();
-  useMockUserNames();
   const args = await setupTest();
 
   return await test(args)
@@ -428,7 +418,6 @@ async function testFight(
     .then(async (x) => {
       const id = args.getFightId();
       useAutomaticTimer();
-      useRealUserNames();
       if (id === undefined) return x;
 
       // finish the game properly before deleting
@@ -445,39 +434,26 @@ async function testFight(
 }
 
 async function setupTest() {
-  const callers = {
-    test_user_1: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_1",
-      }),
-    ),
-    test_user_2: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_2",
-      }),
-    ),
-  } as const;
+  const callers = await getTestUserCallers();
 
   const firstListener = vi.fn<[BaseGamePlayerEvents], void>();
   const secondListener = vi.fn<[BaseGamePlayerEvents], void>();
 
   const state = {
     fightId: undefined as string | undefined,
-    fight: undefined as ReturnType<FightHandler["getFight"]>,
+    fight: undefined as ReturnType<(typeof lobbyHandler)["getFight"]>,
     test_user_1: undefined as Unsubscribable | undefined,
     test_user_2: undefined as Unsubscribable | undefined,
   };
 
   const createGame = async () => {
-    FightHandler.instance.defineNextGameType("rock-paper-scissors");
+    lobbyHandler.defineNextGameType("rock-paper-scissors");
 
     const { id } = await callers.test_user_1.fight.create({
       opponent: `test_user_2`,
     });
     state.fightId = id;
-    state.fight = FightHandler.instance.getFight(id)!;
+    state.fight = lobbyHandler.getFight(id)!;
   };
 
   const connect = async (userId: `test_user_${1 | 2}`) => {

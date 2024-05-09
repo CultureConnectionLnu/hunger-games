@@ -1,19 +1,15 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { TypedEventEmitter } from "~/lib/event-emitter";
-import { FightHandler } from "~/server/api/logic/fight";
-import { staticScoringConfig } from "~/server/api/logic/score";
-import { appRouter } from "~/server/api/root";
-import { createCommonContext } from "~/server/api/trpc";
+import { fightScoringConfig } from "~/server/api/logic/config";
+import { lobbyHandler } from "~/server/api/logic/handler";
 import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
 import {
+  getTestUserCallers,
   makePlayer,
   useAutomaticTimer,
   useManualTimer,
-  useMockUserNames,
-  useRealUserNames,
 } from "./utils";
 
 export const scoreTests = () =>
@@ -66,13 +62,13 @@ export const scoreTests = () =>
           expect(playerTwoHistory).toHaveLength(1);
         }));
 
-      it(`should score the very first winner with ${staticScoringConfig.winnerMinimumPointsBonus} points`, () =>
+      it(`should score the very first winner with ${fightScoringConfig.winnerMinimumPointsBonus} points`, () =>
         testFight(async ({ playGame, getHistory }) => {
           await playGame("test_user_1");
           const [firstGame] = await getHistory("test_user_1");
 
           expect(firstGame?.score).toBe(
-            staticScoringConfig.winnerMinimumPointsBonus,
+            fightScoringConfig.winnerMinimumPointsBonus,
           );
         }));
 
@@ -118,7 +114,6 @@ async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
   useManualTimer();
-  useMockUserNames();
   const args = await setupTest();
   // make sure that no scores for the player are present before the test
   return await test(args)
@@ -126,7 +121,6 @@ async function testFight(
     .catch((error: Error) => ({ pass: false, error }) as const)
     .then(async (x) => {
       useAutomaticTimer();
-      useRealUserNames();
       if (args.getAllFightIds().length !== 0) {
         await db.delete(fight).where(inArray(fight.id, args.getAllFightIds()));
       }
@@ -140,20 +134,7 @@ async function testFight(
 }
 
 async function setupTest() {
-  const callers = {
-    test_user_1: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_1",
-      }),
-    ),
-    test_user_2: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_2",
-      }),
-    ),
-  } as const;
+  const callers = await getTestUserCallers();
 
   const state = {
     allFightIds: [] as string[],
@@ -164,7 +145,7 @@ async function setupTest() {
       opponent: `test_user_2`,
     });
     const looser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
-    const fight = FightHandler.instance.getFight(id)!;
+    const fight = lobbyHandler.getFight(id)!;
     fight.lobby.endGame(winner, looser);
     await fight.gameDone;
     state.allFightIds.push(id);

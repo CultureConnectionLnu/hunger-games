@@ -1,30 +1,13 @@
 import { and, desc, eq, not, sql, sum } from "drizzle-orm";
-import { db, type DB } from "~/server/db";
+import { db } from "~/server/db";
 import { fight, score, usersToFight } from "~/server/db/schema";
-import { type KnownGames } from "./fight";
+import { type KnownGames } from "./lobby";
+import { fightScoringConfig } from "../config";
+import { getHandler } from "./base";
 
-export const staticScoringConfig = {
-  lowestScore: 0,
-  winnerGetsPercent: 50,
-  winnerMinimumPointsBonus: 100,
-} as const;
-
-const globalForScoreHandler = globalThis as unknown as {
-  scoreHandler: ScoreHandler | undefined;
-};
-
-export class ScoreHandler {
-  static get instance() {
-    if (!globalForScoreHandler.scoreHandler) {
-      globalForScoreHandler.scoreHandler = new ScoreHandler(db);
-    }
-    return globalForScoreHandler.scoreHandler;
-  }
-
-  private constructor(private readonly db: DB) {}
-
+class ScoreHandler {
   public async currentScore(userId: string) {
-    const totalScore = await this.db
+    const totalScore = await db
       .select({
         score: sum(score.score),
       })
@@ -43,7 +26,7 @@ export class ScoreHandler {
       const currentLooserScore = await this.currentScore(looserId);
       const { looserSubtraction, winnerAddition } =
         this.calculateScoreEntries(currentLooserScore);
-      await this.db.insert(score).values([
+      await db.insert(score).values([
         {
           fightId,
           score: looserSubtraction,
@@ -61,7 +44,7 @@ export class ScoreHandler {
   }
 
   public async getDashboard() {
-    return await this.db
+    return await db
       .select({
         rank: sql<number>`CAST(RANK() OVER (ORDER BY SUM(${score.score}) DESC) AS INTEGER)`,
         score: sum(score.score),
@@ -73,7 +56,7 @@ export class ScoreHandler {
   }
 
   public async getHistory(user: string) {
-    return await this.db
+    return await db
       .select({
         fightId: fight.id,
         game: sql<KnownGames>`${fight.game}`,
@@ -90,7 +73,7 @@ export class ScoreHandler {
   }
 
   public async getHistoryEntry(userId: string, fightId: string) {
-    const queryResult = await this.db
+    const queryResult = await db
       .select({
         userId: score.userId,
         fightId: fight.id,
@@ -158,7 +141,7 @@ export class ScoreHandler {
   }
 
   public async getScoreFromGame(fight: string, user: string) {
-    const score = await this.db.query.score.findFirst({
+    const score = await db.query.score.findFirst({
       where: ({ fightId, userId }) => and(eq(fightId, fight), eq(userId, user)),
     });
     if (!score) {
@@ -169,14 +152,14 @@ export class ScoreHandler {
 
   private calculateScoreEntries(looserCurrentScore: number) {
     const reducePointsBy =
-      (looserCurrentScore * staticScoringConfig.winnerGetsPercent) / 100;
+      (looserCurrentScore * fightScoringConfig.winnerGetsPercent) / 100;
     const winnerAddition = Math.max(
-      staticScoringConfig.winnerMinimumPointsBonus,
+      fightScoringConfig.winnerMinimumPointsBonus,
       reducePointsBy,
     );
 
     const newLooserScore = looserCurrentScore - reducePointsBy;
-    if (newLooserScore < staticScoringConfig.lowestScore) {
+    if (newLooserScore < fightScoringConfig.lowestScore) {
       return {
         // the result would be 0 then
         looserSubtraction: -looserCurrentScore,
@@ -190,3 +173,11 @@ export class ScoreHandler {
     };
   }
 }
+
+declare global {
+  interface HungerGamesHandlers {
+    score?: ScoreHandler;
+  }
+}
+
+export const scoreHandler = getHandler("score", () => new ScoreHandler());
