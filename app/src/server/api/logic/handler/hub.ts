@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "~/server/db";
 import { hub } from "~/server/db/schema";
+import { getHandler } from "./base";
 
 class HubHandler {
   public async getAllHubs() {
@@ -57,10 +58,9 @@ class HubHandler {
 }
 
 declare global {
-  interface HungerGamesServices {
+  interface HungerGamesHandlers {
     hub?: HubHandler;
   }
 }
 
-export const hubHandler = (globalThis.services.hub =
-  globalThis.services.hub ?? new HubHandler());
+export const hubHandler = getHandler("hub", () => new HubHandler());

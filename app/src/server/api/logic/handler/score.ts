@@ -3,6 +3,7 @@ import { db } from "~/server/db";
 import { fight, score, usersToFight } from "~/server/db/schema";
 import { type KnownGames } from "./lobby";
 import { fightScoringConfig } from "../config";
+import { getHandler } from "./base";
 
 class ScoreHandler {
   public async currentScore(userId: string) {
@@ -174,10 +175,9 @@ class ScoreHandler {
 }
 
 declare global {
-  interface HungerGamesServices {
+  interface HungerGamesHandlers {
     score?: ScoreHandler;
   }
 }
 
-export const scoreHandler = (globalThis.services.score =
-  globalThis.services.score ?? new ScoreHandler());
+export const scoreHandler = getHandler("score", () => new ScoreHandler());

@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { userHandler } from "../logic/handler";
+import { clerkHandler, userHandler } from "../logic/handler";
 import {
   adminProcedure,
   createTRPCRouter,
@@ -10,14 +10,22 @@ import {
 
 export const userRouter = createTRPCRouter({
   allUsers: ifAnyRoleProcedure("moderator", "admin").query(async () => {
-    const result = await userHandler.getAllUsers();
+    const result = await clerkHandler.getAllUsers();
+    if (!result.success) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Failed to get all users",
+      });
+    }
 
     const allRoles = (
-      await Promise.all(result.map((x) => userHandler.getUserRoles(x.clerkId)))
+      await Promise.all(
+        result.users.map((x) => userHandler.getUserRoles(x.userId)),
+      )
     ).filter(Boolean);
 
-    return result.map((user) => {
-      const roles = allRoles.find((y) => y.id === user.clerkId);
+    return result.users.map((user) => {
+      const roles = allRoles.find((y) => y.id === user.userId);
       return {
         ...user,
         isModerator: roles?.isModerator ?? false,

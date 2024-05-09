@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/server/db";
 import { quest } from "~/server/db/schema";
+import { getHandler } from "./base";
 
 const walkQuestInformationSchema = z.object({
   hubs: z.array(
@@ -203,10 +204,9 @@ class QuestHandler {
 }
 
 declare global {
-  interface HungerGamesServices {
+  interface HungerGamesHandlers {
     quest?: QuestHandler;
   }
 }
 
-export const questHandler = (globalThis.services.quest =
-  globalThis.services.quest ?? new QuestHandler());
+export const questHandler = getHandler("quest", () => new QuestHandler());

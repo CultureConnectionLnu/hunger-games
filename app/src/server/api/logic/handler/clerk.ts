@@ -1,4 +1,5 @@
 import { type User } from "@clerk/nextjs/server";
+import { getHandler } from "./base";
 
 /**
  * Hack to get rid of:
@@ -53,10 +54,12 @@ class ClerkHandler {
     const { sessionClaims, userId: currentUser } = auth();
 
     if (userId !== currentUser) {
-      console.error(
-        `NOT implemented admin check for a different user than the current one`,
-      );
-      return false;
+      const { clerkClient } = await clerkModule;
+      const user = await clerkClient.users.getUser(userId);
+      if (!user) {
+        return false;
+      }
+      return Boolean(user.publicMetadata.isAdmin);
     }
     return sessionClaims?.metadata.isAdmin ?? false;
   }
@@ -135,10 +138,9 @@ declare global {
     };
   }
 
-  interface HungerGamesServices {
+  interface HungerGamesHandlers {
     clerk?: ClerkHandler;
   }
 }
 
-export const clerkHandler = (globalThis.services.clerk =
-  globalThis.services.clerk ?? new ClerkHandler());
+export const clerkHandler = getHandler("clerk", () => new ClerkHandler());

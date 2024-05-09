@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 import { db } from "~/server/db";
 import { hub, roles, users } from "~/server/db/schema";
 import { clerkHandler } from "./clerk";
+import { getHandler } from "./base";
 
 export type UserRoles = "admin" | "moderator" | "player";
 
@@ -109,10 +110,9 @@ class UserHandler {
 }
 
 declare global {
-  interface HungerGamesServices {
+  interface HungerGamesHandlers {
     user?: UserHandler;
   }
 }
 
-export const userHandler = (globalThis.services.user =
-  globalThis.services.user ?? new UserHandler());
+export const userHandler = getHandler("user", () => new UserHandler());

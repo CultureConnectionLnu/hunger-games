@@ -6,6 +6,7 @@ import { BaseGame } from "../core/base-game";
 import { RpsGame } from "../games/rps";
 import { clerkHandler } from ".";
 import { scoreHandler } from "./score";
+import { getHandler } from "./base";
 
 /**
  * insert a new entry for each game added
@@ -199,10 +200,9 @@ class GameHandler {
 }
 
 declare global {
-  interface HungerGamesServices {
+  interface HungerGamesHandlers {
     lobby?: LobbyHandler;
   }
 }
 
-export const lobbyHandler = (globalThis.services.lobby =
-  globalThis.services.lobby ?? new LobbyHandler());
+export const lobbyHandler = getHandler("lobby", () => new LobbyHandler());
