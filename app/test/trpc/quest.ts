@@ -164,7 +164,7 @@ export const questTests = () =>
           );
 
           const quest = await moderator.getQuestOfPlayer(
-            "test_moderator_1",
+            "test_moderator_3",
             "test_user_1",
           );
 
@@ -172,6 +172,63 @@ export const questTests = () =>
             state: "quest-does-not-concern-this-hub",
           });
         }));
+
+      it("a moderator that is part of the destinations should be marked as such", () =>
+        testQuest(async ({ moderator }) => {
+          await moderator.assignQuest(
+            "test_moderator_1",
+            "test_user_1",
+            "walk-1",
+          );
+
+          const quest = await moderator.getQuestOfPlayer(
+            "test_moderator_2",
+            "test_user_1",
+          );
+
+          expect(quest).toMatchObject({
+            state: "quest-for-this-hub",
+          });
+        }));
+
+      describe("visited", () => {
+        it("by default, should show that the hub was not yet visited", () =>
+          testQuest(async ({ moderator }) => {
+            await moderator.assignQuest(
+              "test_moderator_1",
+              "test_user_1",
+              "walk-2",
+            );
+
+            const quest = await moderator.getQuestOfPlayer(
+              "test_moderator_2",
+              "test_user_1",
+            );
+
+            expect(quest).toMatchObject({
+              currentHubVisited: false,
+            });
+          }));
+
+        it("should mark hub as visited when moderator approves visit", () =>
+          testQuest(async ({ moderator }) => {
+            await moderator.assignQuest(
+              "test_moderator_1",
+              "test_user_1",
+              "walk-2",
+            );
+
+            await moderator.markAsVisited("test_moderator_2", "test_user_1");
+
+            const quest = await moderator.getQuestOfPlayer(
+              "test_moderator_2",
+              "test_user_1",
+            );
+            expect(quest).toMatchObject({
+              currentHubVisited: true,
+            });
+          }));
+      });
     });
   });
 
@@ -254,6 +311,13 @@ async function setupTest() {
     });
   };
 
+  const markAsVisited = async (
+    moderatorId: ModeratorIds,
+    playerId: `test_user_${1 | 2}`,
+  ) => {
+    return callers[moderatorId].quest.markHubAsVisited({ playerId });
+  };
+
   return {
     callers,
     playGame,
@@ -265,6 +329,7 @@ async function setupTest() {
     moderator: {
       assignQuest,
       getQuestOfPlayer,
+      markAsVisited,
     },
   };
 }
