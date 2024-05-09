@@ -17,11 +17,17 @@ class HubHandler {
     description?: string;
     assignedModeratorId?: string;
   }) {
-    await db.insert(hub).values({
-      name,
-      description,
-      assignedModeratorId,
-    });
+    const result = await db
+      .insert(hub)
+      .values({
+        name,
+        description,
+        assignedModeratorId,
+      })
+      .returning({
+        id: hub.id,
+      });
+    return result[0]!.id;
   }
 
   public async removeHub(hubId: string) {

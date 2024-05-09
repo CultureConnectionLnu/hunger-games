@@ -53,20 +53,19 @@ export function AddHubForm({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const addHub = api.hub.addHub.useMutation({
-    onSuccess(data) {
-      if (data.success) {
-        setOpen(false);
-        toast({
-          title: "Hub added",
-          description: "The hub has been added successfully",
-        });
-        router.refresh();
-        return;
-      }
+    onSuccess() {
+      setOpen(false);
+      toast({
+        title: "Hub added",
+        description: "The hub has been added successfully",
+      });
+      router.refresh();
+    },
+    onError(error) {
       toast({
         title: "Error adding hub",
         variant: "destructive",
-        description: data.error,
+        description: error.message,
       });
     },
   });
@@ -115,37 +114,35 @@ export function UpdateHubForm({
   onDone?: () => void;
 }) {
   const removeHub = api.hub.removeHub.useMutation({
-    onSuccess(data) {
-      if (data.success) {
-        onDone?.();
-        toast({
-          title: "Hub deleted",
-          description: "The hub was successfully deleted",
-        });
-        return;
-      }
+    onSuccess() {
+      onDone?.();
+      toast({
+        title: "Hub deleted",
+        description: "The hub was successfully deleted",
+      });
+    },
+    onError(error) {
       toast({
         title: "Error deleting hub",
         variant: "destructive",
-        description: data.error,
+        description: error.message,
       });
     },
   });
 
   const updateHub = api.hub.updateHub.useMutation({
-    onSuccess(data) {
-      if (data.success) {
-        onDone?.();
-        toast({
-          title: "Hub updated",
-          description: "The hub was successfully updated",
-        });
-        return;
-      }
+    onSuccess() {
+      onDone?.();
+      toast({
+        title: "Hub updated",
+        description: "The hub was successfully updated",
+      });
+    },
+    onError(error) {
       toast({
         title: "Error updating hub",
         variant: "destructive",
-        description: data.error,
+        description: error.message,
       });
     },
   });
