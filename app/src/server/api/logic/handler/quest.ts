@@ -104,10 +104,13 @@ class QuestHandler {
       return { success: false, error: parseResult.error.message };
     }
 
+    const questCompleted = updatedAdditionalInformation.hubs.every(x => x.visited);
+
     await db
       .update(quest)
       .set({
         additionalInformation: updatedAdditionalInformation,
+        ...(questCompleted ? {outcome: 'completed'} : {})
       })
       .where(eq(quest.id, currentQuest.id));
 

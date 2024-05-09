@@ -229,6 +229,54 @@ export const questTests = () =>
             });
           }));
       });
+
+      describe("completing", () => {
+        it("should mark a walk-1 quest as completed, when all hubs are visited", () =>
+          testQuest(async ({ player, moderator }) => {
+            await moderator.assignQuest(
+              "test_moderator_1",
+              "test_user_1",
+              "walk-1",
+            );
+            await moderator.markAsVisited("test_moderator_2", "test_user_1");
+
+            const quest = await player.getCurrentQuest("test_user_1");
+
+            expect(quest).toBeUndefined();
+          }));
+
+        it("should mark a walk-2 quest as completed, when all hubs are visited", () =>
+          testQuest(async ({ player, moderator }) => {
+            await moderator.assignQuest(
+              "test_moderator_1",
+              "test_user_1",
+              "walk-2",
+            );
+            await moderator.markAsVisited("test_moderator_2", "test_user_1");
+            await moderator.markAsVisited("test_moderator_3", "test_user_1");
+
+            const quest = await player.getCurrentQuest("test_user_1");
+
+            expect(quest).toBeUndefined();
+          }));
+
+        it("should mark a walk-3 quest as completed, when all hubs are visited", () =>
+          testQuest(async ({ player, moderator }) => {
+            await moderator.assignQuest(
+              "test_moderator_1",
+              "test_user_1",
+              "walk-3",
+            );
+            await moderator.markAsVisited("test_moderator_2", "test_user_1");
+            await moderator.markAsVisited("test_moderator_3", "test_user_1");
+            await moderator.markAsVisited("test_moderator_4", "test_user_1");
+
+            const quest = await player.getCurrentQuest("test_user_1");
+
+            expect(quest).toBeUndefined();
+          }));
+      });
+
     });
   });
 
