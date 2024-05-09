@@ -2,19 +2,13 @@
 import { inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { TypedEventEmitter } from "~/lib/event-emitter";
+import { fightScoringConfig } from "~/server/api/logic/config";
 import { lobbyHandler } from "~/server/api/logic/handler";
 import { appRouter } from "~/server/api/root";
 import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
-import {
-  makePlayer,
-  useAutomaticTimer,
-  useManualTimer,
-  mockClerk,
-  useRealClerk,
-} from "./utils";
-import { fightScoringConfig } from "~/server/api/logic/config";
+import { makePlayer, useAutomaticTimer, useManualTimer } from "./utils";
 
 export const scoreTests = () =>
   describe("Score", () => {
@@ -118,7 +112,6 @@ async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
   useManualTimer();
-  mockClerk();
   const args = await setupTest();
   // make sure that no scores for the player are present before the test
   return await test(args)
@@ -126,7 +119,6 @@ async function testFight(
     .catch((error: Error) => ({ pass: false, error }) as const)
     .then(async (x) => {
       useAutomaticTimer();
-      useRealClerk();
       if (args.getAllFightIds().length !== 0) {
         await db.delete(fight).where(inArray(fight.id, args.getAllFightIds()));
       }

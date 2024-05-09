@@ -9,12 +9,12 @@ type MockUsers = Parameters<(typeof clerkHandler)["useMockImplementation"]>[0];
 export type MockUserIds = (typeof mockUsers)[number]["userId"];
 export const mockUsers = [
   {
-    name: "Test user 1",
+    name: "Test User 1",
     userId: "test_user_1",
     isAdmin: false,
   } as const,
   {
-    name: "Test user 2",
+    name: "Test User 2",
     userId: "test_user_2",
     isAdmin: false,
   } as const,
@@ -25,6 +25,7 @@ export function provideTestUsers() {
     for (const mockUser of mockUsers) {
       await userHandler.createUser(mockUser.userId);
     }
+    clerkHandler.useMockImplementation(mockUsers);
   });
 
   afterAll(async () => {
@@ -34,6 +35,7 @@ export function provideTestUsers() {
         mockUsers.map((x) => x.userId),
       ),
     );
+    clerkHandler.useActualImplementation();
   });
 }
 
@@ -53,13 +55,6 @@ export function useManualTimer() {
 
 export function useAutomaticTimer() {
   TimerFactory.instance.useAutomatic();
-}
-
-export function mockClerk() {
-  clerkHandler.useMockImplementation(mockUsers);
-}
-export function useRealClerk() {
-  clerkHandler.useActualImplementation();
 }
 
 export function getManualTimer() {

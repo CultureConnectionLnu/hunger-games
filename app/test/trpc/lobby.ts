@@ -20,8 +20,6 @@ import {
   runAllMacroTasks,
   useAutomaticTimer,
   useManualTimer,
-  mockClerk,
-  useRealClerk,
 } from "./utils";
 
 export const lobbyTests = () =>
@@ -419,7 +417,6 @@ async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
   useManualTimer();
-  mockClerk();
   const args = await setupTest();
 
   return await test(args)
@@ -428,7 +425,6 @@ async function testFight(
     .then(async (x) => {
       const id = args.getFightId();
       useAutomaticTimer();
-      useRealClerk();
       if (id === undefined) return x;
 
       // finish the game properly before deleting

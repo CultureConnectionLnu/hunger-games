@@ -2,6 +2,8 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { TypedEventEmitter } from "~/lib/event-emitter";
+import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
+import { lobbyHandler } from "~/server/api/logic/handler";
 import { appRouter } from "~/server/api/root";
 import type { RockPaperScissorsPlayerEvents } from "~/server/api/routers/games/rock-paper-scissors";
 import { createCommonContext } from "~/server/api/trpc";
@@ -15,11 +17,7 @@ import {
   runAllMacroTasks,
   useAutomaticTimer,
   useManualTimer,
-  mockClerk,
-  useRealClerk,
 } from "./utils";
-import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
-import { lobbyHandler } from "~/server/api/logic/handler";
 
 export const rpsTests = () =>
   describe("Rock Paper Scissors", () => {
@@ -333,7 +331,6 @@ async function testFight(
   test: (args: Awaited<ReturnType<typeof setupTest>>) => Promise<void>,
 ) {
   useManualTimer();
-  mockClerk();
   const args = await setupTest();
 
   return await test(args)
@@ -342,7 +339,6 @@ async function testFight(
     .then(async (x) => {
       const id = args.getFightId();
       useAutomaticTimer();
-      useRealClerk();
       if (id === undefined) return x;
 
       // finish the game properly before deleting
