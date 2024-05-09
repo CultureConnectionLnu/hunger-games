@@ -180,6 +180,16 @@ export const questRouter = createTRPCRouter({
       // exclude the current hub from the list of hubs
       const allHubIds = allHubs.map((x) => x.id).filter((x) => x !== hub.id);
 
+      const currentQuest = await questHandler.getCurrentQuestForPlayer(
+        input.playerId,
+      );
+      if (currentQuest !== undefined) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: `The player '${input.playerId}' already has an ongoing quest`,
+        });
+      }
+
       const result = await questHandler.assignQuestToPlayer(
         input.playerId,
         allHubIds,
@@ -193,7 +203,7 @@ export const questRouter = createTRPCRouter({
         });
       }
 
-      return true;
+      return result.newQuestId;
     }),
 });
 

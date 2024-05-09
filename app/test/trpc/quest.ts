@@ -3,15 +3,15 @@ import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { lobbyHandler } from "~/server/api/logic/handler";
 import { db } from "~/server/db";
-import { fight } from "~/server/db/schema";
+import { fight, quest } from "~/server/db/schema";
+import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
 import {
-  type MockUserIds,
   getTestUserCallers,
   makePlayer,
   useAutomaticTimer,
   useManualTimer,
+  type MockUserIds,
 } from "./utils";
-import { type RouterOutputs, type RouterInputs } from "~/trpc/shared";
 
 type QuestData = NonNullable<RouterOutputs["quest"]["getCurrentQuestOfPlayer"]>;
 type GetQuestKind<T> = T extends { quest: { kind: infer U } } ? U : never;
@@ -67,45 +67,104 @@ export const questTests = () =>
     });
 
     it("by default, player should not have a quest assigned", () =>
-      testQuest(async ({ getCurrentQuest }) => {
-        expect(await getCurrentQuest("test_user_1")).toBeUndefined();
+      testQuest(async ({ player }) => {
+        expect(await player.getCurrentQuest("test_user_1")).toBeUndefined();
       }));
 
     it("player should have a quest after assigning a quest", () =>
-      testQuest(async ({ assignQuest, getCurrentQuest }) => {
-        await assignQuest("test_moderator_1", "test_user_1", "walk-1");
+      testQuest(async ({ player, moderator }) => {
+        await moderator.assignQuest(
+          "test_moderator_1",
+          "test_user_1",
+          "walk-1",
+        );
 
-        const quest = await getCurrentQuest("test_user_1");
+        const quest = await player.getCurrentQuest("test_user_1");
 
         expect(quest).toMatchObject({ kind: "walk-1" });
       }));
 
     it("walk-1 quest should have one hub as destination", () =>
-      testQuest(async ({ assignQuest, getCurrentQuest }) => {
-        await assignQuest("test_moderator_1", "test_user_1", "walk-1");
+      testQuest(async ({ player, moderator }) => {
+        await moderator.assignQuest(
+          "test_moderator_1",
+          "test_user_1",
+          "walk-1",
+        );
 
-        const quest = await getCurrentQuest("test_user_1");
+        const quest = await player.getCurrentQuest("test_user_1");
 
         expect(quest?.additionalInformation).toHaveLength(1);
       }));
 
     it("walk-2 quest should have one hub as destination", () =>
-      testQuest(async ({ assignQuest, getCurrentQuest }) => {
-        await assignQuest("test_moderator_1", "test_user_1", "walk-2");
+      testQuest(async ({ player, moderator }) => {
+        await moderator.assignQuest(
+          "test_moderator_1",
+          "test_user_1",
+          "walk-2",
+        );
 
-        const quest = await getCurrentQuest("test_user_1");
+        const quest = await player.getCurrentQuest("test_user_1");
 
-        expect(quest?.additionalInformation).toHaveLength(1);
+        expect(quest?.additionalInformation).toHaveLength(2);
       }));
 
     it("walk-3 quest should have one hub as destination", () =>
-      testQuest(async ({ assignQuest, getCurrentQuest }) => {
-        await assignQuest("test_moderator_1", "test_user_1", "walk-3");
+      testQuest(async ({ player, moderator }) => {
+        await moderator.assignQuest(
+          "test_moderator_1",
+          "test_user_1",
+          "walk-3",
+        );
 
-        const quest = await getCurrentQuest("test_user_1");
+        const quest = await player.getCurrentQuest("test_user_1");
 
-        expect(quest?.additionalInformation).toHaveLength(1);
+        expect(quest?.additionalInformation).toHaveLength(3);
       }));
+
+    describe("moderator", () => {
+      it("see that the player has no quest", () =>
+        testQuest(async ({ moderator }) => {
+          const quest = await moderator.getQuestOfPlayer(
+            "test_moderator_1",
+            "test_user_1",
+          );
+
+          expect(quest).toMatchObject({ state: "no-active-quest" });
+        }));
+
+      it("can't assign a quest to a user that already has an ongoing quest", () =>
+        testQuest(async ({ moderator }) => {
+          await moderator.assignQuest(
+            "test_moderator_1",
+            "test_user_1",
+            "walk-1",
+          );
+
+          await expect(async () =>
+            moderator.assignQuest("test_moderator_2", "test_user_1", "walk-2"),
+          ).rejects.toThrow();
+        }));
+
+      it("a moderator that is not involved with the quest should be marked as such", () =>
+        testQuest(async ({ moderator }) => {
+          await moderator.assignQuest(
+            "test_moderator_1",
+            "test_user_1",
+            "walk-1",
+          );
+
+          const quest = await moderator.getQuestOfPlayer(
+            "test_moderator_1",
+            "test_user_1",
+          );
+
+          expect(quest).toMatchObject({
+            state: "quest-does-not-concern-this-hub",
+          });
+        }));
+    });
   });
 
 async function testQuest(
@@ -122,6 +181,9 @@ async function testQuest(
       if (args.getAllFightIds().length !== 0) {
         await db.delete(fight).where(inArray(fight.id, args.getAllFightIds()));
       }
+      if (args.getAllQuestIds().length !== 0) {
+        await db.delete(quest).where(inArray(quest.id, args.getAllQuestIds()));
+      }
       return x;
     })
     .then(({ pass, error }) => {
@@ -136,6 +198,7 @@ async function setupTest() {
 
   const state = {
     allFightIds: [] as string[],
+    allQuestIds: [] as string[],
   };
 
   const playGame = async (winner: `test_user_${1 | 2}`) => {
@@ -153,21 +216,39 @@ async function setupTest() {
     return callers[player].quest.getCurrentQuestForPlayer();
   };
 
+  type ModeratorIds = (typeof testHubs)[number]["assignedModeratorId"];
   const assignQuest = async (
-    moderatorId: (typeof testHubs)[number]["assignedModeratorId"],
+    moderatorId: ModeratorIds,
     playerId: `test_user_${1 | 2}`,
     questKind: QuestKind,
   ) => {
-    await callers[moderatorId].quest.assignQuest({ questKind, playerId });
+    const newQuestId = await callers[moderatorId].quest.assignQuest({
+      questKind,
+      playerId,
+    });
+    state.allQuestIds.push(newQuestId);
   };
 
-  const getAllFightIds = () => state.allFightIds;
+  const getQuestOfPlayer = async (
+    moderatorId: ModeratorIds,
+    playerId: `test_user_${1 | 2}`,
+  ) => {
+    return callers[moderatorId].quest.getCurrentQuestOfPlayer({
+      userId: playerId,
+    });
+  };
 
   return {
     callers,
     playGame,
-    getAllFightIds,
-    getCurrentQuest,
-    assignQuest,
+    getAllFightIds: () => state.allFightIds,
+    getAllQuestIds: () => state.allQuestIds,
+    player: {
+      getCurrentQuest,
+    },
+    moderator: {
+      assignQuest,
+      getQuestOfPlayer,
+    },
   };
 }

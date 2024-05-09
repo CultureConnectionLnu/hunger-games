@@ -130,13 +130,18 @@ class QuestHandler {
       return { success: false, error: parseResult.error.message } as const;
     }
 
-    await db.insert(quest).values({
-      userId: playerId,
-      kind: questKind,
-      additionalInformation,
-    });
+    const newQuest = await db
+      .insert(quest)
+      .values({
+        userId: playerId,
+        kind: questKind,
+        additionalInformation,
+      })
+      .returning({
+        id: quest.id,
+      });
 
-    return { success: true } as const;
+    return { success: true, newQuestId: newQuest[0]!.id } as const;
   }
 
   private queryAllOngoingQuests() {
