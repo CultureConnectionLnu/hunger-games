@@ -13,6 +13,7 @@ import { ZodError } from "zod";
 import { clerkHandler, userHandler, type UserRoles } from "./logic/handler";
 
 import { TypedEventEmitter } from "~/lib/event-emitter";
+import { randomUUID } from "node:crypto";
 
 const globalForEE = globalThis as unknown as {
   ee: TypedEventEmitter | undefined;
@@ -171,3 +172,21 @@ export const moderatorProcedure = ifAnyRoleProcedure("moderator");
  * Protected (authenticated) procedure for admins
  */
 export const adminProcedure = ifAnyRoleProcedure("admin");
+
+export const errorBoundary = async <T>(fn: () => Promise<T> | T) => {
+  try {
+    const maybePromise = fn();
+    return maybePromise instanceof Promise ? await maybePromise : maybePromise;
+  } catch (error) {
+    if (error instanceof TRPCError) {
+      throw error;
+    }
+    const errorId = randomUUID();
+    const trpcError = new TRPCError({
+      code: "INTERNAL_SERVER_ERROR",
+      message: `Request failed due to unknown reasons. Please contact the operators about the issue and provide the following error ID: ${errorId}`,
+    });
+    console.error("Error id: " + errorId, error, trpcError);
+    throw trpcError;
+  }
+};
