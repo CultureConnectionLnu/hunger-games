@@ -1,30 +1,49 @@
 import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, type Mock } from "vitest";
 import { TimerFactory } from "~/server/api/logic/core/timer";
-import { UserHandler } from "~/server/api/logic/user";
+import { clerkHandler, userHandler } from "~/server/api/logic/handler";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 
+type MockUsers = Parameters<(typeof clerkHandler)["useMockImplementation"]>[0];
+export type MockUserIds = (typeof mockUsers)[number]["userId"];
+export const mockUsers = [
+  {
+    name: "Test user 1",
+    userId: "test_user_1",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test user 2",
+    userId: "test_user_2",
+    isAdmin: false,
+  } as const,
+] satisfies MockUsers;
+
 export function provideTestUsers() {
   beforeAll(async () => {
-    await UserHandler.instance.createUser("test_user_1");
-    await UserHandler.instance.createUser("test_user_2");
+    for (const mockUser of mockUsers) {
+      await userHandler.createUser(mockUser.userId);
+    }
   });
 
   afterAll(async () => {
-    await db
-      .delete(users)
-      .where(inArray(users.clerkId, ["test_user_1", "test_user_2"]));
+    await db.delete(users).where(
+      inArray(
+        users.clerkId,
+        mockUsers.map((x) => x.userId),
+      ),
+    );
   });
 }
 
-export function makePlayer(user: `test_user_1` | `test_user_2`) {
+export function makePlayer(user: MockUserIds) {
   beforeAll(async () => {
-    await UserHandler.instance.changePlayerState(user, true);
+    await userHandler.changePlayerState(user, true);
   });
 
   afterAll(async () => {
-    await UserHandler.instance.changePlayerState(user, false);
+    await userHandler.changePlayerState(user, false);
   });
 }
 
@@ -36,14 +55,11 @@ export function useAutomaticTimer() {
   TimerFactory.instance.useAutomatic();
 }
 
-export function useMockUserNames() {
-  UserHandler.instance.useMockUserNames({
-    test_user_1: "Test User 1",
-    test_user_2: "Test User 2",
-  });
+export function mockClerk() {
+  clerkHandler.useMockImplementation(mockUsers);
 }
-export function useRealUserNames() {
-  UserHandler.instance.useRealUserNames();
+export function useRealClerk() {
+  clerkHandler.useActualImplementation();
 }
 
 export function getManualTimer() {

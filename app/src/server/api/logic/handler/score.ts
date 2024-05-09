@@ -2,12 +2,7 @@ import { and, desc, eq, not, sql, sum } from "drizzle-orm";
 import { db } from "~/server/db";
 import { fight, score, usersToFight } from "~/server/db/schema";
 import { type KnownGames } from "./lobby";
-
-const staticScoringConfig = {
-  lowestScore: 0,
-  winnerGetsPercent: 50,
-  winnerMinimumPointsBonus: 100,
-} as const;
+import { fightScoringConfig } from "../config";
 
 class ScoreHandler {
   public async currentScore(userId: string) {
@@ -156,14 +151,14 @@ class ScoreHandler {
 
   private calculateScoreEntries(looserCurrentScore: number) {
     const reducePointsBy =
-      (looserCurrentScore * staticScoringConfig.winnerGetsPercent) / 100;
+      (looserCurrentScore * fightScoringConfig.winnerGetsPercent) / 100;
     const winnerAddition = Math.max(
-      staticScoringConfig.winnerMinimumPointsBonus,
+      fightScoringConfig.winnerMinimumPointsBonus,
       reducePointsBy,
     );
 
     const newLooserScore = looserCurrentScore - reducePointsBy;
-    if (newLooserScore < staticScoringConfig.lowestScore) {
+    if (newLooserScore < fightScoringConfig.lowestScore) {
       return {
         // the result would be 0 then
         looserSubtraction: -looserCurrentScore,
