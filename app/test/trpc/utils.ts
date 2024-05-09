@@ -48,12 +48,17 @@ export const mockUsers = [
   } as const,
 ] satisfies MockUsers;
 
+const mockClerkFunctions: Partial<
+  ReturnType<(typeof clerkHandler)["useMockImplementation"]>
+> = {};
+
 export function provideTestUsers() {
   beforeAll(async () => {
     for (const mockUser of mockUsers) {
       await userHandler.createUser(mockUser.userId);
     }
-    clerkHandler.useMockImplementation(mockUsers);
+    const { setCurrentUserId } = clerkHandler.useMockImplementation(mockUsers);
+    mockClerkFunctions.setCurrentUserId = setCurrentUserId;
   });
 
   afterAll(async () => {
@@ -64,6 +69,7 @@ export function provideTestUsers() {
       ),
     );
     clerkHandler.useActualImplementation();
+    mockClerkFunctions.setCurrentUserId = undefined;
   });
 }
 
@@ -131,12 +137,20 @@ export async function getTestUserCallers() {
   >;
   const ee = new TypedEventEmitter();
   for (const mockUser of mockUsers) {
-    callers[mockUser.userId] = appRouter.createCaller(
+    const caller = appRouter.createCaller(
       await createCommonContext({
         ee,
         userId: mockUser.userId,
       }),
     );
+    Object.defineProperty(callers, mockUser.userId, {
+      get() {
+        mockClerkFunctions.setCurrentUserId?.(mockUser.userId);
+        return caller;
+      },
+      configurable: false,
+      enumerable: true,
+    });
   }
   return callers;
 }

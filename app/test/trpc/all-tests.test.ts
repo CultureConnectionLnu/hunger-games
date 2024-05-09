@@ -1,4 +1,5 @@
 import { lobbyTests } from "./lobby";
+import { questTests } from "./quest";
 import { rpsTests } from "./rps";
 import { scoreTests } from "./score";
 import { provideTestUsers } from "./utils";
@@ -10,3 +11,4 @@ provideTestUsers();
 lobbyTests();
 rpsTests();
 scoreTests();
+questTests();
