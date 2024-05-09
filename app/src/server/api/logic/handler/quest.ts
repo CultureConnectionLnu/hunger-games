@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "~/server/db";
 import { quest } from "~/server/db/schema";
 import { getHandler } from "./base";
+import { scoreHandler } from "./score";
 
 const walkQuestInformationSchema = z.object({
   hubs: z.array(
@@ -20,7 +21,7 @@ export const questKind = z.union([
 ]);
 
 export type WalkQuestInformation = z.infer<typeof walkQuestInformationSchema>;
-type QuestKind = z.infer<typeof questKind>;
+export type QuestKind = z.infer<typeof questKind>;
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 
@@ -108,13 +109,23 @@ class QuestHandler {
       (x) => x.visited,
     );
 
-    await db
-      .update(quest)
-      .set({
-        additionalInformation: updatedAdditionalInformation,
-        ...(questCompleted ? { outcome: "completed" } : {}),
-      })
-      .where(eq(quest.id, currentQuest.id));
+    await db.transaction(async (tx) => {
+      await tx
+        .update(quest)
+        .set({
+          additionalInformation: updatedAdditionalInformation,
+          ...(questCompleted ? { outcome: "completed" } : {}),
+        })
+        .where(eq(quest.id, currentQuest.id));
+
+      if (!questCompleted) return;
+      await scoreHandler.updateScoreForQuest(
+        tx,
+        playerId,
+        currentQuest.id,
+        currentQuest.kind,
+      );
+    });
 
     return {
       success: true,

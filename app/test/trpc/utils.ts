@@ -7,6 +7,7 @@ import { appRouter } from "~/server/api/root";
 import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
+import { type RouterInputs } from "~/trpc/shared";
 
 type MockUsers = Parameters<(typeof clerkHandler)["useMockImplementation"]>[0];
 export type MockUserIds = (typeof mockUsers)[number]["userId"];
@@ -81,6 +82,56 @@ export function makePlayer(user: MockUserIds) {
   afterAll(async () => {
     await userHandler.changePlayerState(user, false);
   });
+}
+
+type TestHubs = Omit<RouterInputs["hub"]["addHub"], "assignedModeratorId"> & {
+  assignedModeratorId: MockUserIds;
+  id?: string;
+};
+export type ModeratorIds = (typeof testHubs)[number]["assignedModeratorId"];
+const testHubs = [
+  {
+    name: "Test Hub 1",
+    assignedModeratorId: "test_moderator_1",
+  },
+  {
+    name: "Test Hub 2",
+    assignedModeratorId: "test_moderator_2",
+  },
+  {
+    name: "Test Hub 3",
+    assignedModeratorId: "test_moderator_3",
+  },
+  {
+    name: "Test Hub 4",
+    assignedModeratorId: "test_moderator_4",
+  },
+] satisfies TestHubs[];
+
+export function makeHubs() {
+  const data = [] as TestHubs[];
+  const registerHubHooks = () => {
+    beforeAll(async () => {
+      const callers = await getTestUserCallers();
+      for (const hub of testHubs) {
+        const newHubId = await callers.test_admin.hub.addHub(hub);
+        data.push({ ...hub, id: newHubId });
+      }
+    });
+
+    afterAll(async () => {
+      const callers = await getTestUserCallers();
+      for (const hub of data) {
+        if (!hub.id) continue;
+        await callers.test_admin.hub.removeHub({ hubId: hub.id });
+      }
+    });
+  };
+
+  return {
+    registerHubHooks,
+    getHubData: () => data,
+  };
 }
 
 export function useManualTimer() {

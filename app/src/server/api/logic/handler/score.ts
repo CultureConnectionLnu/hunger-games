@@ -1,9 +1,10 @@
 import { and, desc, eq, not, sql, sum } from "drizzle-orm";
-import { db } from "~/server/db";
+import { type DB, db } from "~/server/db";
 import { fight, score, usersToFight } from "~/server/db/schema";
 import { type KnownGames } from "./lobby";
-import { fightScoringConfig } from "../config";
+import { fightScoringConfig, questScoringConfig } from "../config";
 import { getHandler } from "./base";
+import { type QuestKind } from "./quest";
 
 class ScoreHandler {
   public async currentScore(userId: string) {
@@ -41,6 +42,20 @@ class ScoreHandler {
     } catch (error) {
       console.error(`Could not update score for fight ${fightId}`, error);
     }
+  }
+
+  public async updateScoreForQuest(
+    tx: DB,
+    userId: string,
+    questId: string,
+    questKind: QuestKind,
+  ) {
+    const questScore = questScoringConfig[questKind];
+    return tx.insert(score).values({
+      questId,
+      score: questScore,
+      userId,
+    });
   }
 
   public async getDashboard() {

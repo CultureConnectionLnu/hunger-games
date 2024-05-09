@@ -1,6 +1,7 @@
 import { env } from "~/env";
 import type { BaseGameConfig } from "./core/base-game";
 import type { RockPaperScissorsConfig } from "./games/rps";
+import { type QuestKind } from "./handler";
 
 const longAssTime = 1_000_000;
 
@@ -21,6 +22,12 @@ export const fightScoringConfig = {
   winnerGetsPercent: 50,
   winnerMinimumPointsBonus: 100,
 } as const;
+
+export const questScoringConfig = {
+  "walk-1": 100,
+  "walk-2": 300,
+  "walk-3": 900,
+} satisfies Record<QuestKind, number>;
 
 export const rockPaperScissorsConfig: RockPaperScissorsConfig = {
   get chooseTimeoutInSeconds() {
