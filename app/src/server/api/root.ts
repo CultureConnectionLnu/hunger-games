@@ -12,7 +12,7 @@ import { questRouter } from "./routers/quest";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-  fight: lobbyRouter,
+  lobby: lobbyRouter,
   rockPaperScissors: rockPaperScissorsRouter,
   score: scoreRouter,
   user: userRouter,

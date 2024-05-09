@@ -4,6 +4,7 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 import {
   createTRPCRouter,
+  errorBoundary,
   playerProcedure,
   publicProcedure,
 } from "~/server/api/trpc";
@@ -151,6 +152,12 @@ export const lobbyRouter = createTRPCRouter({
       return { success: false } as const;
     }
   }),
+
+  getAllMyFights: playerProcedure.query(({ ctx }) =>
+    errorBoundary(async () =>
+      lobbyHandler.getAllFightsOfPlayer(ctx.user.clerkId),
+    ),
+  ),
 
   join: inFightProcedure.query(({ ctx }) => {
     catchMatchError(() => {

@@ -1,9 +1,10 @@
 import { and, desc, eq, not, sql, sum } from "drizzle-orm";
-import { db } from "~/server/db";
+import { type DB, db } from "~/server/db";
 import { fight, score, usersToFight } from "~/server/db/schema";
 import { type KnownGames } from "./lobby";
-import { fightScoringConfig } from "../config";
+import { fightScoringConfig, questScoringConfig } from "../config";
 import { getHandler } from "./base";
+import { type QuestKind } from "./quest";
 
 class ScoreHandler {
   public async currentScore(userId: string) {
@@ -17,7 +18,7 @@ class ScoreHandler {
     return Number(totalScore[0]?.score ?? 0);
   }
 
-  public async updateScore(
+  public async updateScoreForFight(
     winnerId: string,
     looserId: string,
     fightId: string,
@@ -43,6 +44,20 @@ class ScoreHandler {
     }
   }
 
+  public async updateScoreForQuest(
+    tx: DB,
+    userId: string,
+    questId: string,
+    questKind: QuestKind,
+  ) {
+    const questScore = questScoringConfig[questKind];
+    return tx.insert(score).values({
+      questId,
+      score: questScore,
+      userId,
+    });
+  }
+
   public async getDashboard() {
     return await db
       .select({
@@ -55,21 +70,26 @@ class ScoreHandler {
       .orderBy(desc(sum(score.score)));
   }
 
-  public async getHistory(user: string) {
-    return await db
+  public async getHistory(playerId: string) {
+    return db
       .select({
-        fightId: fight.id,
-        game: sql<KnownGames>`${fight.game}`,
+        fightId: score.fightId,
+        questId: score.questId,
         scoreChange: score.score,
-        youWon: sql<boolean>`CASE WHEN ${fight.winner} = ${score.userId} THEN true ELSE false END`,
         score: sql<number>`CAST(SUM(${score.score}) OVER (PARTITION BY ${score.userId} ORDER BY ${fight.createdAt}) AS INTEGER)`,
       })
-      .from(fight)
-      .innerJoin(score, eq(score.fightId, fight.id))
-      .innerJoin(usersToFight, eq(fight.id, usersToFight.fightId))
-      .where(eq(score.userId, user))
-      .groupBy(fight.id, fight.game, fight.winner, score.score, score.userId)
-      .orderBy(desc(fight.createdAt));
+      .from(score)
+      .where(eq(score.userId, playerId))
+      .orderBy(desc(score.createdAt));
+  }
+
+  public async getCurrentScore(playerId: string) {
+    return db
+      .select({
+        score: sum(score.score),
+      })
+      .from(score)
+      .where(eq(score.userId, playerId));
   }
 
   public async getHistoryEntry(userId: string, fightId: string) {

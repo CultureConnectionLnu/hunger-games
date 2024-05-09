@@ -28,7 +28,7 @@ export async function createCommonContext(opts: {
   ee: TypedEventEmitter;
   userId: string | undefined;
 }) {
-  const base = { user: undefined, ...opts };
+  const base = { user: undefined, ee: opts.ee };
   const { userId } = opts;
   if (!userId) {
     return base;

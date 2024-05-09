@@ -1,5 +1,5 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { db } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
 import { BaseGame } from "../core/base-game";
@@ -56,6 +56,19 @@ class LobbyHandler {
       game: existingFight[0]!.fight.game,
       players: existingFight.map((f) => f.usersToMatch?.userId).filter(Boolean),
     };
+  }
+
+  public async getAllFightsOfPlayer(userId: string) {
+    return await db
+      .select({
+        fightId: fight.id,
+        game: sql<KnownGames>`${fight.game}`,
+        youWon: sql<boolean>`CASE WHEN ${fight.winner} = ${userId} THEN true ELSE false END`,
+      })
+      .from(fight)
+      .innerJoin(usersToFight, eq(fight.id, usersToFight.fightId))
+      .where(eq(usersToFight.userId, userId))
+      .orderBy(desc(fight.createdAt));
   }
 
   public async getOpponent(opponentId: string) {
@@ -135,7 +148,7 @@ class LobbyHandler {
           throw new Error("Failed to update fight", { cause: error });
         });
 
-      await scoreHandler.updateScore(winnerId, looserId, game.fightId);
+      await scoreHandler.updateScoreForFight(winnerId, looserId, game.fightId);
       await questHandler.markQuestAsLost(looserId);
     } catch (error) {
       console.log("Game completed with an error", error);

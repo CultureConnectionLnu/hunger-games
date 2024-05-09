@@ -1,69 +1,30 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { inArray } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { lobbyHandler, questHandler } from "~/server/api/logic/handler";
 import { db } from "~/server/db";
 import { fight, quest } from "~/server/db/schema";
-import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
+import { type RouterOutputs } from "~/trpc/shared";
 import {
   getTestUserCallers,
+  makeHubs,
   makePlayer,
   useAutomaticTimer,
   useManualTimer,
-  type MockUserIds,
+  type ModeratorIds
 } from "./utils";
 
 type QuestData = NonNullable<RouterOutputs["quest"]["getCurrentQuestOfPlayer"]>;
 type GetQuestKind<T> = T extends { quest: { kind: infer U } } ? U : never;
 type QuestKind = GetQuestKind<QuestData>;
 
-type AddHub = RouterInputs["hub"]["addHub"];
-type TestHubs = Omit<AddHub, "assignedModeratorId"> & {
-  assignedModeratorId: MockUserIds;
-  id?: string;
-};
-const testHubs = {
-  setupData: [
-    {
-      name: "Test Hub 1",
-      assignedModeratorId: "test_moderator_1",
-    },
-    {
-      name: "Test Hub 2",
-      assignedModeratorId: "test_moderator_2",
-    },
-    {
-      name: "Test Hub 3",
-      assignedModeratorId: "test_moderator_3",
-    },
-    {
-      name: "Test Hub 4",
-      assignedModeratorId: "test_moderator_4",
-    },
-  ] satisfies TestHubs[],
-  data: [] as TestHubs[],
-};
+const { registerHubHooks, getHubData } = makeHubs();
 
 export const questTests = () =>
   describe("Quest", () => {
     makePlayer("test_user_1");
     makePlayer("test_user_2");
-
-    beforeAll(async () => {
-      const callers = await getTestUserCallers();
-      for (const hub of testHubs.setupData) {
-        const newHubId = await callers.test_admin.hub.addHub(hub);
-        testHubs.data.push({ ...hub, id: newHubId });
-      }
-    });
-
-    afterAll(async () => {
-      const callers = await getTestUserCallers();
-      for (const hub of testHubs.data) {
-        if (!hub.id) continue;
-        await callers.test_admin.hub.removeHub({ hubId: hub.id });
-      }
-    });
+    registerHubHooks();
 
     it("by default, player should not have a quest assigned", () =>
       testQuest(async ({ player }) => {
@@ -404,7 +365,7 @@ async function setupTest() {
   };
 
   const playGame = async (winner: `test_user_${1 | 2}`) => {
-    const { id } = await callers.test_user_1.fight.create({
+    const { id } = await callers.test_user_1.lobby.create({
       opponent: `test_user_2`,
     });
     const looser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
@@ -421,15 +382,13 @@ async function setupTest() {
     return callers[player].quest.getAllQuestsFromPlayer();
   };
 
-  type ModeratorIds =
-    (typeof testHubs)["setupData"][number]["assignedModeratorId"];
   const assignQuest = async (
     moderatorId: ModeratorIds,
     playerId: `test_user_${1 | 2}`,
     questKind: QuestKind,
   ) => {
     questHandler.defineNextHubsUsedForWalkQuest(
-      testHubs.data
+      getHubData()
         // make sure that the current hub is not in the range for the test
         .filter((x) => x.assignedModeratorId !== moderatorId)
         .map((x) => x.id)

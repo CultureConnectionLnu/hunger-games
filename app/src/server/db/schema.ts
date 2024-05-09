@@ -89,9 +89,12 @@ export const userToFightRelations = relations(usersToFight, ({ one }) => ({
 export const score = createTable(
   "score",
   {
-    fightId: uuid("fight_id")
-      .references(() => fight.id, { onDelete: "cascade" })
-      .notNull(),
+    fightId: uuid("fight_id").references(() => fight.id, {
+      onDelete: "cascade",
+    }),
+    questId: uuid("quest_id").references(() => quest.id, {
+      onDelete: "cascade",
+    }),
     userId: varchar("user_id", { length: 255 })
       .references(() => users.clerkId, { onDelete: "cascade" })
       .notNull(),
@@ -99,13 +102,17 @@ export const score = createTable(
     ...metadata,
   },
   (t) => ({
-    unq: unique().on(t.fightId, t.userId),
+    unq: unique().on(t.fightId, t.userId, t.questId),
   }),
 );
-export const scoreFightRelation = relations(score, ({ one }) => ({
+export const scoreRelation = relations(score, ({ one }) => ({
   fight: one(fight, {
     fields: [score.fightId],
     references: [fight.id],
+  }),
+  quest: one(quest, {
+    fields: [score.questId],
+    references: [quest.id],
   }),
 }));
 
@@ -150,5 +157,9 @@ export const questRelations = relations(quest, ({ one }) => ({
   user: one(users, {
     fields: [quest.userId],
     references: [users.clerkId],
+  }),
+  score: one(score, {
+    fields: [quest.id],
+    references: [score.questId],
   }),
 }));

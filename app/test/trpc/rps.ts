@@ -361,19 +361,19 @@ async function setupTest() {
   const secondRpsListener = vi.fn<[RockPaperScissorsPlayerEvents], void>();
   lobbyHandler.defineNextGameType("rock-paper-scissors");
 
-  const { id: fightId } = await callers.test_user_1.fight.create({
+  const { id: fightId } = await callers.test_user_1.lobby.create({
     opponent: `test_user_2`,
   });
 
-  await callers.test_user_1.fight.join();
-  await callers.test_user_2.fight.join();
+  await callers.test_user_1.lobby.join();
+  await callers.test_user_2.lobby.join();
 
   const state = {
     fightId,
     fight: lobbyHandler.getFight(fightId),
     test_user_1: {
       base: (
-        await callers.test_user_1.fight.onGameAction({
+        await callers.test_user_1.lobby.onGameAction({
           userId: "test_user_1",
           fightId,
         })
@@ -387,7 +387,7 @@ async function setupTest() {
     },
     test_user_2: {
       base: (
-        await callers.test_user_2.fight.onGameAction({
+        await callers.test_user_2.lobby.onGameAction({
           userId: "test_user_2",
           fightId,
         })
@@ -411,8 +411,8 @@ async function setupTest() {
   };
 
   const startGame = async () => {
-    await callers.test_user_1.fight.ready();
-    await callers.test_user_2.fight.ready();
+    await callers.test_user_1.lobby.ready();
+    await callers.test_user_2.lobby.ready();
     await runAllMacroTasks();
     await runAllMacroTasks();
   };

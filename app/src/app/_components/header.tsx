@@ -92,14 +92,8 @@ export default function Header() {
                     require: "role-player",
                   },
                   {
-                    title: "Fight History",
-                    href: "/game/history/fight",
-                    icon: "MdHistory",
-                    require: "role-player",
-                  },
-                  {
-                    title: "Quest History",
-                    href: "/game/history/quest",
+                    title: "History",
+                    href: "/game/history",
                     icon: "MdHistory",
                     require: "role-player",
                   },

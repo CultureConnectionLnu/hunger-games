@@ -1,21 +1,31 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { fightScoringConfig } from "~/server/api/logic/config";
-import { lobbyHandler } from "~/server/api/logic/handler";
+import {
+  fightScoringConfig,
+  questScoringConfig,
+} from "~/server/api/logic/config";
+import {
+  type QuestKind,
+  lobbyHandler,
+  questHandler,
+} from "~/server/api/logic/handler";
 import { db } from "~/server/db";
-import { fight } from "~/server/db/schema";
+import { fight, quest } from "~/server/db/schema";
 import {
   getTestUserCallers,
+  makeHubs,
   makePlayer,
   useAutomaticTimer,
   useManualTimer,
 } from "./utils";
 
+const { registerHubHooks, getHubData } = makeHubs();
 export const scoreTests = () =>
   describe("Score", () => {
     makePlayer("test_user_1");
     makePlayer("test_user_2");
+    registerHubHooks();
 
     describe("dashboard", () => {
       it("should be empty in the beginning", () =>
@@ -52,43 +62,80 @@ export const scoreTests = () =>
           expect(history).toHaveLength(0);
         }));
 
-      it("should have one entry after one match for both player", () =>
-        testFight(async ({ playGame, getHistory }) => {
-          await playGame("test_user_1");
-          const playerOneHistory = await getHistory("test_user_1");
-          const playerTwoHistory = await getHistory("test_user_2");
+      describe("fights", () => {
+        it("should have one entry after one match for both player", () =>
+          testFight(async ({ playGame, getHistory }) => {
+            await playGame("test_user_1");
+            const playerOneHistory = await getHistory("test_user_1");
+            const playerTwoHistory = await getHistory("test_user_2");
 
-          expect(playerOneHistory).toHaveLength(1);
-          expect(playerTwoHistory).toHaveLength(1);
-        }));
+            expect(playerOneHistory).toHaveLength(1);
+            expect(playerTwoHistory).toHaveLength(1);
+          }));
 
-      it(`should score the very first winner with ${fightScoringConfig.winnerMinimumPointsBonus} points`, () =>
-        testFight(async ({ playGame, getHistory }) => {
-          await playGame("test_user_1");
-          const [firstGame] = await getHistory("test_user_1");
+        it(`should score the very first winner with ${fightScoringConfig.winnerMinimumPointsBonus} points`, () =>
+          testFight(async ({ playGame, getHistory }) => {
+            await playGame("test_user_1");
+            const [firstGame] = await getHistory("test_user_1");
 
-          expect(firstGame?.score).toBe(
-            fightScoringConfig.winnerMinimumPointsBonus,
-          );
-        }));
+            expect(firstGame?.score).toBe(
+              fightScoringConfig.winnerMinimumPointsBonus,
+            );
+          }));
 
-      it(`should score the very first looser with 0 points`, () =>
-        testFight(async ({ playGame, getHistory }) => {
-          await playGame("test_user_1");
-          const [firstGame] = await getHistory("test_user_2");
+        it(`should score the very first looser with 0 points`, () =>
+          testFight(async ({ playGame, getHistory }) => {
+            await playGame("test_user_1");
+            const [firstGame] = await getHistory("test_user_2");
 
-          expect(firstGame?.score).toBe(0);
-        }));
+            expect(firstGame?.score).toBe(0);
+          }));
 
-      it(`should show all games`, () =>
-        testFight(async ({ playGame, getHistory }) => {
-          await playGame("test_user_1");
-          await playGame("test_user_1");
-          await playGame("test_user_1");
-          const history = await getHistory("test_user_1");
+        it(`should show all games`, () =>
+          testFight(async ({ playGame, getHistory }) => {
+            await playGame("test_user_1");
+            await playGame("test_user_1");
+            await playGame("test_user_1");
+            const history = await getHistory("test_user_1");
 
-          expect(history).toHaveLength(3);
-        }));
+            expect(history).toHaveLength(3);
+          }));
+      });
+
+      describe("quests", () => {
+        Object.keys(questScoringConfig).forEach((kind) => {
+          const questKind = kind as QuestKind;
+          it(`should score ${questScoringConfig[questKind]} points for completing a ${questKind} quest`, () =>
+            testFight(async ({ completeQuest, getHistory }) => {
+              await completeQuest("test_user_1", questKind);
+
+              const history = await getHistory("test_user_1");
+              expect(history).toMatchObject([
+                {
+                  scoreChange: questScoringConfig[questKind],
+                },
+              ]);
+            }));
+        });
+
+        it("should not have a history entry for uncompleted quests", () =>
+          testFight(async ({ startQuest, getHistory }) => {
+            await startQuest("test_user_1", "walk-1");
+
+            const history = await getHistory("test_user_1");
+            expect(history).toHaveLength(0);
+          }));
+
+        it("should not have a history entry for lost quests", () =>
+          testFight(async ({ startQuest, playGame, getHistory }) => {
+            await startQuest("test_user_1", "walk-1");
+            await playGame('test_user_2')
+
+            const history = await getHistory("test_user_1");
+            // is 1, because the game is in the array
+            expect(history).toHaveLength(1);
+          }));
+      });
     });
 
     describe("historyEntry", () => {
@@ -124,6 +171,9 @@ async function testFight(
       if (args.getAllFightIds().length !== 0) {
         await db.delete(fight).where(inArray(fight.id, args.getAllFightIds()));
       }
+      if (args.getAllQuestIds().length !== 0) {
+        await db.delete(quest).where(inArray(quest.id, args.getAllQuestIds()));
+      }
       return x;
     })
     .then(({ pass, error }) => {
@@ -138,10 +188,11 @@ async function setupTest() {
 
   const state = {
     allFightIds: [] as string[],
+    allQuestIds: [] as string[],
   };
 
   const playGame = async (winner: `test_user_${1 | 2}`) => {
-    const { id } = await callers.test_user_1.fight.create({
+    const { id } = await callers.test_user_1.lobby.create({
       opponent: `test_user_2`,
     });
     const looser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
@@ -151,7 +202,41 @@ async function setupTest() {
     state.allFightIds.push(id);
   };
 
-  const getAllFightIds = () => state.allFightIds;
+  const startQuest = async (
+    userId: `test_user_${1 | 2}`,
+    questKind: QuestKind,
+  ) => {
+    questHandler.defineNextHubsUsedForWalkQuest(
+      getHubData()
+        // make sure that the current hub is not in the range for the test
+        .filter((x) => x.assignedModeratorId !== "test_moderator_1")
+        .map((x) => x.id)
+        .filter(Boolean),
+    );
+    const newQuestId = await callers.test_moderator_1.quest.assignQuest({
+      playerId: userId,
+      questKind,
+    });
+    state.allQuestIds.push(newQuestId);
+  };
+
+  const completeQuest = async (
+    userId: `test_user_${1 | 2}`,
+    questKind: QuestKind,
+  ) => {
+    await startQuest(userId, questKind);
+    await callers.test_moderator_2.quest.markHubAsVisited({
+      playerId: userId,
+    });
+    if (questKind === "walk-1") return;
+    await callers.test_moderator_3.quest.markHubAsVisited({
+      playerId: userId,
+    });
+    if (questKind === "walk-2") return;
+    await callers.test_moderator_4.quest.markHubAsVisited({
+      playerId: userId,
+    });
+  };
 
   const getDashboard = async () => {
     const board = await callers.test_user_1.score.dashboard();
@@ -166,7 +251,7 @@ async function setupTest() {
   };
 
   const getHistory = (userId: `test_user_${1 | 2}`) =>
-    callers[userId].score.history();
+    callers[userId].score.getHistory();
 
   const getHistoryEntry = (userId: `test_user_${1 | 2}`, fightId: string) =>
     callers[userId].score.historyEntry({ fightId });
@@ -174,7 +259,10 @@ async function setupTest() {
   return {
     callers,
     playGame,
-    getAllFightIds,
+    completeQuest,
+    startQuest,
+    getAllFightIds: () => state.allFightIds,
+    getAllQuestIds: () => state.allQuestIds,
     getDashboard,
     getHistory,
     getHistoryEntry,

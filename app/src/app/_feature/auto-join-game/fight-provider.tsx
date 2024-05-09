@@ -27,7 +27,7 @@ export default function FightProvider({
   const showGameResult = () =>
     router.push(`/history?fightId=${currentFight?.id}`);
 
-  api.fight.onFightUpdate.useSubscription(
+  api.lobby.onFightUpdate.useSubscription(
     { id: user?.id ?? "" },
     {
       onData(event) {
