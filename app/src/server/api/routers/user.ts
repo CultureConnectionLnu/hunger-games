@@ -5,33 +5,16 @@ import {
   adminProcedure,
   createTRPCRouter,
   ifAnyRoleProcedure,
+  moderatorProcedure,
   userProcedure,
 } from "../trpc";
 
 export const userRouter = createTRPCRouter({
-  allUsers: ifAnyRoleProcedure("moderator", "admin").query(async () => {
-    const result = await clerkHandler.getAllUsers();
-    if (!result.success) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Failed to get all users",
-      });
-    }
+  allUsers: adminProcedure.query(async () => getAllUserWithRoles()),
 
-    const allRoles = (
-      await Promise.all(
-        result.users.map((x) => userHandler.getUserRoles(x.userId)),
-      )
-    ).filter(Boolean);
-
-    return result.users.map((user) => {
-      const roles = allRoles.find((y) => y.id === user.userId);
-      return {
-        ...user,
-        isModerator: roles?.isModerator ?? false,
-        isPlayer: roles?.isPlayer ?? false,
-      };
-    });
+  allPlayer: moderatorProcedure.query(async ()=>{
+    const allUsers = await  getAllUserWithRoles();
+    return allUsers.filter(x => x.isPlayer)
   }),
 
   getYourRoles: userProcedure.query(({ ctx }) => {
@@ -64,3 +47,28 @@ export const userRouter = createTRPCRouter({
       }
     }),
 });
+
+async function getAllUserWithRoles(){
+      const result = await clerkHandler.getAllUsers();
+    if (!result.success) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Failed to get all users",
+      });
+    }
+
+    const allRoles = (
+      await Promise.all(
+        result.users.map((x) => userHandler.getUserRoles(x.userId)),
+      )
+    ).filter(Boolean);
+
+    return result.users.map((user) => {
+      const roles = allRoles.find((y) => y.id === user.userId);
+      return {
+        ...user,
+        isModerator: roles?.isModerator ?? false,
+        isPlayer: roles?.isPlayer ?? false,
+      };
+    });
+}

@@ -6,7 +6,7 @@ import { UserDialog } from "./_components/user-dialog";
 
 export default async function UsersOverview() {
   const quests = await api.quest.getOngoingQuestsForModerator.query();
-  const users = await api.user.allUsers.query();
+  const users = await api.user.allPlayer.query();
 
   return (
     <div className="flex h-full flex-col gap-4 pb-4">
