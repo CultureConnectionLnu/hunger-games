@@ -4,7 +4,7 @@ import { db } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
 import { BaseGame } from "../core/base-game";
 import { RpsGame } from "../games/rps";
-import { clerkHandler } from ".";
+import { clerkHandler, questHandler } from ".";
 import { scoreHandler } from "./score";
 import { getHandler } from "./base";
 
@@ -136,6 +136,7 @@ class LobbyHandler {
         });
 
       await scoreHandler.updateScore(winnerId, looserId, game.fightId);
+      await questHandler.markQuestAsLost(looserId);
     } catch (error) {
       console.log("Game completed with an error", error);
     }

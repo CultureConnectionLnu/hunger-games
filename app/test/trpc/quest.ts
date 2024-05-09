@@ -131,6 +131,36 @@ export const questTests = () =>
         ]);
       }));
 
+    describe("player", () => {
+      it("should loose a quest upon loosing a fight", () =>
+        testQuest(async ({ player, moderator, playGame }) => {
+          await moderator.assignQuest(
+            "test_moderator_1",
+            "test_user_1",
+            "walk-1",
+          );
+          await playGame("test_user_2");
+
+          const quest = await player.getCurrentQuest("test_user_1");
+
+          expect(quest).toBeUndefined();
+        }));
+
+      it("should keep quest upon winning a fight", () =>
+        testQuest(async ({ player, moderator, playGame }) => {
+          await moderator.assignQuest(
+            "test_moderator_1",
+            "test_user_1",
+            "walk-1",
+          );
+          await playGame("test_user_1");
+
+          const quest = await player.getCurrentQuest("test_user_1");
+
+          expect(quest).not.toBeUndefined();
+        }));
+    });
+
     describe("moderator", () => {
       it("see that the player has no quest", () =>
         testQuest(async ({ moderator }) => {

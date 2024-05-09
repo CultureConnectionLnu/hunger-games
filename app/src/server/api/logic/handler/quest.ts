@@ -104,13 +104,15 @@ class QuestHandler {
       return { success: false, error: parseResult.error.message };
     }
 
-    const questCompleted = updatedAdditionalInformation.hubs.every(x => x.visited);
+    const questCompleted = updatedAdditionalInformation.hubs.every(
+      (x) => x.visited,
+    );
 
     await db
       .update(quest)
       .set({
         additionalInformation: updatedAdditionalInformation,
-        ...(questCompleted ? {outcome: 'completed'} : {})
+        ...(questCompleted ? { outcome: "completed" } : {}),
       })
       .where(eq(quest.id, currentQuest.id));
 
@@ -160,7 +162,19 @@ class QuestHandler {
     return { success: true, newQuestId: newQuest[0]!.id } as const;
   }
 
-  defineNextHubsUsedForWalkQuest(hubIds: string[]) {
+  public async markQuestAsLost(playerId: string) {
+    const currentQuest = await this.getCurrentQuestForPlayer(playerId);
+    if (!currentQuest) return;
+
+    await db
+      .update(quest)
+      .set({
+        outcome: "lost-in-battle",
+      })
+      .where(eq(quest.id, currentQuest.id));
+  }
+
+  public defineNextHubsUsedForWalkQuest(hubIds: string[]) {
     this.nextHubsUsedForWalkQuest = hubIds;
   }
 
