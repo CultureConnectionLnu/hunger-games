@@ -79,6 +79,33 @@ export const questTests = () =>
 
         expect(quest).toMatchObject({ kind: "walk-1" });
       }));
+
+    it("walk-1 quest should have one hub as destination", () =>
+      testQuest(async ({ assignQuest, getCurrentQuest }) => {
+        await assignQuest("test_moderator_1", "test_user_1", "walk-1");
+
+        const quest = await getCurrentQuest("test_user_1");
+
+        expect(quest?.additionalInformation).toHaveLength(1);
+      }));
+
+    it("walk-2 quest should have one hub as destination", () =>
+      testQuest(async ({ assignQuest, getCurrentQuest }) => {
+        await assignQuest("test_moderator_1", "test_user_1", "walk-2");
+
+        const quest = await getCurrentQuest("test_user_1");
+
+        expect(quest?.additionalInformation).toHaveLength(1);
+      }));
+
+    it("walk-3 quest should have one hub as destination", () =>
+      testQuest(async ({ assignQuest, getCurrentQuest }) => {
+        await assignQuest("test_moderator_1", "test_user_1", "walk-3");
+
+        const quest = await getCurrentQuest("test_user_1");
+
+        expect(quest?.additionalInformation).toHaveLength(1);
+      }));
   });
 
 async function testQuest(
