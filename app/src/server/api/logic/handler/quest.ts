@@ -25,6 +25,13 @@ type QuestKind = z.infer<typeof questKind>;
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 
 class QuestHandler {
+  /**
+   * For the next assignment use this list instead of all hubs.
+   * This will also disable the random factor.
+   * This is used for testing.
+   */
+  nextHubsUsedForWalkQuest?: string[];
+
   public async getAllOngoingQuests() {
     const quests = await this.queryAllOngoingQuests();
     return this.parseQuests(quests);
@@ -115,7 +122,13 @@ class QuestHandler {
     questKind: QuestKind,
   ) {
     const count = this.getNumberOfHubsForQuestKind(questKind);
-    const hubs = this.selectRandomHubs(allHubIds, count);
+    const hubs = this.selectRandomHubs(
+      this.nextHubsUsedForWalkQuest ?? allHubIds,
+      count,
+      Boolean(this.nextHubsUsedForWalkQuest),
+    );
+    this.nextHubsUsedForWalkQuest = undefined;
+
     if (hubs.success === false) {
       return { success: false, error: hubs.error } as const;
     }
@@ -142,6 +155,10 @@ class QuestHandler {
       });
 
     return { success: true, newQuestId: newQuest[0]!.id } as const;
+  }
+
+  defineNextHubsUsedForWalkQuest(hubIds: string[]) {
+    this.nextHubsUsedForWalkQuest = hubIds;
   }
 
   private queryAllOngoingQuests() {
@@ -182,7 +199,11 @@ class QuestHandler {
     return 0;
   }
 
-  private selectRandomHubs(allHubIds: string[], count: number) {
+  private selectRandomHubs(
+    allHubIds: string[],
+    count: number,
+    disableRandom: boolean,
+  ) {
     if (count < 0) {
       return {
         success: false,
@@ -196,11 +217,14 @@ class QuestHandler {
       } as const;
     }
 
+    const shuffled = disableRandom
+      ? allHubIds
+      : allHubIds.sort(() => Math.random() - 0.5);
+
     if (count === allHubIds.length) {
-      return { success: true, selectedHubs: allHubIds };
+      return { success: true, selectedHubs: shuffled };
     }
 
-    const shuffled = allHubIds.sort(() => Math.random() - 0.5);
     return {
       success: true,
       selectedHubs: shuffled.slice(0, count),

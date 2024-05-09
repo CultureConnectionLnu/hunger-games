@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { lobbyHandler } from "~/server/api/logic/handler";
+import { lobbyHandler, questHandler } from "~/server/api/logic/handler";
 import { db } from "~/server/db";
 import { fight, quest } from "~/server/db/schema";
 import { type RouterInputs, type RouterOutputs } from "~/trpc/shared";
@@ -20,25 +20,29 @@ type QuestKind = GetQuestKind<QuestData>;
 type AddHub = RouterInputs["hub"]["addHub"];
 type TestHubs = Omit<AddHub, "assignedModeratorId"> & {
   assignedModeratorId: MockUserIds;
+  id?: string;
 };
-const testHubs = [
-  {
-    name: "Test Hub 1",
-    assignedModeratorId: "test_moderator_1",
-  },
-  {
-    name: "Test Hub 2",
-    assignedModeratorId: "test_moderator_2",
-  },
-  {
-    name: "Test Hub 3",
-    assignedModeratorId: "test_moderator_3",
-  },
-  {
-    name: "Test Hub 4",
-    assignedModeratorId: "test_moderator_4",
-  },
-] satisfies TestHubs[];
+const testHubs = {
+  setupData: [
+    {
+      name: "Test Hub 1",
+      assignedModeratorId: "test_moderator_1",
+    },
+    {
+      name: "Test Hub 2",
+      assignedModeratorId: "test_moderator_2",
+    },
+    {
+      name: "Test Hub 3",
+      assignedModeratorId: "test_moderator_3",
+    },
+    {
+      name: "Test Hub 4",
+      assignedModeratorId: "test_moderator_4",
+    },
+  ] satisfies TestHubs[],
+  data: [] as TestHubs[],
+};
 
 export const questTests = () =>
   describe("Quest", () => {
@@ -47,21 +51,16 @@ export const questTests = () =>
 
     beforeAll(async () => {
       const callers = await getTestUserCallers();
-      for (const hub of testHubs) {
-        await callers.test_admin.hub.addHub(hub);
+      for (const hub of testHubs.setupData) {
+        const newHubId = await callers.test_admin.hub.addHub(hub);
+        testHubs.data.push({ ...hub, id: newHubId });
       }
     });
 
     afterAll(async () => {
       const callers = await getTestUserCallers();
-      const hubs = await callers.test_admin.hub.allHubs();
-      const moderatorIds = new Set(testHubs.map((x) => x.assignedModeratorId));
-      for (const hub of hubs) {
-        if (
-          !hub.assignedModerator ||
-          !moderatorIds.has(hub.assignedModerator.id)
-        )
-          continue;
+      for (const hub of testHubs.data) {
+        if (!hub.id) continue;
         await callers.test_admin.hub.removeHub({ hubId: hub.id });
       }
     });
@@ -94,7 +93,9 @@ export const questTests = () =>
 
         const quest = await player.getCurrentQuest("test_user_1");
 
-        expect(quest?.additionalInformation).toHaveLength(1);
+        expect(quest?.additionalInformation).toMatchObject([
+          { name: "Test Hub 2" },
+        ]);
       }));
 
     it("walk-2 quest should have one hub as destination", () =>
@@ -107,7 +108,10 @@ export const questTests = () =>
 
         const quest = await player.getCurrentQuest("test_user_1");
 
-        expect(quest?.additionalInformation).toHaveLength(2);
+        expect(quest?.additionalInformation).toMatchObject([
+          { name: "Test Hub 2" },
+          { name: "Test Hub 3" },
+        ]);
       }));
 
     it("walk-3 quest should have one hub as destination", () =>
@@ -120,7 +124,11 @@ export const questTests = () =>
 
         const quest = await player.getCurrentQuest("test_user_1");
 
-        expect(quest?.additionalInformation).toHaveLength(3);
+        expect(quest?.additionalInformation).toMatchObject([
+          { name: "Test Hub 2" },
+          { name: "Test Hub 3" },
+          { name: "Test Hub 4" },
+        ]);
       }));
 
     describe("moderator", () => {
@@ -216,12 +224,20 @@ async function setupTest() {
     return callers[player].quest.getCurrentQuestForPlayer();
   };
 
-  type ModeratorIds = (typeof testHubs)[number]["assignedModeratorId"];
+  type ModeratorIds =
+    (typeof testHubs)["setupData"][number]["assignedModeratorId"];
   const assignQuest = async (
     moderatorId: ModeratorIds,
     playerId: `test_user_${1 | 2}`,
     questKind: QuestKind,
   ) => {
+    questHandler.defineNextHubsUsedForWalkQuest(
+      testHubs.data
+        // make sure that the current hub is not in the range for the test
+        .filter((x) => x.assignedModeratorId !== moderatorId)
+        .map((x) => x.id)
+        .filter(Boolean),
+    );
     const newQuestId = await callers[moderatorId].quest.assignQuest({
       questKind,
       playerId,
