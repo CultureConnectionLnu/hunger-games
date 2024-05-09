@@ -1,30 +1,23 @@
 import { TRPCError } from "@trpc/server";
-import { UserHandler } from "../logic/user";
+import { z } from "zod";
+import { userHandler } from "../logic/handler";
 import {
   adminProcedure,
   createTRPCRouter,
   ifAnyRoleProcedure,
   userProcedure,
 } from "../trpc";
-import { z } from "zod";
 
 export const userRouter = createTRPCRouter({
   allUsers: ifAnyRoleProcedure("moderator", "admin").query(async () => {
-    const result = await UserHandler.instance.getAllClerkUsers();
-    if (!result.success) {
-      throw new TRPCError({
-        code: "INTERNAL_SERVER_ERROR",
-        message: "Failed to fetch users",
-        cause: result.error,
-      });
-    }
+    const result = await userHandler.getAllUsers();
+
     const allRoles = (
-      await Promise.all(
-        result.users.map((x) => UserHandler.instance.getUserRoles(x.userId)),
-      )
+      await Promise.all(result.map((x) => userHandler.getUserRoles(x.clerkId)))
     ).filter(Boolean);
-    return result.users.map((user) => {
-      const roles = allRoles.find((y) => y.id === user.userId);
+
+    return result.map((user) => {
+      const roles = allRoles.find((y) => y.id === user.clerkId);
       return {
         ...user,
         isModerator: roles?.isModerator ?? false,
@@ -34,7 +27,7 @@ export const userRouter = createTRPCRouter({
   }),
 
   getYourRoles: userProcedure.query(({ ctx }) => {
-    return UserHandler.instance.getUserRoles(ctx.user.clerkId);
+    return userHandler.getUserRoles(ctx.user.clerkId);
   }),
 
   changePlayerState: adminProcedure
@@ -46,7 +39,7 @@ export const userRouter = createTRPCRouter({
     )
     .mutation(async ({ input }) => {
       try {
-        const result = await UserHandler.instance.changePlayerState(
+        const result = await userHandler.changePlayerState(
           input.id,
           input.isPlayer,
         );

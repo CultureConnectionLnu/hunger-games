@@ -1,22 +1,15 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { addHubSchema } from "~/lib/shared-schemas";
-import { HubHandler } from "../logic/hub";
-import { UserHandler } from "../logic/user";
+import { clerkHandler, hubHandler, userHandler } from "../logic/handler";
 import { adminProcedure, createTRPCRouter } from "../trpc";
 
 export const hubRouter = createTRPCRouter({
   allHubs: adminProcedure.query(async () => {
-    const hubs = await HubHandler.instance.getAllHubs();
-    const userNames = await UserHandler.instance.getUserNames(
+    const hubs = await hubHandler.getAllHubs();
+    const userNames = await clerkHandler.getUserNames(
       hubs.map((x) => x.assignedModeratorId).filter(Boolean),
     );
-    if (userNames.errors.length > 0) {
-      console.error(
-        `[Quest:addHubs] could not get usernames all users`,
-        userNames.errors,
-      );
-    }
     return hubs.map(({ name, assignedModeratorId, description, id }) => ({
       id,
       name,
@@ -24,7 +17,7 @@ export const hubRouter = createTRPCRouter({
       assignedModerator: assignedModeratorId
         ? {
             id: assignedModeratorId,
-            name: userNames.map[assignedModeratorId]!,
+            name: userNames[assignedModeratorId]!,
           }
         : undefined,
     }));
@@ -34,10 +27,7 @@ export const hubRouter = createTRPCRouter({
     try {
       if (
         input.assignedModeratorId &&
-        (await UserHandler.instance.checkRole(
-          "moderator",
-          input.assignedModeratorId,
-        ))
+        (await userHandler.checkRole("moderator", input.assignedModeratorId))
       ) {
         throw new TRPCError({
           code: "CONFLICT",
@@ -46,7 +36,7 @@ export const hubRouter = createTRPCRouter({
         });
       }
 
-      await HubHandler.instance.addHub(input);
+      await hubHandler.addHub(input);
       return {
         success: true,
       } as const;
@@ -62,7 +52,7 @@ export const hubRouter = createTRPCRouter({
     .input(z.object({ hubId: z.string() }))
     .mutation(async ({ input }) => {
       try {
-        await HubHandler.instance.removeHub(input.hubId);
+        await hubHandler.removeHub(input.hubId);
         return { success: true } as const;
       } catch (err) {
         return { success: false, error: String(err) } as const;
@@ -75,10 +65,7 @@ export const hubRouter = createTRPCRouter({
       try {
         if (
           input.assignedModeratorId &&
-          (await UserHandler.instance.checkRole(
-            "moderator",
-            input.assignedModeratorId,
-          ))
+          (await userHandler.checkRole("moderator", input.assignedModeratorId))
         ) {
           throw new TRPCError({
             code: "CONFLICT",
@@ -86,7 +73,7 @@ export const hubRouter = createTRPCRouter({
               "The person is already a moderator for another hub, so he can't be assigned to this hub.",
           });
         }
-        const res = await HubHandler.instance.updateHub(input);
+        const res = await hubHandler.updateHub(input);
         if (res.length === 0) {
           throw new TRPCError({
             code: "NOT_FOUND",

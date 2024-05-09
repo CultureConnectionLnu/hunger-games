@@ -1,33 +1,30 @@
 import { TRPCError } from "@trpc/server";
-import { HubHandler } from "../logic/hub";
-import { QuestHandler, questKind } from "../logic/quest";
-import { UserHandler } from "../logic/user";
+import { z } from "zod";
+import {
+  clerkHandler,
+  hubHandler,
+  questHandler,
+  questKind,
+} from "../logic/handler";
 import {
   adminProcedure,
   createTRPCRouter,
   moderatorProcedure,
   playerProcedure,
 } from "../trpc";
-import { z } from "zod";
 
 export const questRouter = createTRPCRouter({
   getAllOngoingQuests: adminProcedure.query(async () => {
-    const quests = await QuestHandler.instance.getAllOngoingQuests();
-    const userNames = await UserHandler.instance.getUserNames(
+    const quests = await questHandler.getAllOngoingQuests();
+    const userNames = await clerkHandler.getUserNames(
       quests.map((x) => x.userId),
     );
-    if (userNames.errors.length > 0) {
-      console.error(
-        `[Quest:getAllOngoingQuests] could not get all user names`,
-        userNames.errors,
-      );
-    }
     return quests.map(
       ({ id, userId, outcome, kind, createdAt, additionalInformation }) => ({
         id,
         user: {
           id: userId,
-          name: userNames.map[userId]!,
+          name: userNames[userId]!,
         },
         outcome,
         kind,
@@ -38,7 +35,7 @@ export const questRouter = createTRPCRouter({
   }),
 
   getOngoingQuestsForModerator: moderatorProcedure.query(async ({ ctx }) => {
-    const hub = await HubHandler.instance.getHubOfModerator(ctx.user.clerkId);
+    const hub = await hubHandler.getHubOfModerator(ctx.user.clerkId);
     if (!hub) {
       console.error(
         "[Quest:getOngoingQuestsForModerator] moderator has no hub assigned, which should be impossible",
@@ -50,26 +47,18 @@ export const questRouter = createTRPCRouter({
       });
     }
 
-    const quests = await QuestHandler.instance.getOngoingQuestsForModerator(
-      hub.id,
-    );
+    const quests = await questHandler.getOngoingQuestsForModerator(hub.id);
 
-    const userNames = await UserHandler.instance.getUserNames(
+    const userNames = await clerkHandler.getUserNames(
       quests.map((x) => x.userId),
     );
-    if (userNames.errors.length > 0) {
-      console.error(
-        `[Quest:getOngoingQuestsForModerator] could not get all user names`,
-        userNames.errors,
-      );
-    }
 
     return quests.map(
       ({ id, userId, outcome, kind, createdAt, additionalInformation }) => ({
         id,
         user: {
           id: userId,
-          name: userNames.map[userId]!,
+          name: userNames[userId]!,
         },
         outcome,
         kind,
@@ -80,9 +69,7 @@ export const questRouter = createTRPCRouter({
   }),
 
   getAllQuestsFromPlayer: playerProcedure.query(async ({ ctx }) => {
-    const quests = await QuestHandler.instance.getAllQuestsFromPlayer(
-      ctx.user.clerkId,
-    );
+    const quests = await questHandler.getAllQuestsFromPlayer(ctx.user.clerkId);
     return quests.map(
       ({ id, userId, outcome, kind, createdAt, additionalInformation }) => ({
         id,
@@ -96,7 +83,7 @@ export const questRouter = createTRPCRouter({
   }),
 
   getCurrentQuestForPlayer: playerProcedure.query(async ({ ctx }) => {
-    const result = await QuestHandler.instance.getCurrentQuestForPlayer(
+    const result = await questHandler.getCurrentQuestForPlayer(
       ctx.user.clerkId,
     );
     if (!result) return undefined;
@@ -107,7 +94,7 @@ export const questRouter = createTRPCRouter({
   getCurrentQuestOfPlayer: moderatorProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const hub = await HubHandler.instance.getHubOfModerator(ctx.user.clerkId);
+      const hub = await hubHandler.getHubOfModerator(ctx.user.clerkId);
       if (!hub) {
         console.error(
           "[Quest:getOngoingQuestsForModerator] moderator has no hub assigned, which should be impossible",
@@ -119,10 +106,8 @@ export const questRouter = createTRPCRouter({
         });
       }
 
-      const playerName = await UserHandler.instance.getUserName(input.userId);
-      const result = await QuestHandler.instance.getCurrentQuestForPlayer(
-        input.userId,
-      );
+      const playerName = await clerkHandler.getUserName(input.userId);
+      const result = await questHandler.getCurrentQuestForPlayer(input.userId);
       if (!result) return { state: "no-active-quest", playerName } as const;
 
       const quest = await convertQuestToClientOutput(result);
@@ -149,7 +134,7 @@ export const questRouter = createTRPCRouter({
   markHubAsVisited: moderatorProcedure
     .input(z.object({ playerId: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const hub = await HubHandler.instance.getHubOfModerator(ctx.user.clerkId);
+      const hub = await hubHandler.getHubOfModerator(ctx.user.clerkId);
       if (!hub) {
         console.error(
           "[Quest:markHubAsVisited] moderator has no hub assigned, which should be impossible",
@@ -161,7 +146,7 @@ export const questRouter = createTRPCRouter({
         });
       }
 
-      const result = await QuestHandler.instance.markHubAsVisited(
+      const result = await questHandler.markHubAsVisited(
         input.playerId,
         hub.id,
       );
@@ -179,7 +164,7 @@ export const questRouter = createTRPCRouter({
   assignQuest: moderatorProcedure
     .input(z.object({ playerId: z.string(), questKind }))
     .mutation(async ({ ctx, input }) => {
-      const hub = await HubHandler.instance.getHubOfModerator(ctx.user.clerkId);
+      const hub = await hubHandler.getHubOfModerator(ctx.user.clerkId);
       if (!hub) {
         console.error(
           "[Quest:getOngoingQuestsForModerator] moderator has no hub assigned, which should be impossible",
@@ -191,11 +176,11 @@ export const questRouter = createTRPCRouter({
         });
       }
 
-      const allHubs = await HubHandler.instance.getAllHubs();
+      const allHubs = await hubHandler.getAllHubs();
       // exclude the current hub from the list of hubs
       const allHubIds = allHubs.map((x) => x.id).filter((x) => x !== hub.id);
 
-      const result = await QuestHandler.instance.assignQuestToPlayer(
+      const result = await questHandler.assignQuestToPlayer(
         input.playerId,
         allHubIds,
         input.questKind,
@@ -214,23 +199,17 @@ export const questRouter = createTRPCRouter({
 
 async function convertQuestToClientOutput(
   quest: NonNullable<
-    Awaited<ReturnType<QuestHandler["getCurrentQuestForPlayer"]>>
+    Awaited<ReturnType<(typeof questHandler)["getCurrentQuestForPlayer"]>>
   >,
 ) {
   const { id, kind, createdAt, additionalInformation } = quest;
-  const hubs = await HubHandler.instance.getHubs(
+  const hubs = await hubHandler.getHubs(
     additionalInformation.hubs.map((x) => x.id),
   );
 
-  const moderatorNames = await UserHandler.instance.getUserNames(
+  const moderatorNames = await clerkHandler.getUserNames(
     hubs.map((x) => x?.assignedModeratorId).filter(Boolean),
   );
-  if (moderatorNames.errors.length > 0) {
-    console.error(
-      `[Quest:getCurrentQuestForPlayer] could not get all moderator names`,
-      moderatorNames.errors,
-    );
-  }
 
   return {
     id,
@@ -246,8 +225,8 @@ async function convertQuestToClientOutput(
         name: hubData?.name ?? "Unknown",
         description: hubData?.description,
         moderatorName: hubData?.assignedModeratorId
-          ? moderatorNames.map[hubData.assignedModeratorId]
-          : UserHandler.backupUserName,
+          ? moderatorNames[hubData.assignedModeratorId]
+          : clerkHandler.backupUserName,
       };
     }),
   };

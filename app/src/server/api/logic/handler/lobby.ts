@@ -1,11 +1,11 @@
 import { TRPCError } from "@trpc/server";
 import { and, eq, isNull } from "drizzle-orm";
-import { db, type DB } from "~/server/db";
+import { db } from "~/server/db";
 import { fight, usersToFight } from "~/server/db/schema";
-import { BaseGame } from "./core/base-game";
-import { RpsGame } from "./games/rps";
-import { ScoreHandler } from "./score";
-import { UserHandler } from "./user";
+import { BaseGame } from "../core/base-game";
+import { RpsGame } from "../games/rps";
+import { clerkHandler } from ".";
+import { scoreHandler } from "./score";
 
 /**
  * insert a new entry for each game added
@@ -15,24 +15,11 @@ const knownGames = {
 };
 export type KnownGames = keyof typeof knownGames;
 
-const globalForFightHandler = globalThis as unknown as {
-  fightHandler: FightHandler | undefined;
-};
-
-export class FightHandler {
-  static get instance() {
-    if (!globalForFightHandler.fightHandler) {
-      globalForFightHandler.fightHandler = new FightHandler(db);
-    }
-    return globalForFightHandler.fightHandler;
-  }
-
+class LobbyHandler {
   private gameHandler = new GameHandler();
 
-  constructor(private readonly db: DB) {}
-
   public async assertHasNoFight(userId: string) {
-    const existingFight = await this.db
+    const existingFight = await db
       .select()
       .from(fight)
       .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
@@ -49,7 +36,7 @@ export class FightHandler {
   }
 
   public async getCurrentFight(userId: string) {
-    const existingFight = await this.db
+    const existingFight = await db
       .select()
       .from(fight)
       .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
@@ -68,6 +55,12 @@ export class FightHandler {
       game: existingFight[0]!.fight.game,
       players: existingFight.map((f) => f.usersToMatch?.userId).filter(Boolean),
     };
+  }
+
+  public async getOpponent(opponentId: string) {
+    return db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.clerkId, opponentId),
+    });
   }
 
   public async createFight(userId: string, opponentId: string) {
@@ -97,8 +90,8 @@ export class FightHandler {
       return newFight;
     });
 
-    const userName = await UserHandler.instance.getUserName(userId);
-    const opponentName = await UserHandler.instance.getUserName(opponentId);
+    const userName = await clerkHandler.getUserName(userId);
+    const opponentName = await clerkHandler.getUserName(opponentId);
 
     const wrapper = this.gameHandler.createGame(gameType, {
       fightId: newFight.id,
@@ -133,7 +126,7 @@ export class FightHandler {
           reject(new Error("Game destroyed before it ended"));
         });
       });
-      await this.db
+      await db
         .update(fight)
         .set({ winner: winnerId })
         .where(eq(fight.id, game.fightId))
@@ -141,7 +134,7 @@ export class FightHandler {
           throw new Error("Failed to update fight", { cause: error });
         });
 
-      await ScoreHandler.instance.updateScore(winnerId, looserId, game.fightId);
+      await scoreHandler.updateScore(winnerId, looserId, game.fightId);
     } catch (error) {
       console.log("Game completed with an error", error);
     }
@@ -204,3 +197,12 @@ class GameHandler {
     this.nextGameType = type;
   }
 }
+
+declare global {
+  interface HungerGamesServices {
+    lobby?: LobbyHandler;
+  }
+}
+
+export const lobbyHandler = (globalThis.services.lobby =
+  globalThis.services.lobby ?? new LobbyHandler());

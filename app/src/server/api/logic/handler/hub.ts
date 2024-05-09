@@ -1,22 +1,10 @@
 import { eq } from "drizzle-orm";
-import { type DB, db } from "~/server/db";
+import { db } from "~/server/db";
 import { hub } from "~/server/db/schema";
 
-const globalForQuestHandler = globalThis as unknown as {
-  hubHandler: HubHandler | undefined;
-};
-
-export class HubHandler {
-  static get instance() {
-    if (!globalForQuestHandler.hubHandler) {
-      globalForQuestHandler.hubHandler = new HubHandler(db);
-    }
-    return globalForQuestHandler.hubHandler;
-  }
-  private constructor(private db: DB) {}
-
+class HubHandler {
   public async getAllHubs() {
-    return this.db.query.hub.findMany();
+    return db.query.hub.findMany();
   }
 
   public async addHub({
@@ -28,7 +16,7 @@ export class HubHandler {
     description?: string;
     assignedModeratorId?: string;
   }) {
-    await this.db.insert(hub).values({
+    await db.insert(hub).values({
       name,
       description,
       assignedModeratorId,
@@ -36,7 +24,7 @@ export class HubHandler {
   }
 
   public async removeHub(hubId: string) {
-    await this.db.delete(hub).where(eq(hub.id, hubId));
+    await db.delete(hub).where(eq(hub.id, hubId));
   }
 
   public async updateHub(data: {
@@ -44,7 +32,7 @@ export class HubHandler {
     name?: string;
     description?: string;
   }) {
-    return this.db
+    return db
       .update(hub)
       .set(data)
       .where(eq(hub.id, data.id))
@@ -52,14 +40,14 @@ export class HubHandler {
   }
 
   public async getHubOfModerator(moderatorId: string) {
-    return this.db.query.hub.findFirst({
+    return db.query.hub.findFirst({
       where: ({ assignedModeratorId }, { eq }) =>
         eq(assignedModeratorId, moderatorId),
     });
   }
 
   public async getHubs(hubIds: string[]) {
-    return this.db.query.hub.findMany({
+    return db.query.hub.findMany({
       where: ({ id }, { inArray }) => inArray(id, hubIds),
       with: {
         assignedModerator: true,
@@ -67,3 +55,12 @@ export class HubHandler {
     });
   }
 }
+
+declare global {
+  interface HungerGamesServices {
+    hub?: HubHandler;
+  }
+}
+
+export const hubHandler = (globalThis.services.hub =
+  globalThis.services.hub ?? new HubHandler());

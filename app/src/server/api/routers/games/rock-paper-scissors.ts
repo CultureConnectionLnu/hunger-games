@@ -2,8 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { FightHandler } from "../../logic/fight";
-import { catchMatchError, inFightProcedure } from "../fight";
+import { FightHandler } from "../../logic/handler/lobby";
+import { catchMatchError, inFightProcedure } from "../lobby";
 import {
   type RockPaperScissorsEvents,
   rockPaperScissorsItemsSchema,

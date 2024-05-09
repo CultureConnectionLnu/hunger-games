@@ -1,11 +1,7 @@
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { db, type DB } from "~/server/db";
+import { db } from "~/server/db";
 import { quest } from "~/server/db/schema";
-
-const globalForQuestHandler = globalThis as unknown as {
-  questHandler: QuestHandler | undefined;
-};
 
 const walkQuestInformationSchema = z.object({
   hubs: z.array(
@@ -27,15 +23,7 @@ type QuestKind = z.infer<typeof questKind>;
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 
-export class QuestHandler {
-  static get instance() {
-    if (!globalForQuestHandler.questHandler) {
-      globalForQuestHandler.questHandler = new QuestHandler(db);
-    }
-    return globalForQuestHandler.questHandler;
-  }
-  private constructor(private db: DB) {}
-
+class QuestHandler {
   public async getAllOngoingQuests() {
     const quests = await this.queryAllOngoingQuests();
     return this.parseQuests(quests);
@@ -52,14 +40,14 @@ export class QuestHandler {
   }
 
   public async getAllQuestsFromPlayer(playerId: string) {
-    const quests = await this.db.query.quest.findMany({
+    const quests = await db.query.quest.findMany({
       where: ({ userId }, { eq }) => eq(userId, playerId),
     });
     return this.parseQuests(quests);
   }
 
   public async getCurrentQuestForPlayer(playerId: string) {
-    const quest = await this.db.query.quest.findFirst({
+    const quest = await db.query.quest.findFirst({
       where: ({ userId, outcome }, { eq, isNull, and }) =>
         and(eq(userId, playerId), isNull(outcome)),
     });
@@ -108,7 +96,7 @@ export class QuestHandler {
       return { success: false, error: parseResult.error.message };
     }
 
-    await this.db
+    await db
       .update(quest)
       .set({
         additionalInformation: updatedAdditionalInformation,
@@ -141,7 +129,7 @@ export class QuestHandler {
       return { success: false, error: parseResult.error.message } as const;
     }
 
-    await this.db.insert(quest).values({
+    await db.insert(quest).values({
       userId: playerId,
       kind: questKind,
       additionalInformation,
@@ -151,7 +139,7 @@ export class QuestHandler {
   }
 
   private queryAllOngoingQuests() {
-    return this.db.query.quest.findMany({
+    return db.query.quest.findMany({
       where: ({ outcome }, { isNull }) => isNull(outcome),
     });
   }
@@ -213,3 +201,12 @@ export class QuestHandler {
     } as const;
   }
 }
+
+declare global {
+  interface HungerGamesServices {
+    quest?: QuestHandler;
+  }
+}
+
+export const questHandler = (globalThis.services.quest =
+  globalThis.services.quest ?? new QuestHandler());

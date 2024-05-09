@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
-import { UserHandler } from "~/server/api/logic/user";
+import { userHandler } from "~/server/api/logic/handler";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  if (!(await UserHandler.instance.checkRole("moderator"))) {
+  if (!(await userHandler.checkRole("moderator"))) {
     notFound();
   }
   return <>{children}</>;

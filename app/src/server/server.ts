@@ -7,7 +7,7 @@ import { env } from "~/env";
 import { db } from "./db";
 import { fight, roles, users } from "./db/schema";
 import { bootstrapWS } from "./wssServer";
-import { UserHandler } from "./api/logic/user";
+import { clerkHandler, userHandler } from "./api/logic/handler";
 
 const port = parseInt(env.PORT);
 const dev = env.NEXT_PUBLIC_NODE_ENV !== "production";
@@ -54,13 +54,13 @@ async function removeNotFinishedFights() {
 }
 
 async function syncUsersWithClerk() {
-  const users = await UserHandler.instance.getAllClerkUsers();
+  const users = await clerkHandler.getAllUsers();
   if (users.success === false) {
     console.error("Failed to get users from clerk");
     return;
   }
 
-  const storedUsers = await UserHandler.instance.getAllUsers();
+  const storedUsers = await userHandler.getAllUsers();
   const storedUserIds = new Set(storedUsers.map((u) => u.clerkId));
   await addNewUsers(
     users.users
@@ -81,7 +81,7 @@ async function addNewUsers(newUsers: string[]) {
 
   console.log("New users to sync: ", newUsers.length);
   for (const newUser of newUsers) {
-    await UserHandler.instance.createUser(newUser);
+    await userHandler.createUser(newUser);
   }
 }
 
@@ -92,7 +92,7 @@ async function removeOutdatedUsers(outdatedUsers: string[]) {
 
   console.log("Outdated users to remove: ", outdatedUsers.length);
   for (const outdatedUser of outdatedUsers) {
-    await UserHandler.instance.deleteUser(outdatedUser);
+    await userHandler.deleteUser(outdatedUser);
   }
 }
 
@@ -112,7 +112,7 @@ async function syncRoles() {
     `There are ${notSyncedUsers.length} users that do not have a role entry`,
   );
   for (const user of notSyncedUsers) {
-    await UserHandler.instance.createRoles(user.userId);
+    await userHandler.createRoles(user.userId);
   }
 }
 

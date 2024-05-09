@@ -2,7 +2,7 @@
 
 import { useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
-import type { UserRoles } from "~/server/api/logic/user";
+import type { UserRoles } from "~/server/api/logic/handler";
 import { api } from "~/trpc/react";
 
 export function useCheckRole(role: UserRoles) {

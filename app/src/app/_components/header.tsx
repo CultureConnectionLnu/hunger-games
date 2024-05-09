@@ -21,7 +21,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "~/components/ui/sheet";
-import { type UserRoles } from "~/server/api/logic/user";
+import { type UserRoles } from "~/server/api/logic/handler";
 import { useCheckRole } from "../_feature/auth/role-check";
 import { ScrollArea } from "~/components/ui/scroll-area";
 

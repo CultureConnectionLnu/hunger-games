@@ -8,7 +8,7 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import type { BaseGamePlayerEvents } from "../logic/core/base-game";
-import { FightHandler } from "../logic/fight";
+import { lobbyHandler } from "../logic/handler";
 
 type JoinMessage = {
   type: "join";
@@ -19,6 +19,7 @@ type EndMessage = {
   type: "end";
   fightId: string;
 };
+
 declare module "~/lib/event-emitter" {
   type UserId = string;
   type FightId = string;
@@ -33,11 +34,9 @@ declare module "~/lib/event-emitter" {
  * makes sure that a user is in a fight
  */
 export const inFightProcedure = playerProcedure.use(async ({ ctx, next }) => {
-  const currentFight = await FightHandler.instance.getCurrentFight(
-    ctx.user.clerkId,
-  );
+  const currentFight = await lobbyHandler.getCurrentFight(ctx.user.clerkId);
 
-  const fight = FightHandler.instance.getFight(currentFight.fightId);
+  const fight = lobbyHandler.getFight(currentFight.fightId);
   if (!fight) {
     // TODO: introduce delete action for the invalid fight
     console.error(
@@ -51,10 +50,9 @@ export const inFightProcedure = playerProcedure.use(async ({ ctx, next }) => {
 
   return next({
     ctx: {
-      ...ctx,
+      playerId: ctx.user.clerkId,
       currentFight,
       fight,
-      fightHandler: FightHandler.instance,
     },
   });
 });
@@ -80,7 +78,7 @@ export function catchMatchError(fn: () => void) {
   }
 }
 
-export const fightRouter = createTRPCRouter({
+export const lobbyRouter = createTRPCRouter({
   create: playerProcedure
     .input(
       z.object({
@@ -88,9 +86,7 @@ export const fightRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      const opponent = await ctx.db.query.users.findFirst({
-        where: (users, { eq }) => eq(users.clerkId, input.opponent),
-      });
+      const opponent = await lobbyHandler.getOpponent(input.opponent);
 
       if (!opponent || opponent.isDeleted) {
         throw new TRPCError({
@@ -99,8 +95,8 @@ export const fightRouter = createTRPCRouter({
         });
       }
 
-      await FightHandler.instance.assertHasNoFight(ctx.user.clerkId);
-      const newFight = await FightHandler.instance.createFight(
+      await lobbyHandler.assertHasNoFight(ctx.user.clerkId);
+      const newFight = await lobbyHandler.createFight(
         ctx.user.clerkId,
         opponent.clerkId,
       );
@@ -137,10 +133,14 @@ export const fightRouter = createTRPCRouter({
   currentFight: playerProcedure.query(async ({ ctx }) => {
     try {
       return {
-        fight: await FightHandler.instance.getCurrentFight(ctx.user.clerkId),
+        fight: await lobbyHandler.getCurrentFight(ctx.user.clerkId),
         success: true,
       } as const;
     } catch (error) {
+      console.error(
+        `[Lobby:currentFight]: loading the current fight failed: ${String(error)}`,
+        error,
+      );
       return { success: false } as const;
     }
   }),
@@ -168,7 +168,7 @@ export const fightRouter = createTRPCRouter({
     )
     .subscription(({ input }) => {
       return observable<BaseGamePlayerEvents>((emit) => {
-        const match = FightHandler.instance.getFight(input.fightId)?.lobby;
+        const match = lobbyHandler.getFight(input.fightId)?.lobby;
         if (match?.getPlayer(input.userId) === undefined) {
           throw new TRPCError({
             code: "NOT_FOUND",
@@ -209,7 +209,7 @@ export const fightRouter = createTRPCRouter({
           emit.next(data);
         }
 
-        FightHandler.instance
+        lobbyHandler
           .getCurrentFight(input.id)
           .then(({ fightId, game }) => {
             onMessage({
