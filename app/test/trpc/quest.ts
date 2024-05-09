@@ -12,7 +12,6 @@ import {
   useManualTimer,
   type MockUserIds,
 } from "./utils";
-import { assert } from "console";
 
 type QuestData = NonNullable<RouterOutputs["quest"]["getCurrentQuestOfPlayer"]>;
 type GetQuestKind<T> = T extends { quest: { kind: infer U } } ? U : never;

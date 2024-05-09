@@ -120,7 +120,7 @@ export const questRouter = createTRPCRouter({
         }
 
         const playerName = await clerkHandler.getUserName(input.userId);
-        const isPlayer = await userHandler.checkRole("player");
+        const isPlayer = await userHandler.checkRole("player", input.userId);
         if (!isPlayer) {
           return {
             state: "is-no-player",
@@ -203,7 +203,7 @@ export const questRouter = createTRPCRouter({
           });
         }
 
-        const isPlayer = await userHandler.checkRole("player");
+        const isPlayer = await userHandler.checkRole("player", input.playerId);
         if (!isPlayer) {
           throw new TRPCError({
             code: "BAD_REQUEST",
