@@ -4,7 +4,6 @@ import { clerkHandler, userHandler } from "../logic/handler";
 import {
   adminProcedure,
   createTRPCRouter,
-  ifAnyRoleProcedure,
   moderatorProcedure,
   userProcedure,
 } from "../trpc";
@@ -12,9 +11,9 @@ import {
 export const userRouter = createTRPCRouter({
   allUsers: adminProcedure.query(async () => getAllUserWithRoles()),
 
-  allPlayer: moderatorProcedure.query(async ()=>{
-    const allUsers = await  getAllUserWithRoles();
-    return allUsers.filter(x => x.isPlayer)
+  allPlayer: moderatorProcedure.query(async () => {
+    const allUsers = await getAllUserWithRoles();
+    return allUsers.filter((x) => x.isPlayer);
   }),
 
   getYourRoles: userProcedure.query(({ ctx }) => {
@@ -48,27 +47,27 @@ export const userRouter = createTRPCRouter({
     }),
 });
 
-async function getAllUserWithRoles(){
-      const result = await clerkHandler.getAllUsers();
-    if (!result.success) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "Failed to get all users",
-      });
-    }
-
-    const allRoles = (
-      await Promise.all(
-        result.users.map((x) => userHandler.getUserRoles(x.userId)),
-      )
-    ).filter(Boolean);
-
-    return result.users.map((user) => {
-      const roles = allRoles.find((y) => y.id === user.userId);
-      return {
-        ...user,
-        isModerator: roles?.isModerator ?? false,
-        isPlayer: roles?.isPlayer ?? false,
-      };
+async function getAllUserWithRoles() {
+  const result = await clerkHandler.getAllUsers();
+  if (!result.success) {
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Failed to get all users",
     });
+  }
+
+  const allRoles = (
+    await Promise.all(
+      result.users.map((x) => userHandler.getUserRoles(x.userId)),
+    )
+  ).filter(Boolean);
+
+  return result.users.map((user) => {
+    const roles = allRoles.find((y) => y.id === user.userId);
+    return {
+      ...user,
+      isModerator: roles?.isModerator ?? false,
+      isPlayer: roles?.isPlayer ?? false,
+    };
+  });
 }
