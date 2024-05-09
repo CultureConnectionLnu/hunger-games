@@ -29,7 +29,7 @@ export const lobbyTests = () =>
       it("should not find a match for current user", async () => {
         const caller = await getTestUserCallers();
 
-        const result = await caller.test_user_1.fight.currentFight(undefined);
+        const result = await caller.test_user_1.lobby.currentFight(undefined);
 
         expect(result).toEqual({ success: false });
       });
@@ -39,7 +39,7 @@ export const lobbyTests = () =>
           await createGame();
 
           const result =
-            await callers.test_user_1.fight.currentFight(undefined);
+            await callers.test_user_1.lobby.currentFight(undefined);
           expect(result).toHaveProperty("success", true);
         }));
     });
@@ -49,7 +49,7 @@ export const lobbyTests = () =>
         testFight(async ({ callers }) => {
           const listener = vi.fn();
           const un = (
-            await callers.test_user_1.fight.onFightUpdate({ id: "test_user_1" })
+            await callers.test_user_1.lobby.onFightUpdate({ id: "test_user_1" })
           ).subscribe({ next: listener });
 
           await runAllMacroTasks();
@@ -62,7 +62,7 @@ export const lobbyTests = () =>
         testFight(async ({ startGame, getLobby, callers }) => {
           const listener = vi.fn();
           const un = (
-            await callers.test_user_1.fight.onFightUpdate({ id: "test_user_1" })
+            await callers.test_user_1.lobby.onFightUpdate({ id: "test_user_1" })
           ).subscribe({ next: listener });
 
           await startGame();
@@ -79,7 +79,7 @@ export const lobbyTests = () =>
         testFight(async ({ startGame, getLobby, callers }) => {
           const listener = vi.fn();
           const un = (
-            await callers.test_user_1.fight.onFightUpdate({ id: "test_user_1" })
+            await callers.test_user_1.lobby.onFightUpdate({ id: "test_user_1" })
           ).subscribe({ next: listener });
 
           await startGame();
@@ -449,7 +449,7 @@ async function setupTest() {
   const createGame = async () => {
     lobbyHandler.defineNextGameType("rock-paper-scissors");
 
-    const { id } = await callers.test_user_1.fight.create({
+    const { id } = await callers.test_user_1.lobby.create({
       opponent: `test_user_2`,
     });
     state.fightId = id;
@@ -457,10 +457,10 @@ async function setupTest() {
   };
 
   const connect = async (userId: `test_user_${1 | 2}`) => {
-    await callers[userId].fight.join();
+    await callers[userId].lobby.join();
     const listener = userId === "test_user_1" ? firstListener : secondListener;
     const un = (
-      await callers[userId].fight.onGameAction({
+      await callers[userId].lobby.onGameAction({
         userId,
         fightId: state.fightId!,
       })
@@ -478,7 +478,7 @@ async function setupTest() {
   };
 
   const ready = async (userId: `test_user_${1 | 2}`) => {
-    return callers[userId].fight.ready();
+    return callers[userId].lobby.ready();
   };
 
   const startGame = async () => {

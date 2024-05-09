@@ -30,7 +30,7 @@ import { useTimers } from "../../_feature/timer/timer-provider";
 import { useFight } from "../../_feature/auto-join-game/fight-provider";
 
 type ServerEvent =
-  RouterOutputs["fight"]["onGameAction"] extends Observable<infer R, never>
+  RouterOutputs["lobby"]["onGameAction"] extends Observable<infer R, never>
     ? R
     : never;
 
@@ -73,7 +73,7 @@ function JoiningGame({
     userId: string;
   };
 }) {
-  const { isLoading: joining } = api.fight.join.useQuery(undefined, {
+  const { isLoading: joining } = api.lobby.join.useQuery(undefined, {
     staleTime: Infinity,
     refetchOnMount: "always",
   });
@@ -97,7 +97,7 @@ function GameLobby({
   const [gameEnded, setGameEnded] = useState(false);
   const { handleEvent } = useTimers();
 
-  api.fight.onGameAction.useSubscription(params, {
+  api.lobby.onGameAction.useSubscription(params, {
     onData(data) {
       switch (data.event) {
         case "start-timer":
@@ -278,7 +278,7 @@ function NoFightOngoing() {
 }
 
 function ReadyScreen() {
-  const ready = api.fight.ready.useMutation();
+  const ready = api.lobby.ready.useMutation();
   return (
     <GameCard header={<CardTitle>Are you ready to play?</CardTitle>}>
       <div className="space-y-2">

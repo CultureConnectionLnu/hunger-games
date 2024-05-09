@@ -14,9 +14,22 @@ import { type RouterOutputs } from "~/trpc/shared";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 type QuestEntry = UnwrapArray<RouterOutputs["quest"]["getAllQuestsFromPlayer"]>;
+type ScoreEntry = UnwrapArray<RouterOutputs["score"]["getHistory"]>;
 
-export function QuestHistory({ params }: { params: { quests: QuestEntry[] } }) {
+export function QuestHistory({
+  params,
+}: {
+  params: { quests: QuestEntry[]; scores: ScoreEntry[] };
+}) {
   const questId = useQueryParamMutation("questId");
+
+  const quests = params.quests.map((x) => {
+    const scoreEntry = params.scores.find((s) => s.questId === x.id);
+    return {
+      ...x,
+      scoreEntry,
+    };
+  });
 
   return (
     <Table>
@@ -25,15 +38,19 @@ export function QuestHistory({ params }: { params: { quests: QuestEntry[] } }) {
         <TableRow>
           <TableHead>Type</TableHead>
           <TableHead>Progress</TableHead>
-          <TableHead>Started</TableHead>
+          <TableHead className="text-right">Change/Score</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {params.quests.map((quest) => (
+        {quests.map((quest) => (
           <TableRow key={quest.id} onClick={() => questId(quest.id)}>
             <TableCell>{quest.kind}</TableCell>
             <TableCell>{getProgress(quest)}</TableCell>
-            <TableCell>{quest.createdAt.toLocaleTimeString()}</TableCell>
+            <TableCell>
+              {quest.scoreEntry
+                ? `${quest.scoreEntry.scoreChange}/${quest.scoreEntry.score}`
+                : `-`}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

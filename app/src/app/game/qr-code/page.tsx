@@ -9,7 +9,7 @@ import { env } from "~/env";
 
 export default function MatchOverviewPage() {
   const searchParams = useSearchParams();
-  const createMatch = api.fight.create.useMutation();
+  const createMatch = api.lobby.create.useMutation();
   const userId = searchParams.get("userId");
 
   if (userId && !createMatch.isLoading) {
@@ -27,7 +27,7 @@ export default function MatchOverviewPage() {
 function StartMatch() {
   const searchParams = useSearchParams();
   const [opponent, setOpponent] = useState(searchParams.get("userId") ?? "");
-  const createMatch = api.fight.create.useMutation();
+  const createMatch = api.lobby.create.useMutation();
   return (
     <form
       onSubmit={(e) => {

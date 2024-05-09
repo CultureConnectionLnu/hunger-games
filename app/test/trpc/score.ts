@@ -141,7 +141,7 @@ async function setupTest() {
   };
 
   const playGame = async (winner: `test_user_${1 | 2}`) => {
-    const { id } = await callers.test_user_1.fight.create({
+    const { id } = await callers.test_user_1.lobby.create({
       opponent: `test_user_2`,
     });
     const looser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
@@ -166,7 +166,7 @@ async function setupTest() {
   };
 
   const getHistory = (userId: `test_user_${1 | 2}`) =>
-    callers[userId].score.fightHistory();
+    callers[userId].score.getHistory();
 
   const getHistoryEntry = (userId: `test_user_${1 | 2}`, fightId: string) =>
     callers[userId].score.historyEntry({ fightId });

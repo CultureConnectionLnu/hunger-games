@@ -1,7 +1,12 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { clerkHandler, scoreHandler } from "../logic/handler";
-import { createTRPCRouter, playerProcedure, userProcedure } from "../trpc";
+import {
+  createTRPCRouter,
+  errorBoundary,
+  playerProcedure,
+  userProcedure,
+} from "../trpc";
 
 export const scoreRouter = createTRPCRouter({
   dashboard: userProcedure.query(async () => {
@@ -18,8 +23,12 @@ export const scoreRouter = createTRPCRouter({
     }));
   }),
 
-  fightHistory: playerProcedure.query(
-    async ({ ctx }) => await scoreHandler.getFightHistory(ctx.user.clerkId),
+  getHistory: playerProcedure.query(({ ctx }) =>
+    errorBoundary(async () => scoreHandler.getHistory(ctx.user.clerkId)),
+  ),
+
+  getCurrentScore: playerProcedure.query(({ ctx }) =>
+    errorBoundary(async () => scoreHandler.currentScore(ctx.user.clerkId)),
   ),
 
   historyEntry: playerProcedure

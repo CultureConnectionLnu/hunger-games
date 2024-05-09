@@ -10,21 +10,27 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
+import { type RouterOutputs } from "~/trpc/shared";
 
-export function OverviewTable({
+type UnwrapArray<T> = T extends Array<infer U> ? U : T;
+type ScoreEntry = UnwrapArray<RouterOutputs["score"]["getHistory"]>;
+
+export function ScoreTable({
   params,
 }: {
   params: {
-    entries: {
-      type: "quest" | "fight";
-      id: string;
-      change: number;
-      score: number;
-    }[];
+    scores: ScoreEntry[];
   };
 }) {
   const questId = useQueryParamMutation("questId");
   const fightId = useQueryParamMutation("fightId");
+
+  const scores = params.scores.map((x) => ({
+    id: (x.questId ?? x.fightId)!,
+    type: x.questId !== undefined ? "quest" : "fight",
+    scoreChange: x.scoreChange,
+    score: x.score,
+  }));
   return (
     <Table>
       <TableCaption>Your Score History</TableCaption>
@@ -36,7 +42,7 @@ export function OverviewTable({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {params.entries.map((entry) => (
+        {scores.map((entry) => (
           <TableRow
             key={entry.id}
             onClick={() =>
@@ -44,7 +50,7 @@ export function OverviewTable({
             }
           >
             <TableCell>{entry.type === "quest" ? "Quest" : "Fight"}</TableCell>
-            <TableCell>{entry.change}</TableCell>
+            <TableCell>{entry.scoreChange}</TableCell>
             <TableCell>{entry.score}</TableCell>
           </TableRow>
         ))}
