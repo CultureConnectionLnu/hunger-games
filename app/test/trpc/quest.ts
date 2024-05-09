@@ -12,6 +12,7 @@ import {
   useManualTimer,
   type MockUserIds,
 } from "./utils";
+import { assert } from "console";
 
 type QuestData = NonNullable<RouterOutputs["quest"]["getCurrentQuestOfPlayer"]>;
 type GetQuestKind<T> = T extends { quest: { kind: infer U } } ? U : never;
@@ -142,7 +143,6 @@ export const questTests = () =>
           await playGame("test_user_2");
 
           const quest = await player.getCurrentQuest("test_user_1");
-
           expect(quest).toBeUndefined();
         }));
 
@@ -156,9 +156,70 @@ export const questTests = () =>
           await playGame("test_user_1");
 
           const quest = await player.getCurrentQuest("test_user_1");
-
           expect(quest).not.toBeUndefined();
         }));
+
+      describe("history", () => {
+        it("by default, should be empty", () =>
+          testQuest(async ({ player }) => {
+            const history = await player.getHistory("test_user_1");
+
+            expect(history).toHaveLength(0);
+          }));
+
+        it("should show an ongoing quest in history", () =>
+          testQuest(async ({ player, moderator }) => {
+            await moderator.assignQuest(
+              "test_moderator_1",
+              "test_user_1",
+              "walk-1",
+            );
+
+            const history = await player.getHistory("test_user_1");
+            expect(history).toMatchObject([
+              {
+                outcome: null,
+                kind: "walk-1",
+              },
+            ]);
+          }));
+
+        it("should show completed quest in history", () =>
+          testQuest(async ({ player, moderator }) => {
+            await moderator.assignQuest(
+              "test_moderator_1",
+              "test_user_1",
+              "walk-1",
+            );
+            await moderator.markAsVisited("test_moderator_2", "test_user_1");
+
+            const history = await player.getHistory("test_user_1");
+            expect(history).toMatchObject([
+              {
+                outcome: "completed",
+                kind: "walk-1",
+              },
+            ]);
+          }));
+
+        it("should show lost quest in history", () =>
+          testQuest(async ({ player, moderator, playGame }) => {
+            await moderator.assignQuest(
+              "test_moderator_1",
+              "test_user_1",
+              "walk-1",
+            );
+            await playGame("test_user_2");
+
+            const history = await player.getHistory("test_user_1");
+            expect(history).toMatchObject([
+              {
+                outcome: "lost-in-battle",
+                kind: "walk-1",
+              },
+            ]);
+          }));
+      });
     });
 
     describe("moderator", () => {
@@ -307,6 +368,9 @@ export const questTests = () =>
           }));
       });
 
+      describe("scoring", () => {
+        it("should get points for ");
+      });
     });
   });
 
@@ -315,7 +379,7 @@ async function testQuest(
 ) {
   useManualTimer();
   const args = await setupTest();
-  // make sure that no scores for the player are present before the test
+
   return await test(args)
     .then(() => ({ pass: true, error: undefined }) as const)
     .catch((error: Error) => ({ pass: false, error }) as const)
@@ -357,6 +421,9 @@ async function setupTest() {
 
   const getCurrentQuest = async (player: `test_user_${1 | 2}`) => {
     return callers[player].quest.getCurrentQuestForPlayer();
+  };
+  const getHistory = async (player: `test_user_${1 | 2}`) => {
+    return callers[player].quest.getAllQuestsFromPlayer();
   };
 
   type ModeratorIds =
@@ -403,6 +470,7 @@ async function setupTest() {
     getAllQuestIds: () => state.allQuestIds,
     player: {
       getCurrentQuest,
+      getHistory,
     },
     moderator: {
       assignQuest,
