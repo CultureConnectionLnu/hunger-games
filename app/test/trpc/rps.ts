@@ -1,18 +1,16 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
-import { TypedEventEmitter } from "~/lib/event-emitter";
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 import { lobbyHandler } from "~/server/api/logic/handler";
-import { appRouter } from "~/server/api/root";
 import type { RockPaperScissorsPlayerEvents } from "~/server/api/routers/games/rock-paper-scissors";
-import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
 import {
   expectEventEmitted,
   getLastEventOf,
   getManualTimer,
+  getTestUserCallers,
   makePlayer,
   runAllMacroTasks,
   useAutomaticTimer,
@@ -355,20 +353,7 @@ async function testFight(
 }
 
 async function setupTest() {
-  const callers = {
-    test_user_1: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_1",
-      }),
-    ),
-    test_user_2: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_2",
-      }),
-    ),
-  } as const;
+  const callers = await getTestUserCallers();
 
   const firstListener = vi.fn<[BaseGamePlayerEvents], void>();
   const secondListener = vi.fn<[BaseGamePlayerEvents], void>();

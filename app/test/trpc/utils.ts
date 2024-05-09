@@ -1,7 +1,10 @@
 import { inArray } from "drizzle-orm";
 import { afterAll, beforeAll, type Mock } from "vitest";
+import { TypedEventEmitter } from "~/lib/event-emitter";
 import { TimerFactory } from "~/server/api/logic/core/timer";
 import { clerkHandler, userHandler } from "~/server/api/logic/handler";
+import { appRouter } from "~/server/api/root";
+import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { users } from "~/server/db/schema";
 
@@ -16,6 +19,31 @@ export const mockUsers = [
   {
     name: "Test User 2",
     userId: "test_user_2",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test Admin",
+    userId: "test_admin",
+    isAdmin: true,
+  } as const,
+  {
+    name: "Test Moderator 1",
+    userId: "test_moderator_1",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test Moderator 2",
+    userId: "test_moderator_2",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test Moderator 3",
+    userId: "test_moderator_3",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test Moderator 4",
+    userId: "test_moderator_4",
     isAdmin: false,
   } as const,
 ] satisfies MockUsers;
@@ -94,6 +122,23 @@ export function getManualTimer() {
     getLastByName,
     simulateNormalTimeout,
   };
+}
+
+export async function getTestUserCallers() {
+  const callers = {} as Record<
+    MockUserIds,
+    ReturnType<typeof appRouter.createCaller>
+  >;
+  const ee = new TypedEventEmitter();
+  for (const mockUser of mockUsers) {
+    callers[mockUser.userId] = appRouter.createCaller(
+      await createCommonContext({
+        ee,
+        userId: mockUser.userId,
+      }),
+    );
+  }
+  return callers;
 }
 
 type FilterByEvent<T, Key> = T extends { event: Key } ? T : never;

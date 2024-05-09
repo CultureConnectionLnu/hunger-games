@@ -1,14 +1,16 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
-import { TypedEventEmitter } from "~/lib/event-emitter";
 import { fightScoringConfig } from "~/server/api/logic/config";
 import { lobbyHandler } from "~/server/api/logic/handler";
-import { appRouter } from "~/server/api/root";
-import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
-import { makePlayer, useAutomaticTimer, useManualTimer } from "./utils";
+import {
+  getTestUserCallers,
+  makePlayer,
+  useAutomaticTimer,
+  useManualTimer,
+} from "./utils";
 
 export const scoreTests = () =>
   describe("Score", () => {
@@ -132,20 +134,7 @@ async function testFight(
 }
 
 async function setupTest() {
-  const callers = {
-    test_user_1: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_1",
-      }),
-    ),
-    test_user_2: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_2",
-      }),
-    ),
-  } as const;
+  const callers = await getTestUserCallers();
 
   const state = {
     allFightIds: [] as string[],

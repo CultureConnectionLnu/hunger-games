@@ -2,13 +2,10 @@
 import type { Unsubscribable } from "@trpc/server/observable";
 import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
-import { TypedEventEmitter } from "~/lib/event-emitter";
 import { lobbyHandler } from "~/server/api/logic/handler";
 
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 import type { TimerEvent } from "~/server/api/logic/core/timer";
-import { appRouter } from "~/server/api/root";
-import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
 import { fight } from "~/server/db/schema";
 import {
@@ -16,6 +13,7 @@ import {
   expectNotEvenEmitted,
   getLastEventOf,
   getManualTimer,
+  getTestUserCallers,
   makePlayer,
   runAllMacroTasks,
   useAutomaticTimer,
@@ -29,14 +27,9 @@ export const lobbyTests = () =>
 
     describe("currentFight", () => {
       it("should not find a match for current user", async () => {
-        const caller = appRouter.createCaller(
-          await createCommonContext({
-            ee: new TypedEventEmitter(),
-            userId: "test_user_1",
-          }),
-        );
+        const caller = await getTestUserCallers();
 
-        const result = await caller.fight.currentFight(undefined);
+        const result = await caller.test_user_1.fight.currentFight(undefined);
 
         expect(result).toEqual({ success: false });
       });
@@ -441,20 +434,7 @@ async function testFight(
 }
 
 async function setupTest() {
-  const callers = {
-    test_user_1: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_1",
-      }),
-    ),
-    test_user_2: appRouter.createCaller(
-      await createCommonContext({
-        ee: new TypedEventEmitter(),
-        userId: "test_user_2",
-      }),
-    ),
-  } as const;
+  const callers = await getTestUserCallers();
 
   const firstListener = vi.fn<[BaseGamePlayerEvents], void>();
   const secondListener = vi.fn<[BaseGamePlayerEvents], void>();
