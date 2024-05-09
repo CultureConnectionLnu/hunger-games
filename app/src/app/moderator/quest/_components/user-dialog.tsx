@@ -48,6 +48,8 @@ function User({
     userId: params.userId,
   });
 
+  const trpcUtils = api.useUtils();
+
   const closeButton = (
     <Button variant="outline" onClick={onClose}>
       Close
@@ -67,9 +69,9 @@ function User({
 
   const title = `Player ${data.playerName}`;
   function invalidateCurrentQuest() {
-    void api
-      .useUtils()
-      .quest.getCurrentQuestOfPlayer.invalidate({ userId: params.userId });
+    void trpcUtils.quest.getCurrentQuestOfPlayer.invalidate({
+      userId: params.userId,
+    });
   }
 
   return (
