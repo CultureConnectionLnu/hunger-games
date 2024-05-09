@@ -55,7 +55,7 @@ class ScoreHandler {
       .orderBy(desc(sum(score.score)));
   }
 
-  public async getHistory(user: string) {
+  public async getFightHistory(user: string) {
     return await db
       .select({
         fightId: fight.id,

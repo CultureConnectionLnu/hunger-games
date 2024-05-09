@@ -18,8 +18,8 @@ export const scoreRouter = createTRPCRouter({
     }));
   }),
 
-  history: playerProcedure.query(
-    async ({ ctx }) => await scoreHandler.getHistory(ctx.user.clerkId),
+  fightHistory: playerProcedure.query(
+    async ({ ctx }) => await scoreHandler.getFightHistory(ctx.user.clerkId),
   ),
 
   historyEntry: playerProcedure

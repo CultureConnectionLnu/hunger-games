@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryParamMutation } from "~/app/_feature/url-sync/query";
 import {
   Table,
   TableBody,
@@ -12,18 +13,14 @@ import {
 import { type RouterOutputs } from "~/trpc/shared";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
-type Quest = UnwrapArray<RouterOutputs["quest"]["getAllQuestsFromPlayer"]>;
+type QuestEntry = UnwrapArray<RouterOutputs["quest"]["getAllQuestsFromPlayer"]>;
 
-export function QuestTable({
-  params,
-}: {
-  params: {
-    quests: Quest[];
-  };
-}) {
+export function QuestHistory({ params }: { params: { quests: QuestEntry[] } }) {
+  const questId = useQueryParamMutation("questId");
+
   return (
     <Table>
-      <TableCaption>Quest History</TableCaption>
+      <TableCaption>Your Quest History</TableCaption>
       <TableHeader>
         <TableRow>
           <TableHead>Type</TableHead>
@@ -33,7 +30,7 @@ export function QuestTable({
       </TableHeader>
       <TableBody>
         {params.quests.map((quest) => (
-          <TableRow key={quest.id}>
+          <TableRow key={quest.id} onClick={() => questId(quest.id)}>
             <TableCell>{quest.kind}</TableCell>
             <TableCell>{getProgress(quest)}</TableCell>
             <TableCell>{quest.createdAt.toLocaleTimeString()}</TableCell>
@@ -44,7 +41,7 @@ export function QuestTable({
   );
 }
 
-function getProgress(quest: Quest) {
+function getProgress(quest: QuestEntry) {
   if (quest.outcome === "completed") {
     return "Completed";
   }

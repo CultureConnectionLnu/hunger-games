@@ -25,7 +25,10 @@ export function useQueryParamMutation(paramKey: string) {
   return mutation;
 }
 
-export function useSearchParamState(paramKey: string) {
+export function useSearchParamState(
+  paramKey: string,
+  options?: { defaultValue: string; allowEmpty: boolean },
+) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -33,7 +36,7 @@ export function useSearchParamState(paramKey: string) {
   const [state, setState] = useState<string | undefined>(() => {
     const value = searchParams.get(paramKey);
     if (value === null) {
-      return undefined;
+      return options?.defaultValue;
     }
     return value;
   });
@@ -47,16 +50,23 @@ export function useSearchParamState(paramKey: string) {
     const paramHasChanged = params.get(paramKey) !== prevParams.get(paramKey);
     const stateHasChanged = state !== prevState;
 
+    const resetStateValue = options?.allowEmpty
+      ? undefined
+      : options?.defaultValue;
+    const resetParamsAction = options?.allowEmpty
+      ? () => params.delete(paramKey)
+      : () => params.set(paramKey, resetStateValue!);
+
     if (paramHasChanged && !stateHasChanged) {
       // param has changed
-      setState(params.get(paramKey) ?? undefined);
+      setState(params.get(paramKey) ?? resetStateValue);
       return;
     }
 
     if (stateHasChanged && !paramHasChanged) {
       // state has changed
       if (state === undefined) {
-        params.delete(paramKey);
+        resetParamsAction();
       } else {
         params.set(paramKey, state);
       }
@@ -71,6 +81,7 @@ export function useSearchParamState(paramKey: string) {
     paramKey,
     prevSearchParams,
     prevState,
+    options,
   ]);
 
   return [state, setState] as const;

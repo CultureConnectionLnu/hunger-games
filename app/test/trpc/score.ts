@@ -166,7 +166,7 @@ async function setupTest() {
   };
 
   const getHistory = (userId: `test_user_${1 | 2}`) =>
-    callers[userId].score.history();
+    callers[userId].score.fightHistory();
 
   const getHistoryEntry = (userId: `test_user_${1 | 2}`, fightId: string) =>
     callers[userId].score.historyEntry({ fightId });
