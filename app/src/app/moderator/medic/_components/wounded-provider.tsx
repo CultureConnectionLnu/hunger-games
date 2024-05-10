@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
+"use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { api } from "~/trpc/react";
 import { type RouterOutputs } from "~/trpc/shared";
@@ -27,7 +28,7 @@ export function WoundedProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WoundedContext.Provider
-      value={{ woundedPlayers: data ?? [], isLoading: !initialLoading }}
+      value={{ woundedPlayers: data ?? [], isLoading: initialLoading }}
     >
       {children}
     </WoundedContext.Provider>

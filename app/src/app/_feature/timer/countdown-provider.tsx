@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
+"use client";
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 export type CountdownCtxData = {
@@ -41,6 +42,7 @@ export function CountdownProvider({ children }: { children: React.ReactNode }) {
         },
         {} as typeof countdowns,
       );
+    if (Object.keys(newCountdowns).length === 0) return;
     setCountdowns((prev) => ({
       ...prev,
       ...newCountdowns,
