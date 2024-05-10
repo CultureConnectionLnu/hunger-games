@@ -5,6 +5,15 @@ import { eq } from "drizzle-orm";
 import { playerStateConfig } from "../config";
 import { TRPCError } from "@trpc/server";
 
+import { Temporal, toTemporalInstant } from "@js-temporal/polyfill";
+Date.prototype.toTemporalInstant = toTemporalInstant;
+
+declare global {
+  interface Date {
+    toTemporalInstant: typeof toTemporalInstant;
+  }
+}
+
 class GameStateHandler {
   private fakeTimePassed = false;
 
@@ -33,9 +42,9 @@ class GameStateHandler {
       })
       .then((allWoundedPlayers) =>
         allWoundedPlayers.map((player) => {
-          const initialTimeoutInSeconds = player.reviveCoolDownEnd
-            ? player.reviveCoolDownEnd.getTime() - Date.now()
-            : undefined;
+          const initialTimeoutInSeconds = calculateDiffInSeconds(
+            player.reviveCoolDownEnd,
+          );
           return {
             userId: player.userId,
             isWounded: player.isWounded,
@@ -68,13 +77,17 @@ class GameStateHandler {
     }
     // todo: show a timer to the player
     // todo: show all counters to the medic managers
-    const reviveCoolDownEnd = new Date(
-      Date.now() + playerStateConfig.reviveTimeInSeconds * 1000,
-    );
+
+    const reviveCoolDownEnd = Temporal.Now.plainDateTimeISO()
+      .add({
+        seconds: playerStateConfig.reviveTimeInSeconds,
+      })
+      .toLocaleString();
+
     const changed = await db
       .update(gamePlayerState)
       .set({
-        reviveCoolDownEnd,
+        reviveCoolDownEnd: new Date(reviveCoolDownEnd),
       })
       .where(eq(gamePlayerState.userId, playerId));
     if (changed.count === 0) {
@@ -153,6 +166,25 @@ class GameStateHandler {
   public fakeTimePass() {
     this.fakeTimePassed = true;
   }
+}
+
+function calculateDiffInSeconds(date: Date | null | undefined) {
+  if (!date) return undefined;
+  const now = Temporal.Now.plainTimeISO();
+  const end = Temporal.PlainTime.from({
+    second: date.getSeconds(),
+    minute: date.getMinutes(),
+    hour: date.getHours(),
+  });
+  if (Temporal.PlainTime.compare(now, end) === 1) {
+    return 0;
+  }
+  const difference = end.subtract({
+    seconds: now.second,
+    minutes: now.minute,
+    hours: now.hour,
+  });
+  return difference.second + difference.minute * 60 + difference.hour * 60 * 60;
 }
 
 declare global {

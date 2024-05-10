@@ -15,6 +15,7 @@ import {
   useAutomaticTimer,
   useManualTimer,
 } from "./utils";
+import { playerStateConfig } from "~/server/api/logic/config";
 
 const { registerHubHooks, getHubData } = makeHubs();
 export const medicTests = () =>
@@ -40,6 +41,21 @@ export const medicTests = () =>
             isWounded: true,
           },
         ]);
+      }));
+
+    it('time in seconds should be no bigger than the "maxReviveTimeInSeconds" config entry', () =>
+      testFight(async ({ playGame, startRevive, getWoundedPlayers }) => {
+        await playGame("test_user_1");
+        await startRevive("test_user_2");
+        const [first] = await getWoundedPlayers();
+        expect(first?.initialTimeoutInSeconds).toBeLessThanOrEqual(
+          playerStateConfig.reviveTimeInSeconds,
+        );
+        const allowedInaccuresyForTimeInSeconds = 3;
+        expect(first?.initialTimeoutInSeconds).toBeGreaterThan(
+          playerStateConfig.reviveTimeInSeconds -
+            allowedInaccuresyForTimeInSeconds,
+        );
       }));
 
     describe("startRevive", () => {
@@ -226,8 +242,12 @@ async function setupTest() {
     });
   };
 
-  const getWoundedPlayers = async () =>
-    callers.test_medic.medic.getAllWounded();
+  const getWoundedPlayers = async () => {
+    const wounded = await callers.test_medic.medic.getAllWounded();
+    return wounded.filter((x) =>
+      ["test_user_2", "test_user_1"].includes(x.userId),
+    );
+  };
 
   const startRevive = async (playerId: `test_user_${1 | 2}`) =>
     callers.test_medic.medic.startRevive({ playerId });
