@@ -11,7 +11,10 @@ import {
 } from "../_feature/timer/countdown-provider";
 import { useAuth } from "@clerk/nextjs";
 
-type WoundedPlayer = RouterOutputs["medic"]["getMyWoundedState"];
+type UnwrapArray<T> = T extends Array<infer R> ? R : never;
+type WoundedPlayer =
+  | Omit<UnwrapArray<RouterOutputs["medic"]["getAllWounded"]>, "userName">
+  | undefined;
 
 export function ShowWoundedState() {
   const [hasRole] = useCheckRole("player");
