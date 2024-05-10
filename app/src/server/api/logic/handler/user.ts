@@ -7,22 +7,21 @@ import { getHandler } from "./base";
 export type UserRoles = "admin" | "moderator" | "player" | "medic";
 
 class UserHandler {
-  public async checkRole(role: UserRoles, userId?: string) {
+  public async checkRole(role: UserRoles | UserRoles[], userId?: string) {
+    const roles = Array.isArray(role) ? role : [role];
     const currentUserId = userId ?? (await clerkHandler.currentUserId());
     if (!currentUserId) return false;
-    if (role === "admin") {
+    if (roles.includes("admin")) {
       return clerkHandler.isAdmin(currentUserId);
     }
 
     const user = await this.getUserRoles(currentUserId);
     if (!user) return false;
 
-    if (role === "moderator") return user.isModerator;
-    if (role === "player") return user.isPlayer;
-    if (role === "medic") return user.isMedic;
+    if (role.includes("moderator")) return user.isModerator;
+    if (role.includes("player")) return user.isPlayer;
+    if (role.includes("medic")) return user.isMedic;
 
-    // should be dead code
-    role satisfies never;
     return false;
   }
 

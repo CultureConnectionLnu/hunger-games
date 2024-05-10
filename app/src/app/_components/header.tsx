@@ -22,13 +22,21 @@ import {
   SheetTrigger,
 } from "~/components/ui/sheet";
 import { type UserRoles } from "~/server/api/logic/handler";
-import { useCheckRole } from "../_feature/auth/role-check";
+import { useCheckRole, useCheckRoles } from "../_feature/auth/role-check";
 import { ScrollArea } from "~/components/ui/scroll-area";
 
+type Permission =
+  | "sign-in"
+  | "sign-out"
+  | "role-admin"
+  | "role-moderator"
+  | "role-medic"
+  | "role-player"
+  | "none";
 type HeaderConfig = {
   groups: {
     title: string;
-    require?: "sign-in" | "sign-out" | "role-admin" | "role-moderator" | "none";
+    require?: Permission | Permission[];
     links: HeaderLinkConfig[];
   }[];
 };
@@ -36,7 +44,7 @@ type HeaderConfig = {
 type HeaderLinkConfig = {
   title: string;
   icon: keyof typeof MdIcons;
-  require?: "sign-in" | "sign-out" | "role-player" | "none";
+  require?: Permission;
 } & (
   | { href: string; customLink?: undefined }
   | {
@@ -141,13 +149,21 @@ export default function Header() {
               },
               {
                 title: "Moderator",
-                require: "role-moderator",
+                require: ["role-moderator" | "role-medic"],
                 links: [
                   {
                     title: "Quest Overview",
                     icon: "MdList",
                     href: "/moderator/quest",
+                    require: "role-moderator",
                   },
+                  {
+                    title: "Medic Overview",
+                    icon: "MdList",
+                    href: "/moderator/medic",
+                    require: "role-medic",
+                  },
+                  ,
                 ],
               },
               {
@@ -246,55 +262,20 @@ async function SideBar({ config }: { config: HeaderConfig }) {
                 )}
               </SheetClose>
             );
-            if (link.require === "none" || link.require === undefined) {
-              return itemContent;
-            }
-            if (link.require === "sign-in") {
-              return <SignedIn key={link.title}>{itemContent}</SignedIn>;
-            }
-            if (link.require === "sign-out") {
-              return <SignedOut key={link.title}>{itemContent}</SignedOut>;
-            }
-            if (link.require === "role-player") {
-              return (
-                <RenderOnRole key={link.title} roleCondition="player">
-                  {itemContent}
-                </RenderOnRole>
-              );
-            }
-
-            link.require satisfies never;
-            return undefined;
+            return (
+              <RequirePermission key={link.title} permission={link.require}>
+                {itemContent}
+              </RequirePermission>
+            );
           })}
         </ListGroupContent>
       </ListGroup>
     );
-    if (group.require === "none" || group.require === undefined) {
-      return groupContent;
-    }
-    if (group.require === "sign-in") {
-      return <SignedIn key={group.title}>{groupContent}</SignedIn>;
-    }
-    if (group.require === "sign-out") {
-      return <SignedOut key={group.title}>{groupContent}</SignedOut>;
-    }
-    if (group.require === "role-admin") {
-      return (
-        <RenderOnRole key={group.title} roleCondition="admin">
-          {groupContent}
-        </RenderOnRole>
-      );
-    }
-    if (group.require === "role-moderator") {
-      return (
-        <RenderOnRole key={group.title} roleCondition="moderator">
-          {groupContent}
-        </RenderOnRole>
-      );
-    }
-
-    group.require satisfies never;
-    return undefined;
+    return (
+      <RequirePermission key={group.title} permission={group.require}>
+        {groupContent}
+      </RequirePermission>
+    );
   });
   return (
     <Sheet>
@@ -310,6 +291,53 @@ async function SideBar({ config }: { config: HeaderConfig }) {
         </ScrollArea>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function RequirePermission({
+  children,
+  permission,
+  key,
+}: {
+  children: React.ReactNode;
+  key: string;
+  permission?: Permission | Permission[];
+}) {
+  const permissions = (
+    Array.isArray(permission) ? permission : [permission]
+  ).filter(Boolean);
+  if (permissions.length === 0 || permissions.includes("none")) {
+    return children;
+  }
+  if (permissions.includes("sign-in")) {
+    return <SignedIn key={key}>{children}</SignedIn>;
+  }
+  if (permissions.includes("sign-out")) {
+    return <SignedOut key={key}>{children}</SignedOut>;
+  }
+
+  type OnlyRolePrefix<T> = T extends `role-${string}` ? T : never;
+
+  const permissionToRoleMap: Record<OnlyRolePrefix<Permission>, UserRoles> = {
+    "role-admin": "admin",
+    "role-moderator": "moderator",
+    "role-medic": "medic",
+    "role-player": "player",
+  };
+
+  const roles = permissions
+    .map(
+      (x) =>
+        (permissionToRoleMap as Record<string, string>)[x] as
+          | UserRoles
+          | undefined,
+    )
+    .filter(Boolean);
+
+  return (
+    <RenderOnAnyRole key={key} roleConditions={roles}>
+      {children}
+    </RenderOnAnyRole>
   );
 }
 
@@ -380,4 +408,18 @@ function RenderOnRole({
     }
     return <>{children}</>;
   }
+}
+
+function RenderOnAnyRole({
+  children,
+  roleConditions,
+}: {
+  roleConditions: UserRoles[];
+  children: React.ReactNode;
+}) {
+  const { anyRole } = useCheckRoles(roleConditions);
+  if (!anyRole) {
+    return <></>;
+  }
+  return <>{children}</>;
 }

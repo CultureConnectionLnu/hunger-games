@@ -6,7 +6,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  if (!(await userHandler.checkRole("moderator"))) {
+  if (!(await userHandler.checkRole(["moderator", "medic"]))) {
     notFound();
   }
   return <>{children}</>;
