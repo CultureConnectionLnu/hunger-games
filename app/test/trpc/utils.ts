@@ -224,11 +224,9 @@ export async function getTestUserCallers() {
     MockUserIds,
     ReturnType<typeof appRouter.createCaller>
   >;
-  const ee = new TypedEventEmitter();
   for (const mockUser of mockUsers) {
     const caller = appRouter.createCaller(
       await createCommonContext({
-        ee,
         userId: mockUser.userId,
       }),
     );

@@ -9,20 +9,32 @@ import {
   useCountdown,
   useCountdownConfig,
 } from "../_feature/timer/countdown-provider";
+import { useAuth } from "@clerk/nextjs";
 
-type WoundedPlayer = NonNullable<RouterOutputs["medic"]["getMyWoundedState"]>;
+type WoundedPlayer = RouterOutputs["medic"]["getMyWoundedState"];
 
 export function ShowWoundedState() {
   const [hasRole] = useCheckRole("player");
+  const user = useAuth();
   if (!hasRole) {
     return <></>;
   }
 
-  return <DataGateKeep />;
+  return <DataGateKeep params={{ userId: user.userId! }} />;
 }
 
-function DataGateKeep() {
-  const { data } = api.medic.getMyWoundedState.useQuery();
+function DataGateKeep({ params }: { params: { userId: string } }) {
+  const [data, setData] = useState<WoundedPlayer>();
+  api.medic.onWoundedUpdate.useSubscription(
+    {
+      playerId: params.userId,
+    },
+    {
+      onData(data) {
+        setData(data);
+      },
+    },
+  );
   const { registerCountdown } = useCountdownConfig();
 
   useEffect(() => {
@@ -39,7 +51,7 @@ function WoundedState({
   params,
 }: {
   params: {
-    data: WoundedPlayer;
+    data: NonNullable<WoundedPlayer>;
   };
 }) {
   const { isDone, seconds } = useCountdown(params.data.userId);
@@ -65,7 +77,7 @@ function WoundedState({
   );
 }
 
-function getProgress(player: WoundedPlayer, isDone: boolean) {
+function getProgress(player: NonNullable<WoundedPlayer>, isDone: boolean) {
   if (player.isWounded && player.initialTimeoutInSeconds === undefined) {
     return "wounded" as const;
   }

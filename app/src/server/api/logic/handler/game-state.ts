@@ -6,6 +6,7 @@ import { playerStateConfig } from "../config";
 import { TRPCError } from "@trpc/server";
 
 import { Temporal, toTemporalInstant } from "@js-temporal/polyfill";
+import { ee } from "./eventing";
 Date.prototype.toTemporalInstant = toTemporalInstant;
 
 declare global {
@@ -60,6 +61,9 @@ class GameStateHandler {
     if (changed.count === 0) {
       return { success: false, error: "No player state found" } as const;
     }
+    void this.getWoundedPlayer(playerId).then((x) =>
+      ee.emit(`player-wounded-update.${playerId}`, x),
+    );
     return { success: true } as const;
   }
 

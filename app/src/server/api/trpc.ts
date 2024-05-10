@@ -12,23 +12,12 @@ import superjson from "superjson";
 import { ZodError } from "zod";
 import { clerkHandler, userHandler, type UserRoles } from "./logic/handler";
 
-import { TypedEventEmitter } from "~/lib/event-emitter";
 import { randomUUID } from "node:crypto";
 
-const globalForEE = globalThis as unknown as {
-  ee: TypedEventEmitter | undefined;
-};
-
-if (!globalForEE.ee) {
-  // this must be the same instance otherwise the websocket connection requests can't interact with the normal requests
-  globalForEE.ee = new TypedEventEmitter();
-}
-
 export async function createCommonContext(opts: {
-  ee: TypedEventEmitter;
   userId: string | undefined;
 }) {
-  const base = { user: undefined, ee: opts.ee };
+  const base = { user: undefined };
   const { userId } = opts;
   if (!userId) {
     return base;
@@ -69,14 +58,12 @@ export async function createCommonContext(opts: {
 export const createTRPCContext = async () => {
   // HACK to get clerk working with web socket
   return createCommonContext({
-    ee: globalForEE.ee!,
     userId: await clerkHandler.currentUserId(),
   });
 };
 
 export const createWebSocketContext = async () => {
   return createCommonContext({
-    ee: globalForEE.ee!,
     userId: undefined,
   });
 };
@@ -137,7 +124,6 @@ export const userProcedure = t.procedure.use(({ ctx, next }) => {
 
   return next({
     ctx: {
-      ee: ctx.ee,
       user: ctx.user,
     },
   });
@@ -173,7 +159,7 @@ export const moderatorProcedure = ifAnyRoleProcedure("moderator");
  */
 export const adminProcedure = ifAnyRoleProcedure("admin");
 
-export const medicProcedure = ifAnyRoleProcedure('medic')
+export const medicProcedure = ifAnyRoleProcedure("medic");
 
 export const errorBoundary = async <T>(fn: () => Promise<T> | T) => {
   try {

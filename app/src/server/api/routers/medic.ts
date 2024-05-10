@@ -1,13 +1,25 @@
 import { z } from "zod";
-import { clerkHandler } from "../logic/handler";
-import { gameStateHandler } from "../logic/handler/game-state";
+import { clerkHandler, gameStateHandler, ee } from "../logic/handler";
 import {
   createTRPCRouter,
   errorBoundary,
   medicProcedure,
   playerProcedure,
+  publicProcedure,
 } from "../trpc";
 import { TRPCError } from "@trpc/server";
+import { observable } from "@trpc/server/observable";
+
+type WoundedPlayer = Awaited<
+  ReturnType<(typeof gameStateHandler)["getWoundedPlayer"]>
+>;
+
+declare module "~/lib/event-emitter" {
+  // eslint-disable-next-line @typescript-eslint/consistent-indexed-object-style
+  interface KnownEvents {
+    [key: `player-wounded-update.${UserId}`]: WoundedPlayer;
+  }
+}
 
 export const medicRouter = createTRPCRouter({
   getAllWounded: medicProcedure.query(() =>
@@ -41,6 +53,9 @@ export const medicRouter = createTRPCRouter({
             message: error,
           });
         }
+        void gameStateHandler
+          .getWoundedPlayer(input.playerId)
+          .then((x) => ee.emit(`player-wounded-update.${input.playerId}`, x));
         return true;
       }),
     ),
@@ -62,13 +77,30 @@ export const medicRouter = createTRPCRouter({
             message: error,
           });
         }
+        void gameStateHandler
+          .getWoundedPlayer(input.playerId)
+          .then((x) => ee.emit(`player-wounded-update.${input.playerId}`, x));
         return true;
       }),
     ),
 
-  getMyWoundedState: playerProcedure.query(({ ctx }) =>
-    errorBoundary(async () =>
-      gameStateHandler.getWoundedPlayer(ctx.user.clerkId),
-    ),
-  ),
+  onWoundedUpdate: publicProcedure
+    .input(
+      z.object({
+        playerId: z.string(),
+      }),
+    )
+    .subscription(({ input }) => {
+      return observable<WoundedPlayer>((emit) => {
+        function onMessage(data: WoundedPlayer) {
+          emit.next(data);
+        }
+
+        ee.on(`player-wounded-update.${input.playerId}`, onMessage);
+
+        return () => {
+          ee.off(`player-wounded-update.${input.playerId}`, onMessage);
+        };
+      });
+    }),
 });

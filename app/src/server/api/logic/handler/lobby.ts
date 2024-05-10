@@ -152,6 +152,7 @@ class LobbyHandler {
       await scoreHandler.updateScoreForFight(winnerId, looserId, game.fightId);
       await questHandler.markQuestAsLost(looserId);
       await gameStateHandler.markPlayerAsWounded(looserId);
+      
     } catch (error) {
       console.log("Game completed with an error", error);
     }
