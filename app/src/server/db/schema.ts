@@ -169,7 +169,7 @@ export const gamePlayerState = createTable("game_player_state", {
   userId: varchar("user_id", { length: 255 })
     .references(() => users.clerkId, { onDelete: "cascade" })
     .notNull(),
-  isDead: boolean("is_dead").default(false).notNull(),
+  isWounded: boolean("is_wounded").default(false).notNull(),
   reviveCoolDownEnd: timestamp("revive_cool_down_end"),
 });
 export const questPlayerStateRelations = relations(

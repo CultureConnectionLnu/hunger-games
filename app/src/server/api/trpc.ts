@@ -173,6 +173,8 @@ export const moderatorProcedure = ifAnyRoleProcedure("moderator");
  */
 export const adminProcedure = ifAnyRoleProcedure("admin");
 
+export const medicProcedure = ifAnyRoleProcedure('medic')
+
 export const errorBoundary = async <T>(fn: () => Promise<T> | T) => {
   try {
     const maybePromise = fn();

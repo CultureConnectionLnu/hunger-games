@@ -23,6 +23,11 @@ export const mockUsers = [
     isAdmin: false,
   } as const,
   {
+    name: "Test Medic",
+    userId: "test_medic",
+    isAdmin: false,
+  } as const,
+  {
     name: "Test Admin",
     userId: "test_admin",
     isAdmin: true,
@@ -81,6 +86,16 @@ export function makePlayer(user: MockUserIds) {
 
   afterAll(async () => {
     await userHandler.changeUserState(user, false);
+  });
+}
+
+export function makeMedic(user: MockUserIds) {
+  beforeAll(async () => {
+    await userHandler.changeUserState(user, undefined, true);
+  });
+
+  afterAll(async () => {
+    await userHandler.changeUserState(user, undefined, false);
   });
 }
 

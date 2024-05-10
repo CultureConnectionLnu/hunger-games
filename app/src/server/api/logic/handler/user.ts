@@ -3,6 +3,7 @@ import { db } from "~/server/db";
 import { hub, roles, users } from "~/server/db/schema";
 import { clerkHandler } from "./clerk";
 import { getHandler } from "./base";
+import { gameStateHandler } from "./game-state";
 
 export type UserRoles = "admin" | "moderator" | "player" | "medic";
 
@@ -82,19 +83,35 @@ class UserHandler {
       ...(isMedic !== undefined ? { isMedic } : {}),
     };
 
-    const result = await db
-      .update(roles)
-      .set(update)
-      .where(eq(roles.userId, id));
-    if (result.count === 0) {
+    return db.transaction(async (tx) => {
+      const result = await tx
+        .update(roles)
+        .set(update)
+        .where(eq(roles.userId, id));
+      if (result.count === 0) {
+        tx.rollback();
+        return {
+          success: false,
+          reason: "not-found" as const,
+        } as const;
+      }
+
+      if (isPlayer === undefined) return { success: true } as const;
+
+      const stateUpdate = await (isPlayer
+        ? gameStateHandler.createPlayerState(id, tx)
+        : gameStateHandler.deletePlayerState(id, tx));
+      if (stateUpdate.count === 0) {
+        tx.rollback();
+        return {
+          success: false,
+          reason: "not-found" as const,
+        } as const;
+      }
       return {
-        success: false,
-        reason: "not-found" as const,
+        success: true,
       } as const;
-    }
-    return {
-      success: true,
-    } as const;
+    });
   }
 
   public async createUser(userId: string) {

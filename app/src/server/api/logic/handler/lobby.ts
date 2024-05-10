@@ -7,6 +7,7 @@ import { RpsGame } from "../games/rps";
 import { clerkHandler, questHandler } from ".";
 import { scoreHandler } from "./score";
 import { getHandler } from "./base";
+import { gameStateHandler } from "./game-state";
 
 /**
  * insert a new entry for each game added
@@ -150,6 +151,7 @@ class LobbyHandler {
 
       await scoreHandler.updateScoreForFight(winnerId, looserId, game.fightId);
       await questHandler.markQuestAsLost(looserId);
+      await gameStateHandler.markPlayerAsWounded(looserId);
     } catch (error) {
       console.log("Game completed with an error", error);
     }

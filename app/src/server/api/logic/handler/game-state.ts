@@ -1,23 +1,18 @@
-import { db } from "~/server/db";
+import { type DB, db } from "~/server/db";
 import { getHandler } from "./base";
 import { gamePlayerState } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { playerStateConfig } from "../config";
 
 class GameStateHandler {
-  public async createPlayerState(playerId: string) {
+  public async createPlayerState(playerId: string, db: DB) {
     // todo: call when user is marked as player
-    return db
-      .insert(gamePlayerState)
-      .values({
-        userId: playerId,
-      })
-      .returning({
-        userId: gamePlayerState.userId,
-      });
+    return db.insert(gamePlayerState).values({
+      userId: playerId,
+    });
   }
 
-  public async deletePlayerState(playerId: string) {
+  public async deletePlayerState(playerId: string, db: DB) {
     // todo: call when user is removed as player
     return db
       .delete(gamePlayerState)
@@ -30,10 +25,16 @@ class GameStateHandler {
     });
   }
 
-  public async markPlayerAsDead(playerId: string) {
+  public async getAllWoundedPlayers() {
+    return db.query.gamePlayerState.findMany({
+      where: ({ isWounded }, { eq }) => eq(isWounded, true),
+    });
+  }
+
+  public async markPlayerAsWounded(playerId: string) {
     const changed = await db
       .update(gamePlayerState)
-      .set({ isDead: true })
+      .set({ isWounded: true })
       .where(eq(gamePlayerState.userId, playerId));
     if (changed.count === 0) {
       return { success: false, error: "No player state found" } as const;
@@ -68,7 +69,7 @@ class GameStateHandler {
       return { success: false, error: "No player state found" } as const;
     }
 
-    if (!playerState.isDead) {
+    if (!playerState.isWounded) {
       return { success: false, error: "Player is not dead" } as const;
     }
     if (!playerState.reviveCoolDownEnd) {
@@ -89,7 +90,7 @@ class GameStateHandler {
     const changed = await db
       .update(gamePlayerState)
       .set({
-        isDead: false,
+        isWounded: false,
         reviveCoolDownEnd: null,
       })
       .where(eq(gamePlayerState.userId, playerId));
