@@ -9,6 +9,7 @@ import ClientHeader from "./_components/client-header";
 import FightProvider from "./_feature/auto-join-game/fight-provider";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { RolesProvider } from "./_feature/auth/role-check";
+import { CountdownProvider } from "./_feature/timer/countdown-provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -32,20 +33,22 @@ export default function RootLayout({
         <body className={`font-sans ${inter.variable}`}>
           <TRPCReactProvider>
             <RolesProvider>
-              <FightProvider>
-                <TooltipProvider>
-                  <ClientHeader />
-                  <div
-                    style={{
-                      // 56px is the height of the header
-                      height: "calc(100vh - 56px)",
-                    }}
-                  >
-                    {children}
-                  </div>
-                  <Toaster />
-                </TooltipProvider>
-              </FightProvider>
+              <CountdownProvider>
+                <FightProvider>
+                  <TooltipProvider>
+                    <ClientHeader />
+                    <div
+                      style={{
+                        // 56px is the height of the header
+                        height: "calc(100vh - 56px)",
+                      }}
+                    >
+                      {children}
+                    </div>
+                    <Toaster />
+                  </TooltipProvider>
+                </FightProvider>
+              </CountdownProvider>
             </RolesProvider>
           </TRPCReactProvider>
         </body>

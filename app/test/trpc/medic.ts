@@ -67,7 +67,8 @@ export const medicTests = () =>
             {
               userId: "test_user_2",
               isWounded: true,
-              reviveCoolDownEnd: expect.any(Date),
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+              initialTimeoutInSeconds: expect.any(Number),
             },
           ]);
         }));

@@ -14,7 +14,7 @@ export const medicRouter = createTRPCRouter({
 
       return allWoundedPlayerIds.map((player) => ({
         ...player,
-        userName: userNames[player.userId],
+        userName: userNames[player.userId]!,
       }));
     }),
   ),

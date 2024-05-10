@@ -27,9 +27,23 @@ class GameStateHandler {
   }
 
   public async getAllWoundedPlayers() {
-    return db.query.gamePlayerState.findMany({
-      where: ({ isWounded }, { eq }) => eq(isWounded, true),
-    });
+    return db.query.gamePlayerState
+      .findMany({
+        where: ({ isWounded }, { eq }) => eq(isWounded, true),
+      })
+      .then((allWoundedPlayers) =>
+        allWoundedPlayers.map((player) => {
+          const initialTimeoutInSeconds = player.reviveCoolDownEnd
+            ? player.reviveCoolDownEnd.getTime() - Date.now()
+            : undefined;
+          return {
+            userId: player.userId,
+            isWounded: player.isWounded,
+            initialTimeoutInSeconds,
+            reviveCoolDownEnd: player.reviveCoolDownEnd ?? undefined,
+          };
+        }),
+      );
   }
 
   public async markPlayerAsWounded(playerId: string) {
