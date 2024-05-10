@@ -28,7 +28,26 @@ export const medicTests = () =>
       testFight(async ({ playGame, getWoundedPlayers }) => {
         await playGame("test_user_1");
         const wounded = await getWoundedPlayers();
-        expect(wounded).toHaveLength(1);
+        expect(wounded).toMatchObject([
+          {
+            userId: "test_user_2",
+            isWounded: true,
+          },
+        ]);
+      }));
+
+    it("should start revival process", () =>
+      testFight(async ({ playGame, getWoundedPlayers, startRevive }) => {
+        await playGame("test_user_1");
+        await startRevive("test_user_2");
+        const wounded = await getWoundedPlayers();
+        expect(wounded).toMatchObject([
+          {
+            userId: "test_user_2",
+            isWounded: true,
+            reviveCoolDownEnd: expect.any(Date),
+          },
+        ]);
       }));
   });
 
@@ -76,10 +95,14 @@ async function setupTest() {
   const getWoundedPlayers = async () =>
     callers.test_medic.medic.getAllWounded();
 
+  const startRevive = async (playerId: `test_user_${1 | 2}`) =>
+    callers.test_medic.medic.startRevive({ playerId });
+
   return {
     callers,
     playGame,
     getAllFightIds: () => state.allFightIds,
     getWoundedPlayers,
+    startRevive,
   };
 }

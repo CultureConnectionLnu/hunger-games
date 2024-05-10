@@ -1,6 +1,8 @@
+import { z } from "zod";
 import { clerkHandler } from "../logic/handler";
 import { gameStateHandler } from "../logic/handler/game-state";
 import { createTRPCRouter, errorBoundary, medicProcedure } from "../trpc";
+import { TRPCError } from "@trpc/server";
 
 export const medicRouter = createTRPCRouter({
   getAllWounded: medicProcedure.query(() =>
@@ -16,4 +18,25 @@ export const medicRouter = createTRPCRouter({
       }));
     }),
   ),
+
+  startRevive: medicProcedure
+    .input(
+      z.object({
+        playerId: z.string(),
+      }),
+    )
+    .mutation(({ input }) =>
+      errorBoundary(async () => {
+        const { success } = await gameStateHandler.startRevivingPlayer(
+          input.playerId,
+        );
+        if (!success) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: `There is no player with id ${input.playerId}`,
+          });
+        }
+        return true;
+      }),
+    ),
 });

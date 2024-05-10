@@ -6,14 +6,12 @@ import { playerStateConfig } from "../config";
 
 class GameStateHandler {
   public async createPlayerState(playerId: string, db: DB) {
-    // todo: call when user is marked as player
     return db.insert(gamePlayerState).values({
       userId: playerId,
     });
   }
 
   public async deletePlayerState(playerId: string, db: DB) {
-    // todo: call when user is removed as player
     return db
       .delete(gamePlayerState)
       .where(eq(gamePlayerState.userId, playerId));
