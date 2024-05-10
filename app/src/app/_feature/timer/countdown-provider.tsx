@@ -21,6 +21,7 @@ export function CountdownProvider({ children }: { children: React.ReactNode }) {
 
   const registerCountdown = (id: string, initialSeconds?: number) => {
     if (initialSeconds === undefined) return;
+    if (Object.keys(countdowns).includes(id)) return;
     setCountdowns((prev) => ({
       ...prev,
       [id]: initialSeconds,

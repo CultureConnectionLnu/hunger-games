@@ -1,20 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import { useEffect, useState } from "react";
+import { CardHeader, CardTitle } from "~/components/ui/card";
 import { api } from "~/trpc/react";
-import { useCheckRole } from "../_feature/auth/role-check";
 import { type RouterOutputs } from "~/trpc/shared";
+import { useCheckRole } from "../_feature/auth/role-check";
 import {
   useCountdown,
   useCountdownConfig,
 } from "../_feature/timer/countdown-provider";
-import { useEffect, useState } from "react";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "~/components/ui/card";
 
 type WoundedPlayer = NonNullable<RouterOutputs["medic"]["getMyWoundedState"]>;
 
