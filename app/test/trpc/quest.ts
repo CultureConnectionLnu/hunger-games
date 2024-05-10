@@ -7,6 +7,7 @@ import {
   getTestUserCallers,
   makeHubs,
   makePlayer,
+  resetWoundedPlayers,
   useAutomaticTimer,
   useManualTimer,
   type ModeratorIds,

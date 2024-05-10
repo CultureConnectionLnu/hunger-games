@@ -141,11 +141,15 @@ class UserHandler {
     return dbReference.insert(roles).values({ userId });
   }
 
+  public async isPlayer(playerId: string) {
+    return userHandler.checkRole("player", playerId);
+  }
+
   public async assertUserIsPlayer(
     playerId: string,
     messageIfNotPlayer: string,
   ) {
-    const isPlayer = await userHandler.checkRole("player", playerId);
+    const isPlayer = await this.isPlayer(playerId);
     if (!isPlayer) {
       throw new TRPCError({
         code: "BAD_REQUEST",

@@ -112,7 +112,7 @@ class GameStateHandler {
     return { success: true } as const;
   }
 
-  public async assertPlayerNotWounded(playerId: string, messageIfWounded: string) {
+  public async isPlayerWounded(playerId: string) {
     const gameState = await this.getPlayerState(playerId);
     if (!gameState) {
       const error = new TRPCError({
@@ -122,7 +122,14 @@ class GameStateHandler {
       console.log("[Lobby:Create] impossible behavior met", error);
       throw error;
     }
-    if (gameState.isWounded) {
+    return gameState.isWounded;
+  }
+
+  public async assertPlayerNotWounded(
+    playerId: string,
+    messageIfWounded: string,
+  ) {
+    if (await this.isPlayerWounded(playerId)) {
       throw new TRPCError({
         code: "BAD_REQUEST",
         message: messageIfWounded,

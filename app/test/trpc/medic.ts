@@ -144,6 +144,18 @@ export const medicTests = () =>
           ).rejects.toThrow();
         }));
     });
+
+    describe("moderator", () => {
+      it("should show to moderator that player is wounded", () =>
+        testFight(async ({ playGame, getQuestOfPlayer }) => {
+          await playGame("test_user_1");
+          const quest = await getQuestOfPlayer("test_user_2");
+
+          expect(quest).toMatchObject({
+            state: "player-is-wounded",
+          });
+        }));
+    });
   });
 
 async function testFight(
@@ -207,6 +219,12 @@ async function setupTest() {
     state.allQuestIds.push(id);
   };
 
+  const getQuestOfPlayer = async (playerId: `test_user_${1 | 2}`) => {
+    return callers.test_moderator_1.quest.getCurrentQuestOfPlayer({
+      userId: playerId,
+    });
+  };
+
   const getWoundedPlayers = async () =>
     callers.test_medic.medic.getAllWounded();
 
@@ -230,5 +248,6 @@ async function setupTest() {
     startRevive,
     finishRevive,
     waitForReviveTime,
+    getQuestOfPlayer,
   };
 }

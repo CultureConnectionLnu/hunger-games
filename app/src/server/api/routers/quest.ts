@@ -121,10 +121,16 @@ export const questRouter = createTRPCRouter({
         }
 
         const playerName = await clerkHandler.getUserName(input.userId);
-        const isPlayer = await userHandler.checkRole("player", input.userId);
-        if (!isPlayer) {
+        if (!(await userHandler.isPlayer(input.userId))) {
           return {
             state: "is-no-player",
+            playerName,
+          } as const;
+        }
+
+        if (await gameStateHandler.isPlayerWounded(input.userId)) {
+          return {
+            state: "player-is-wounded",
             playerName,
           } as const;
         }
