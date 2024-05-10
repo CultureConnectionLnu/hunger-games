@@ -215,6 +215,7 @@ function WoundedPlayer({
     </>
   );
 }
+
 function getProgress(player: WoundedPlayer, isDone: boolean) {
   if (player.isWounded && player.initialTimeoutInSeconds === undefined) {
     return "wounded" as const;

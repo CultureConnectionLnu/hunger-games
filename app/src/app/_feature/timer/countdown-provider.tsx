@@ -3,9 +3,9 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 
 export type CountdownCtxData = {
-  registerCountdown: (id: string, initialSeconds: number) => void;
+  registerCountdown: (id: string, initialSeconds?: number) => void;
   registerOnlyNewCountdown: (
-    config: { id: string; initialSeconds: number }[],
+    config: { id: string; initialSeconds?: number }[],
   ) => void;
   countdowns: Record<string, number>;
 };
@@ -19,7 +19,8 @@ const CountdownContext = createContext<CountdownCtxData>({
 export function CountdownProvider({ children }: { children: React.ReactNode }) {
   const [countdowns, setCountdowns] = useState<Record<string, number>>({});
 
-  const registerCountdown = (id: string, initialSeconds: number) => {
+  const registerCountdown = (id: string, initialSeconds?: number) => {
+    if (initialSeconds === undefined) return;
     setCountdowns((prev) => ({
       ...prev,
       [id]: initialSeconds,
@@ -27,17 +28,18 @@ export function CountdownProvider({ children }: { children: React.ReactNode }) {
   };
 
   const registerOnlyNewCountdown = (
-    config: { id: string; initialSeconds: number }[],
+    config: { id: string; initialSeconds?: number }[],
   ) => {
     const existingCountdowns = Object.keys(countdowns);
     const newCountdowns = config
       .filter((x) => !existingCountdowns.includes(x.id))
+      .filter((x) => x.initialSeconds !== undefined)
       .reduce(
         (acc, x) => {
           /**
            * In case that the page is reloaded and the countdown is already past the actual time then this would be a negative number.
            */
-          acc[x.id] = Math.max(x.initialSeconds, 0);
+          acc[x.id] = Math.max(x.initialSeconds!, 0);
           return acc;
         },
         {} as typeof countdowns,

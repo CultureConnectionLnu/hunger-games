@@ -41,18 +41,15 @@ class GameStateHandler {
         where: ({ isWounded }, { eq }) => eq(isWounded, true),
       })
       .then((allWoundedPlayers) =>
-        allWoundedPlayers.map((player) => {
-          const initialTimeoutInSeconds = calculateDiffInSeconds(
-            player.reviveCoolDownEnd,
-          );
-          return {
-            userId: player.userId,
-            isWounded: player.isWounded,
-            initialTimeoutInSeconds,
-            reviveCoolDownEnd: player.reviveCoolDownEnd ?? undefined,
-          };
-        }),
+        allWoundedPlayers
+          .map((player) => parsePlayerState(player))
+          .filter(Boolean),
       );
+  }
+
+  public async getWoundedPlayer(playerId: string) {
+    const rawState = await getSpecificPlayerState(playerId);
+    return parsePlayerState(rawState);
   }
 
   public async markPlayerAsWounded(playerId: string) {
@@ -173,6 +170,29 @@ class GameStateHandler {
   public fakeTimePass() {
     this.fakeTimePassed = true;
   }
+}
+
+function getSpecificPlayerState(playerId: string) {
+  return db.query.gamePlayerState.findFirst({
+    where: ({ isWounded, userId }, { and, eq }) =>
+      and(eq(isWounded, true), eq(userId, playerId)),
+  });
+}
+
+function parsePlayerState(
+  player: Awaited<ReturnType<typeof getSpecificPlayerState>>,
+) {
+  if (!player) return undefined;
+
+  const initialTimeoutInSeconds = calculateDiffInSeconds(
+    player.reviveCoolDownEnd,
+  );
+  return {
+    userId: player.userId,
+    isWounded: player.isWounded,
+    initialTimeoutInSeconds,
+    reviveCoolDownEnd: player.reviveCoolDownEnd ?? undefined,
+  };
 }
 
 function calculateDiffInSeconds(date: Date | null | undefined) {

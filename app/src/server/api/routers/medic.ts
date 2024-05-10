@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { clerkHandler } from "../logic/handler";
 import { gameStateHandler } from "../logic/handler/game-state";
-import { createTRPCRouter, errorBoundary, medicProcedure } from "../trpc";
+import {
+  createTRPCRouter,
+  errorBoundary,
+  medicProcedure,
+  playerProcedure,
+} from "../trpc";
 import { TRPCError } from "@trpc/server";
 
 export const medicRouter = createTRPCRouter({
@@ -60,4 +65,10 @@ export const medicRouter = createTRPCRouter({
         return true;
       }),
     ),
+
+  getMyWoundedState: playerProcedure.query(({ ctx }) =>
+    errorBoundary(async () =>
+      gameStateHandler.getWoundedPlayer(ctx.user.clerkId),
+    ),
+  ),
 });

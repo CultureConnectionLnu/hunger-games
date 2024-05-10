@@ -32,7 +32,7 @@ export function WoundedTable() {
       .filter((x) => Boolean(x.initialTimeoutInSeconds))
       .map((x) => ({
         id: x.userId,
-        initialSeconds: x.initialTimeoutInSeconds!,
+        initialSeconds: x.initialTimeoutInSeconds,
       }));
 
     registerOnlyNewCountdown(countdowns);

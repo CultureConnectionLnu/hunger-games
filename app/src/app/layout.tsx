@@ -10,6 +10,8 @@ import FightProvider from "./_feature/auto-join-game/fight-provider";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { RolesProvider } from "./_feature/auth/role-check";
 import { CountdownProvider } from "./_feature/timer/countdown-provider";
+import JoinRunningGame from "./_components/join-running-fight";
+import { ShowWoundedState } from "./_components/show-wounded-state";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,6 +39,8 @@ export default function RootLayout({
                 <FightProvider>
                   <TooltipProvider>
                     <ClientHeader />
+                    <JoinRunningGame />
+                    <ShowWoundedState />
                     <div
                       style={{
                         // 56px is the height of the header
