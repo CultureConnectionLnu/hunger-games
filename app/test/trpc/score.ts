@@ -13,6 +13,7 @@ import {
 import { db } from "~/server/db";
 import { fight, quest } from "~/server/db/schema";
 import {
+  cleanupLeftovers,
   getTestUserCallers,
   makeHubs,
   makePlayer,
@@ -129,7 +130,7 @@ export const scoreTests = () =>
         it("should not have a history entry for lost quests", () =>
           testFight(async ({ startQuest, playGame, getHistory }) => {
             await startQuest("test_user_1", "walk-1");
-            await playGame('test_user_2')
+            await playGame("test_user_2");
 
             const history = await getHistory("test_user_1");
             // is 1, because the game is in the array
@@ -168,12 +169,10 @@ async function testFight(
     .catch((error: Error) => ({ pass: false, error }) as const)
     .then(async (x) => {
       useAutomaticTimer();
-      if (args.getAllFightIds().length !== 0) {
-        await db.delete(fight).where(inArray(fight.id, args.getAllFightIds()));
-      }
-      if (args.getAllQuestIds().length !== 0) {
-        await db.delete(quest).where(inArray(quest.id, args.getAllQuestIds()));
-      }
+      await cleanupLeftovers({
+        fightIds: args.getAllFightIds(),
+        questIds: args.getAllQuestIds(),
+      });
       return x;
     })
     .then(({ pass, error }) => {

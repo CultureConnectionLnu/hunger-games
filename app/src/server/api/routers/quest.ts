@@ -14,6 +14,7 @@ import {
   moderatorProcedure,
   playerProcedure,
 } from "../trpc";
+import { gameStateHandler } from "../logic/handler/game-state";
 
 export const questRouter = createTRPCRouter({
   getAllOngoingQuests: adminProcedure.query(() =>
@@ -203,13 +204,14 @@ export const questRouter = createTRPCRouter({
           });
         }
 
-        const isPlayer = await userHandler.checkRole("player", input.playerId);
-        if (!isPlayer) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: `The user with id '${input.playerId}' is no player and can not be assigned to a quest`,
-          });
-        }
+        await userHandler.assertUserIsPlayer(
+          input.playerId,
+          `The user with id '${input.playerId}' is no player and can not be assigned to a quest`,
+        );
+        await gameStateHandler.assertPlayerNotWounded(
+          input.playerId,
+          `The player with id '${input.playerId}' is wounded and can't start a quest`,
+        );
 
         const allHubs = await hubHandler.getAllHubs();
         // exclude the current hub from the list of hubs

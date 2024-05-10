@@ -3,8 +3,11 @@ import { getHandler } from "./base";
 import { gamePlayerState } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { playerStateConfig } from "../config";
+import { TRPCError } from "@trpc/server";
 
 class GameStateHandler {
+  private fakeTimePassed = false;
+
   public async createPlayerState(playerId: string, db: DB) {
     return db.insert(gamePlayerState).values({
       userId: playerId,
@@ -86,12 +89,13 @@ class GameStateHandler {
     }
 
     const currentTime = new Date();
-    if (currentTime < playerState.reviveCoolDownEnd) {
+    if (!this.fakeTimePassed && currentTime < playerState.reviveCoolDownEnd) {
       return {
         success: false,
         error: "Player is still reviving",
       } as const;
     }
+    this.fakeTimePassed = false;
 
     const changed = await db
       .update(gamePlayerState)
@@ -106,6 +110,27 @@ class GameStateHandler {
     }
 
     return { success: true } as const;
+  }
+
+  public async assertPlayerNotWounded(playerId: string, messageIfWounded: string) {
+    const gameState = await this.getPlayerState(playerId);
+    if (!gameState) {
+      const error = new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Player ${playerId} has no game state, even though he should`,
+      });
+      console.log("[Lobby:Create] impossible behavior met", error);
+      throw error;
+    }
+    if (gameState.isWounded) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: messageIfWounded,
+      });
+    }
+  }
+  public fakeTimePass() {
+    this.fakeTimePassed = true;
   }
 }
 

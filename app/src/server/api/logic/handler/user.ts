@@ -4,6 +4,7 @@ import { hub, roles, users } from "~/server/db/schema";
 import { clerkHandler } from "./clerk";
 import { getHandler } from "./base";
 import { gameStateHandler } from "./game-state";
+import { TRPCError } from "@trpc/server";
 
 export type UserRoles = "admin" | "moderator" | "player" | "medic";
 
@@ -138,6 +139,19 @@ class UserHandler {
 
   public async createRoles(userId: string, dbReference = db) {
     return dbReference.insert(roles).values({ userId });
+  }
+
+  public async assertUserIsPlayer(
+    playerId: string,
+    messageIfNotPlayer: string,
+  ) {
+    const isPlayer = await userHandler.checkRole("player", playerId);
+    if (!isPlayer) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: messageIfNotPlayer,
+      });
+    }
   }
 }
 

@@ -1,14 +1,12 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import type { Unsubscribable } from "@trpc/server/observable";
-import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import { lobbyHandler } from "~/server/api/logic/handler";
 
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 import type { TimerEvent } from "~/server/api/logic/core/timer";
-import { db } from "~/server/db";
-import { fight } from "~/server/db/schema";
 import {
+  cleanupLeftovers,
   expectEventEmitted,
   expectNotEvenEmitted,
   getLastEventOf,
@@ -423,7 +421,9 @@ async function testFight(
       // finish the game properly before deleting
       args.getLobby().endGame("test_user_1", "test_user_2");
       await args.getFight().gameDone;
-      await db.delete(fight).where(eq(fight.id, id));
+      await cleanupLeftovers({
+        fightIds: [id],
+      });
       return x;
     })
     .then(({ pass, error }) => {
