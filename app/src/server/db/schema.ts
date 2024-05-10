@@ -45,6 +45,7 @@ export const roles = createTable("role", {
     .references(() => users.clerkId, { onDelete: "cascade" })
     .notNull(),
   isPlayer: boolean("is_player").default(false).notNull(),
+  isMedic: boolean("is_medic").default(false).notNull(),
   ...metadata,
 });
 

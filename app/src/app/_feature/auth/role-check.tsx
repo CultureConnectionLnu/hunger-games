@@ -30,6 +30,10 @@ export function useCheckRole(role: UserRoles) {
       setState(data.isPlayer);
       return;
     }
+    if (role === "medic") {
+      setState(data.isMedic);
+      return;
+    }
 
     // should be dead code
     setState(false);

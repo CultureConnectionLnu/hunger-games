@@ -4,7 +4,7 @@ import { hub, roles, users } from "~/server/db/schema";
 import { clerkHandler } from "./clerk";
 import { getHandler } from "./base";
 
-export type UserRoles = "admin" | "moderator" | "player";
+export type UserRoles = "admin" | "moderator" | "player" | "medic";
 
 class UserHandler {
   public async checkRole(role: UserRoles, userId?: string) {
@@ -19,6 +19,7 @@ class UserHandler {
 
     if (role === "moderator") return user.isModerator;
     if (role === "player") return user.isPlayer;
+    if (role === "medic") return user.isMedic;
 
     // should be dead code
     role satisfies never;
@@ -28,17 +29,19 @@ class UserHandler {
   public async getAllRolesOfCurrentUser(): Promise<Record<UserRoles, boolean>> {
     const currentUserId = await clerkHandler.currentUserId();
     if (!currentUserId)
-      return { player: false, moderator: false, admin: false };
+      return { player: false, moderator: false, admin: false, medic: false };
 
     const user = await this.getUserRoles(currentUserId);
-    if (!user) return { player: false, moderator: false, admin: false };
+    if (!user)
+      return { player: false, moderator: false, admin: false, medic: false };
 
-    const { isModerator, isPlayer } = user;
+    const { isModerator, isPlayer, isMedic } = user;
     const admin = await clerkHandler.isAdmin(currentUserId);
     return {
       admin,
       moderator: isModerator,
       player: isPlayer,
+      medic: isMedic,
     };
   }
 
@@ -57,6 +60,7 @@ class UserHandler {
       .select({
         isModerator: sql<boolean>`EXISTS (SELECT 1 FROM ${users} JOIN ${hub} ON ${users.clerkId} = ${hub.assignedModeratorId} WHERE ${users.clerkId} = ${id})`,
         isPlayer: roles.isPlayer,
+        isMedic: roles.isMedic,
         id: users.clerkId,
       })
       .from(users)
@@ -66,20 +70,32 @@ class UserHandler {
     return result[0];
   }
 
-  public async changePlayerState(id: string, isPlayer: boolean) {
+  public async changeUserState(
+    id: string,
+    isPlayer?: boolean,
+    isMedic?: boolean,
+  ) {
+    if (isPlayer === undefined && isMedic === undefined)
+      return { success: true } as const;
+
+    const update = {
+      ...(isPlayer !== undefined ? { isPlayer } : {}),
+      ...(isMedic !== undefined ? { isMedic } : {}),
+    };
+
     const result = await db
       .update(roles)
-      .set({ isPlayer })
+      .set(update)
       .where(eq(roles.userId, id));
     if (result.count === 0) {
       return {
         success: false,
         reason: "not-found" as const,
-      };
+      } as const;
     }
     return {
       success: true,
-    };
+    } as const;
   }
 
   public async createUser(userId: string) {

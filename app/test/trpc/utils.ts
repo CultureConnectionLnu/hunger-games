@@ -76,11 +76,11 @@ export function provideTestUsers() {
 
 export function makePlayer(user: MockUserIds) {
   beforeAll(async () => {
-    await userHandler.changePlayerState(user, true);
+    await userHandler.changeUserState(user, true);
   });
 
   afterAll(async () => {
-    await userHandler.changePlayerState(user, false);
+    await userHandler.changeUserState(user, false);
   });
 }
 

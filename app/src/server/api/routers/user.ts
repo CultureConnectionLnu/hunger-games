@@ -4,34 +4,41 @@ import { clerkHandler, userHandler } from "../logic/handler";
 import {
   adminProcedure,
   createTRPCRouter,
+  errorBoundary,
   moderatorProcedure,
   userProcedure,
 } from "../trpc";
 
 export const userRouter = createTRPCRouter({
-  allUsers: adminProcedure.query(async () => getAllUserWithRoles()),
+  allUsers: adminProcedure.query(() =>
+    errorBoundary(async () => getAllUserWithRoles()),
+  ),
 
-  allPlayer: moderatorProcedure.query(async () => {
-    const allUsers = await getAllUserWithRoles();
-    return allUsers.filter((x) => x.isPlayer);
-  }),
+  allPlayer: moderatorProcedure.query(() =>
+    errorBoundary(async () => {
+      const allUsers = await getAllUserWithRoles();
+      return allUsers.filter((x) => x.isPlayer);
+    }),
+  ),
 
-  getYourRoles: userProcedure.query(({ ctx }) => {
-    return userHandler.getUserRoles(ctx.user.clerkId);
-  }),
+  getYourRoles: userProcedure.query(({ ctx }) =>
+    errorBoundary(async () => userHandler.getUserRoles(ctx.user.clerkId)),
+  ),
 
-  changePlayerState: adminProcedure
+  changeUserState: adminProcedure
     .input(
       z.object({
         id: z.string(),
-        isPlayer: z.boolean(),
+        isPlayer: z.boolean().optional(),
+        isMedic: z.boolean().optional(),
       }),
     )
-    .mutation(async ({ input }) => {
-      try {
-        const result = await userHandler.changePlayerState(
+    .mutation(({ input }) =>
+      errorBoundary(async () => {
+        const result = await userHandler.changeUserState(
           input.id,
           input.isPlayer,
+          input.isMedic,
         );
         if (!result.success) {
           throw new TRPCError({
@@ -40,11 +47,8 @@ export const userRouter = createTRPCRouter({
           });
         }
         return { success: true } as const;
-      } catch (error) {
-        console.error("failed to update player state because: ", error);
-        return { success: false, error: String(error) } as const;
-      }
-    }),
+      }),
+    ),
 });
 
 async function getAllUserWithRoles() {
@@ -68,6 +72,7 @@ async function getAllUserWithRoles() {
       ...user,
       isModerator: roles?.isModerator ?? false,
       isPlayer: roles?.isPlayer ?? false,
+      isMedic: roles?.isMedic ?? false,
     };
   });
 }
