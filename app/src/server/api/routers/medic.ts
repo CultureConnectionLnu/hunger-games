@@ -27,13 +27,34 @@ export const medicRouter = createTRPCRouter({
     )
     .mutation(({ input }) =>
       errorBoundary(async () => {
-        const { success } = await gameStateHandler.startRevivingPlayer(
+        const { success, error } = await gameStateHandler.startRevivingPlayer(
           input.playerId,
         );
         if (!success) {
           throw new TRPCError({
             code: "BAD_REQUEST",
-            message: `There is no player with id ${input.playerId}`,
+            message: error,
+          });
+        }
+        return true;
+      }),
+    ),
+
+  finishRevive: medicProcedure
+    .input(
+      z.object({
+        playerId: z.string(),
+      }),
+    )
+    .mutation(({ input }) =>
+      errorBoundary(async () => {
+        const { success, error } = await gameStateHandler.finishRevivingPlayer(
+          input.playerId,
+        );
+        if (!success) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: error,
           });
         }
         return true;

@@ -41,6 +41,14 @@ class GameStateHandler {
   }
 
   public async startRevivingPlayer(playerId: string) {
+    const playerState = await this.getPlayerState(playerId);
+    if (!playerState) {
+      return { success: false, error: "No player state found" } as const;
+    }
+
+    if (!playerState.isWounded) {
+      return { success: false, error: "Player is not wounded" } as const;
+    }
     // todo: show a timer to the player
     // todo: show all counters to the medic managers
     const reviveCoolDownEnd = new Date(
@@ -68,7 +76,7 @@ class GameStateHandler {
     }
 
     if (!playerState.isWounded) {
-      return { success: false, error: "Player is not dead" } as const;
+      return { success: false, error: "Player is not wounded" } as const;
     }
     if (!playerState.reviveCoolDownEnd) {
       return {

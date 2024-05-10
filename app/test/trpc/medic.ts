@@ -36,19 +36,72 @@ export const medicTests = () =>
         ]);
       }));
 
-    it("should start revival process", () =>
-      testFight(async ({ playGame, getWoundedPlayers, startRevive }) => {
-        await playGame("test_user_1");
-        await startRevive("test_user_2");
-        const wounded = await getWoundedPlayers();
-        expect(wounded).toMatchObject([
-          {
-            userId: "test_user_2",
-            isWounded: true,
-            reviveCoolDownEnd: expect.any(Date),
-          },
-        ]);
-      }));
+    describe("startRevive", () => {
+      it("can't start reviving a non player", () =>
+        testFight(async ({ startRevive }) => {
+          await expect(async () =>
+            // @ts-expect-error this is not a player, but this is expected here
+            startRevive("test_admin"),
+          ).rejects.toThrow();
+        }));
+
+      it("can't start reviving a player that is not wounded", () =>
+        testFight(async ({ startRevive }) => {
+          await expect(async () =>
+            startRevive("test_user_1"),
+          ).rejects.toThrow();
+        }));
+
+      it("should start revival process", () =>
+        testFight(async ({ playGame, getWoundedPlayers, startRevive }) => {
+          await playGame("test_user_1");
+          await startRevive("test_user_2");
+          const wounded = await getWoundedPlayers();
+          expect(wounded).toMatchObject([
+            {
+              userId: "test_user_2",
+              isWounded: true,
+              reviveCoolDownEnd: expect.any(Date),
+            },
+          ]);
+        }));
+    });
+
+    describe("finishRevive", () => {
+      it("can't finish revival of a non player", () =>
+        testFight(async ({ finishRevive }) => {
+          await expect(async () =>
+            // @ts-expect-error this is not a player, but this is expected here
+            finishRevive("test_admin"),
+          ).rejects.toThrow();
+        }));
+
+      it("can't finish revival of a non wounded player", () =>
+        testFight(async ({ finishRevive }) => {
+          await expect(async () =>
+            finishRevive("test_user_1"),
+          ).rejects.toThrow();
+        }));
+
+      it("can't finish revival before starting it", () =>
+        testFight(async ({ playGame, finishRevive }) => {
+          await playGame("test_user_1");
+
+          await expect(async () =>
+            finishRevive("test_user_2"),
+          ).rejects.toThrow();
+        }));
+
+      it("can't finish revival before waiting time is up", () =>
+        testFight(async ({ playGame, startRevive, finishRevive }) => {
+          await playGame("test_user_1");
+          await startRevive("test_user_2");
+
+          await expect(async () =>
+            finishRevive("test_user_2"),
+          ).rejects.toThrow();
+        }));
+    });
   });
 
 async function testFight(
@@ -98,11 +151,15 @@ async function setupTest() {
   const startRevive = async (playerId: `test_user_${1 | 2}`) =>
     callers.test_medic.medic.startRevive({ playerId });
 
+  const finishRevive = async (playerId: `test_user_${1 | 2}`) =>
+    callers.test_medic.medic.finishRevive({ playerId });
+
   return {
     callers,
     playGame,
     getAllFightIds: () => state.allFightIds,
     getWoundedPlayers,
     startRevive,
+    finishRevive,
   };
 }
