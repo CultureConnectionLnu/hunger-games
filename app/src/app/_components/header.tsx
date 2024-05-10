@@ -149,7 +149,7 @@ export default function Header() {
               },
               {
                 title: "Moderator",
-                require: ["role-moderator" | "role-medic"],
+                require: ["role-moderator", "role-medic"],
                 links: [
                   {
                     title: "Quest Overview",
@@ -163,7 +163,6 @@ export default function Header() {
                     href: "/moderator/medic",
                     require: "role-medic",
                   },
-                  ,
                 ],
               },
               {
