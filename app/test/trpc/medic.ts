@@ -1,21 +1,17 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import { inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
-  type QuestKind,
   lobbyHandler,
   questHandler,
+  type QuestKind,
 } from "~/server/api/logic/handler";
 import { gameStateHandler } from "~/server/api/logic/handler/game-state";
-import { db } from "~/server/db";
-import { fight } from "~/server/db/schema";
 import {
   cleanupLeftovers,
   getTestUserCallers,
   makeHubs,
   makeMedic,
   makePlayer,
-  resetWoundedPlayers,
   useAutomaticTimer,
   useManualTimer,
 } from "./utils";

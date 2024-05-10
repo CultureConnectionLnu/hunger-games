@@ -1,22 +1,20 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import { inArray } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import {
   fightScoringConfig,
   questScoringConfig,
 } from "~/server/api/logic/config";
 import {
-  type QuestKind,
   lobbyHandler,
   questHandler,
+  type QuestKind,
 } from "~/server/api/logic/handler";
-import { db } from "~/server/db";
-import { fight, quest } from "~/server/db/schema";
 import {
   cleanupLeftovers,
   getTestUserCallers,
   makeHubs,
   makePlayer,
+  resetWoundedPlayers,
   useAutomaticTimer,
   useManualTimer,
 } from "./utils";
@@ -199,6 +197,7 @@ async function setupTest() {
     fight.lobby.endGame(winner, looser);
     await fight.gameDone;
     state.allFightIds.push(id);
+    await resetWoundedPlayers();
   };
 
   const startQuest = async (
