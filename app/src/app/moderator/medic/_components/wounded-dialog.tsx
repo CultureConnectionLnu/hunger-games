@@ -216,11 +216,11 @@ function WoundedPlayer({
   );
 }
 function getProgress(player: WoundedPlayer, isDone: boolean) {
-  if (player.isWounded && !player.initialTimeoutInSeconds) {
+  if (player.isWounded && player.initialTimeoutInSeconds === undefined) {
     return "wounded" as const;
   }
-  if (!isDone) {
-    return "reviving" as const;
+  if (player.initialTimeoutInSeconds === 0 || isDone) {
+    return "wait-finish" as const;
   }
-  return "wait-finish" as const;
+  return "reviving" as const;
 }

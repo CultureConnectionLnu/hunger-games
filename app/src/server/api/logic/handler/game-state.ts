@@ -75,6 +75,13 @@ class GameStateHandler {
     if (!playerState.isWounded) {
       return { success: false, error: "Player is not wounded" } as const;
     }
+
+    if (playerState.reviveCoolDownEnd !== null) {
+      return {
+        success: false,
+        error: "Player revive already started",
+      } as const;
+    }
     // todo: show a timer to the player
     // todo: show all counters to the medic managers
 

@@ -87,11 +87,11 @@ function WoundedRow({ player }: { player: WoundedPlayer }) {
 }
 
 function getProgress(player: WoundedPlayer, isDone: boolean) {
-  if (player.isWounded && !player.initialTimeoutInSeconds) {
+  if (player.isWounded && player.initialTimeoutInSeconds === undefined) {
     return "Wounded";
   }
-  if (!isDone) {
-    return "Reviving";
+  if (player.initialTimeoutInSeconds === 0 || isDone) {
+    return "Wait finish";
   }
-  return "Wait finish";
+  return "Reviving";
 }

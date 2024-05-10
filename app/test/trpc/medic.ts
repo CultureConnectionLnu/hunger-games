@@ -1,5 +1,6 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { describe, expect, it } from "vitest";
+import { playerStateConfig } from "~/server/api/logic/config";
 import {
   lobbyHandler,
   questHandler,
@@ -15,7 +16,6 @@ import {
   useAutomaticTimer,
   useManualTimer,
 } from "./utils";
-import { playerStateConfig } from "~/server/api/logic/config";
 
 const { registerHubHooks, getHubData } = makeHubs();
 export const medicTests = () =>
@@ -71,6 +71,15 @@ export const medicTests = () =>
         testFight(async ({ startRevive }) => {
           await expect(async () =>
             startRevive("test_user_1"),
+          ).rejects.toThrow();
+        }));
+
+      it("can't start reviving a player that was already stared to revive", () =>
+        testFight(async ({ playGame, startRevive }) => {
+          await playGame("test_user_1");
+          await startRevive("test_user_2");
+          await expect(async () =>
+            startRevive("test_user_2"),
           ).rejects.toThrow();
         }));
 
