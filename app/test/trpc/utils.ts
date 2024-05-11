@@ -199,7 +199,7 @@ export function getManualTimer() {
 export async function resetWoundedPlayers() {
   await db
     .update(gamePlayerState)
-    .set({ isWounded: false })
+    .set({ isWounded: false, reviveCoolDownEnd: null })
     .where(inArray(gamePlayerState.userId, ["test_user_1", "test_user_2"]));
 }
 
