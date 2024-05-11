@@ -13,16 +13,19 @@ class UserHandler {
     const roles = Array.isArray(role) ? role : [role];
     const currentUserId = userId ?? (await clerkHandler.currentUserId());
     if (!currentUserId) return false;
-    if (roles.includes("admin")) {
-      return clerkHandler.isAdmin(currentUserId);
+    if (
+      roles.includes("admin") &&
+      (await clerkHandler.isAdmin(currentUserId))
+    ) {
+      return true;
     }
 
     const user = await this.getUserRoles(currentUserId);
     if (!user) return false;
 
-    if (role.includes("moderator")) return user.isModerator;
-    if (role.includes("player")) return user.isPlayer;
-    if (role.includes("medic")) return user.isMedic;
+    if (role.includes("moderator") && user.isModerator) return true;
+    if (role.includes("player") && user.isPlayer) return true;
+    if (role.includes("medic") && user.isMedic) return true;
 
     return false;
   }
