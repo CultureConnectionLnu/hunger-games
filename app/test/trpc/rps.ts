@@ -1,12 +1,10 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import { eq } from "drizzle-orm";
 import { describe, expect, it, vi } from "vitest";
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 import { lobbyHandler } from "~/server/api/logic/handler";
 import type { RockPaperScissorsPlayerEvents } from "~/server/api/routers/games/rock-paper-scissors";
-import { db } from "~/server/db";
-import { fight } from "~/server/db/schema";
 import {
+  cleanupLeftovers,
   expectEventEmitted,
   getLastEventOf,
   getManualTimer,
@@ -342,7 +340,9 @@ async function testFight(
       // finish the game properly before deleting
       args.getFight().lobby.endGame("test_user_1", "test_user_2");
       await args.getFight().gameDone;
-      await db.delete(fight).where(eq(fight.id, id));
+      await cleanupLeftovers({
+        fightIds: [id],
+      });
       return x;
     })
     .then(({ pass, error }) => {

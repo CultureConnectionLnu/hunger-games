@@ -9,7 +9,8 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import type { BaseGamePlayerEvents } from "../logic/core/base-game";
-import { lobbyHandler, userHandler } from "../logic/handler";
+import { ee, lobbyHandler, userHandler } from "../logic/handler";
+import { gameStateHandler } from "../logic/handler/game-state";
 
 type JoinMessage = {
   type: "join";
@@ -95,13 +96,14 @@ export const lobbyRouter = createTRPCRouter({
           message: "Opponent not found",
         });
       }
-      const isPlayer = await userHandler.checkRole("player", opponent.clerkId);
-      if (!isPlayer) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: `The opponent with id '${opponent.clerkId}' is no player and can't start a fight`,
-        });
-      }
+      await userHandler.assertUserIsPlayer(
+        opponent.clerkId,
+        `The opponent with id '${opponent.clerkId}' is no player and can't start a fight`,
+      );
+      await gameStateHandler.assertPlayerNotWounded(
+        opponent.clerkId,
+        `The opponent with id '${opponent.clerkId}' is wounded and can't start a fight`,
+      );
 
       await lobbyHandler.assertHasNoFight(ctx.user.clerkId);
       const newFight = await lobbyHandler.createFight(
@@ -111,7 +113,7 @@ export const lobbyRouter = createTRPCRouter({
 
       const players = [ctx.user.clerkId, opponent.clerkId];
       players.forEach((player) => {
-        ctx.ee.emit(`fight.join.${player}`, {
+        ee.emit(`fight.join.${player}`, {
           type: "join",
           fightId: newFight.lobby.fightId,
           game: newFight.type,
@@ -120,7 +122,7 @@ export const lobbyRouter = createTRPCRouter({
 
       newFight.lobby.on("game-ended", () => {
         players.forEach((player) => {
-          ctx.ee.emit(`fight.end.${player}`, {
+          ee.emit(`fight.end.${player}`, {
             type: "end",
             fightId: newFight.lobby.fightId,
           });
@@ -236,12 +238,12 @@ export const lobbyRouter = createTRPCRouter({
             // do nothing, because no fight exists
           });
 
-        ctx.ee.on(`fight.join.${input.id}`, onMessage);
-        ctx.ee.on(`fight.end.${input.id}`, onMessage);
+        ee.on(`fight.join.${input.id}`, onMessage);
+        ee.on(`fight.end.${input.id}`, onMessage);
 
         return () => {
-          ctx.ee.off(`fight.join.${input.id}`, onMessage);
-          ctx.ee.off(`fight.end.${input.id}`, onMessage);
+          ee.off(`fight.join.${input.id}`, onMessage);
+          ee.off(`fight.end.${input.id}`, onMessage);
         };
       });
     }),

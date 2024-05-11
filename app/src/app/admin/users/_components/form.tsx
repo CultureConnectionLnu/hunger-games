@@ -16,7 +16,7 @@ import type { RouterInputs, RouterOutputs } from "~/trpc/shared";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 type User = UnwrapArray<RouterOutputs["user"]["allUsers"]>;
-type ChangePlayerState = RouterInputs["user"]["changePlayerState"];
+type ChangePlayerState = RouterInputs["user"]["changeUserState"];
 
 export function UpdateUserForm({
   params,
@@ -29,41 +29,41 @@ export function UpdateUserForm({
   };
   onDone?: () => void;
 }) {
-  const changePlayerState = api.user.changePlayerState.useMutation({
-    onSuccess(data) {
-      if (data.success) {
-        onDone?.();
-        toast({
-          title: "Player state updated",
-          description: params.user.isPlayer
-            ? "User no longer a player"
-            : "User is now a player",
-        });
-        return;
-      }
+  const changeUserState = api.user.changeUserState.useMutation({
+    onSuccess() {
+      toast({
+        title: "User state updated",
+      });
+      onDone?.();
+    },
+    onError(error) {
       toast({
         title: "Error changing player state",
         variant: "destructive",
-        description: data.error,
+        description: error.message,
       });
     },
   });
   const [isPlayer, setIsPlayer] = useState(params.user.isPlayer);
+  const [isMedic, setIsMedic] = useState(params.user.isMedic);
   const [hasChange, setHasChange] = useState(false);
 
   useEffect(() => {
-    setHasChange(params.user.isPlayer !== isPlayer);
-  }, [params.user.isPlayer, isPlayer]);
+    setHasChange(
+      params.user.isPlayer !== isPlayer || params.user.isMedic !== isMedic,
+    );
+  }, [params.user, isPlayer, isMedic]);
 
   useEffect(() => {
     setIsPlayer(params.user.isPlayer);
+    setIsMedic(params.user.isMedic);
     // params.open ensures that it is rerun when the dialog is opened
-  }, [params.user.isPlayer, setIsPlayer, params.open]);
+  }, [params.user, setIsPlayer, setIsMedic, params.open]);
 
   function onSubmit(data: ChangePlayerState) {
-    changePlayerState.mutate(data);
+    changeUserState.mutate(data);
     toast({
-      title: "Request send to change player state",
+      title: "Request send to change user state",
     });
   }
 
@@ -103,6 +103,21 @@ export function UpdateUserForm({
         <div className="flex flex-col space-y-2">
           <div className="flex items-center space-x-2">
             <Switch
+              id="is-medic"
+              checked={isMedic}
+              onCheckedChange={setIsMedic}
+            />
+            <Label htmlFor="is-medic" className="text-right">
+              Is medic
+            </Label>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Can revive dead players
+          </p>
+        </div>
+        <div className="flex flex-col space-y-2">
+          <div className="flex items-center space-x-2">
+            <Switch
               id="is-player"
               checked={isPlayer}
               onCheckedChange={setIsPlayer}
@@ -118,7 +133,9 @@ export function UpdateUserForm({
         <Button
           type="submit"
           disabled={!hasChange}
-          onClick={() => onSubmit({ id: params.user.userId, isPlayer })}
+          onClick={() =>
+            onSubmit({ id: params.user.userId, isPlayer, isMedic })
+          }
         >
           Save
         </Button>

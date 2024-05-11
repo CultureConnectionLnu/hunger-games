@@ -6,7 +6,7 @@ import { clerkHandler, userHandler } from "~/server/api/logic/handler";
 import { appRouter } from "~/server/api/root";
 import { createCommonContext } from "~/server/api/trpc";
 import { db } from "~/server/db";
-import { users } from "~/server/db/schema";
+import { fight, gamePlayerState, quest, users } from "~/server/db/schema";
 import { type RouterInputs } from "~/trpc/shared";
 
 type MockUsers = Parameters<(typeof clerkHandler)["useMockImplementation"]>[0];
@@ -20,6 +20,11 @@ export const mockUsers = [
   {
     name: "Test User 2",
     userId: "test_user_2",
+    isAdmin: false,
+  } as const,
+  {
+    name: "Test Medic",
+    userId: "test_medic",
     isAdmin: false,
   } as const,
   {
@@ -76,11 +81,21 @@ export function provideTestUsers() {
 
 export function makePlayer(user: MockUserIds) {
   beforeAll(async () => {
-    await userHandler.changePlayerState(user, true);
+    await userHandler.changeUserState(user, true);
   });
 
   afterAll(async () => {
-    await userHandler.changePlayerState(user, false);
+    await userHandler.changeUserState(user, false);
+  });
+}
+
+export function makeMedic(user: MockUserIds) {
+  beforeAll(async () => {
+    await userHandler.changeUserState(user, undefined, true);
+  });
+
+  afterAll(async () => {
+    await userHandler.changeUserState(user, undefined, false);
   });
 }
 
@@ -181,16 +196,37 @@ export function getManualTimer() {
   };
 }
 
+export async function resetWoundedPlayers() {
+  await db
+    .update(gamePlayerState)
+    .set({ isWounded: false, reviveCoolDownEnd: null })
+    .where(inArray(gamePlayerState.userId, ["test_user_1", "test_user_2"]));
+}
+
+export async function cleanupLeftovers({
+  fightIds,
+  questIds,
+}: {
+  fightIds?: string[];
+  questIds?: string[];
+}) {
+  if (fightIds && fightIds.length > 0) {
+    await db.delete(fight).where(inArray(fight.id, fightIds));
+  }
+  if (questIds && questIds.length > 0) {
+    await db.delete(quest).where(inArray(quest.id, questIds));
+  }
+  await resetWoundedPlayers();
+}
+
 export async function getTestUserCallers() {
   const callers = {} as Record<
     MockUserIds,
     ReturnType<typeof appRouter.createCaller>
   >;
-  const ee = new TypedEventEmitter();
   for (const mockUser of mockUsers) {
     const caller = appRouter.createCaller(
       await createCommonContext({
-        ee,
         userId: mockUser.userId,
       }),
     );

@@ -50,12 +50,14 @@ export function useSearchParamState(
     const paramHasChanged = params.get(paramKey) !== prevParams.get(paramKey);
     const stateHasChanged = state !== prevState;
 
-    const resetStateValue = options?.allowEmpty
-      ? undefined
-      : options?.defaultValue;
-    const resetParamsAction = options?.allowEmpty
-      ? () => params.delete(paramKey)
-      : () => params.set(paramKey, resetStateValue!);
+    const resetStateValue =
+      options === undefined || options?.allowEmpty
+        ? undefined
+        : options?.defaultValue;
+    const resetParamsAction =
+      options === undefined || options?.allowEmpty
+        ? () => params.delete(paramKey)
+        : () => params.set(paramKey, resetStateValue!);
 
     if (paramHasChanged && !stateHasChanged) {
       // param has changed

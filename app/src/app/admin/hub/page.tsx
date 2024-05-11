@@ -2,6 +2,8 @@ import { api } from "~/trpc/server";
 import { HubTable } from "./_components/hub-table";
 import { AddHubForm } from "./_components/form";
 
+export const dynamic = "force-dynamic";
+
 export default async function UsersOverview() {
   const users = await api.user.allUsers.query();
   const hubs = await api.hub.allHubs.query();

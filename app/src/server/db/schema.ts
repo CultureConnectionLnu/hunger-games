@@ -45,6 +45,7 @@ export const roles = createTable("role", {
     .references(() => users.clerkId, { onDelete: "cascade" })
     .notNull(),
   isPlayer: boolean("is_player").default(false).notNull(),
+  isMedic: boolean("is_medic").default(false).notNull(),
   ...metadata,
 });
 
@@ -163,3 +164,20 @@ export const questRelations = relations(quest, ({ one }) => ({
     references: [score.questId],
   }),
 }));
+
+export const gamePlayerState = createTable("game_player_state", {
+  userId: varchar("user_id", { length: 255 })
+    .references(() => users.clerkId, { onDelete: "cascade" })
+    .notNull(),
+  isWounded: boolean("is_wounded").default(false).notNull(),
+  reviveCoolDownEnd: timestamp("revive_cool_down_end"),
+});
+export const questPlayerStateRelations = relations(
+  gamePlayerState,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [gamePlayerState.userId],
+      references: [users.clerkId],
+    }),
+  }),
+);

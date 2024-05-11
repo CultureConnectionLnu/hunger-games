@@ -29,6 +29,10 @@ export const questScoringConfig = {
   "walk-3": 900,
 } satisfies Record<QuestKind, number>;
 
+export const playerStateConfig = {
+  reviveTimeInSeconds: 120,
+};
+
 export const rockPaperScissorsConfig: RockPaperScissorsConfig = {
   get chooseTimeoutInSeconds() {
     return env.FEATURE_GAME_TIMEOUT ? 5 : longAssTime;

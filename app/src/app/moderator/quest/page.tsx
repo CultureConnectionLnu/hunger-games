@@ -4,6 +4,8 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { FindUser } from "~/app/_components/find-user";
 import { UserDialog } from "./_components/user-dialog";
 
+export const dynamic = 'force-dynamic'
+
 export default async function UsersOverview() {
   const quests = await api.quest.getOngoingQuestsForModerator.query();
   const users = await api.user.allPlayer.query();

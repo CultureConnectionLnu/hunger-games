@@ -44,9 +44,10 @@ export function UserTable({ params }: { params: { users: User[] } }) {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead>Is Admin</TableHead>
-            <TableHead>Is Moderator</TableHead>
-            <TableHead>Is Player</TableHead>
+            <TableHead>Admin</TableHead>
+            <TableHead>Mod</TableHead>
+            <TableHead>Medic</TableHead>
+            <TableHead>Player</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -60,6 +61,7 @@ export function UserTable({ params }: { params: { users: User[] } }) {
               </TableCell>
               <TableCell>{user.isAdmin ? "✅" : "❌"}</TableCell>
               <TableCell>{user.isModerator ? "✅" : "❌"}</TableCell>
+              <TableCell>{user.isMedic ? "✅" : "❌"}</TableCell>
               <TableCell>{user.isPlayer ? "✅" : "❌"}</TableCell>
             </TableRow>
           ))}

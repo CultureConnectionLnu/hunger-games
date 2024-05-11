@@ -19,13 +19,16 @@ import { Card, CardHeader } from "~/components/ui/card";
 import { toast } from "~/components/ui/use-toast";
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
-type User = UnwrapArray<RouterOutputs["user"]["allUsers"]>;
+export type UserIdAndName = Pick<
+  UnwrapArray<RouterOutputs["user"]["allUsers"]>,
+  "userId" | "name"
+>;
 
 export function FindUser({
   params,
   text,
 }: {
-  params: { users: User[] };
+  params: { users: UserIdAndName[] };
   text: {
     dialogTrigger: string;
     dialogHeader: string;

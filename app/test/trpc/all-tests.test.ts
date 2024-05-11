@@ -1,4 +1,5 @@
 import { lobbyTests } from "./lobby";
+import { medicTests } from "./medic";
 import { questTests } from "./quest";
 import { rpsTests } from "./rps";
 import { scoreTests } from "./score";
@@ -12,3 +13,4 @@ lobbyTests();
 rpsTests();
 scoreTests();
 questTests();
+medicTests();

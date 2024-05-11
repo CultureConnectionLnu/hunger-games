@@ -1,6 +1,8 @@
 import { api } from "~/trpc/server";
 import { QuestTable } from "./_components/quest-table";
 
+export const dynamic = "force-dynamic";
+
 export default async function UsersOverview() {
   const quests = await api.quest.getAllOngoingQuests.query();
 

@@ -3,42 +3,49 @@ import { db } from "~/server/db";
 import { hub, roles, users } from "~/server/db/schema";
 import { clerkHandler } from "./clerk";
 import { getHandler } from "./base";
+import { gameStateHandler } from "./game-state";
+import { TRPCError } from "@trpc/server";
 
-export type UserRoles = "admin" | "moderator" | "player";
+export type UserRoles = "admin" | "moderator" | "player" | "medic";
 
 class UserHandler {
-  public async checkRole(role: UserRoles, userId?: string) {
+  public async checkRole(role: UserRoles | UserRoles[], userId?: string) {
+    const roles = Array.isArray(role) ? role : [role];
     const currentUserId = userId ?? (await clerkHandler.currentUserId());
     if (!currentUserId) return false;
-    if (role === "admin") {
-      return clerkHandler.isAdmin(currentUserId);
+    if (
+      roles.includes("admin") &&
+      (await clerkHandler.isAdmin(currentUserId))
+    ) {
+      return true;
     }
 
     const user = await this.getUserRoles(currentUserId);
     if (!user) return false;
 
-    if (role === "moderator") return user.isModerator;
-    if (role === "player") return user.isPlayer;
+    if (role.includes("moderator") && user.isModerator) return true;
+    if (role.includes("player") && user.isPlayer) return true;
+    if (role.includes("medic") && user.isMedic) return true;
 
-    // should be dead code
-    role satisfies never;
     return false;
   }
 
   public async getAllRolesOfCurrentUser(): Promise<Record<UserRoles, boolean>> {
     const currentUserId = await clerkHandler.currentUserId();
     if (!currentUserId)
-      return { player: false, moderator: false, admin: false };
+      return { player: false, moderator: false, admin: false, medic: false };
 
     const user = await this.getUserRoles(currentUserId);
-    if (!user) return { player: false, moderator: false, admin: false };
+    if (!user)
+      return { player: false, moderator: false, admin: false, medic: false };
 
-    const { isModerator, isPlayer } = user;
+    const { isModerator, isPlayer, isMedic } = user;
     const admin = await clerkHandler.isAdmin(currentUserId);
     return {
       admin,
       moderator: isModerator,
       player: isPlayer,
+      medic: isMedic,
     };
   }
 
@@ -57,6 +64,7 @@ class UserHandler {
       .select({
         isModerator: sql<boolean>`EXISTS (SELECT 1 FROM ${users} JOIN ${hub} ON ${users.clerkId} = ${hub.assignedModeratorId} WHERE ${users.clerkId} = ${id})`,
         isPlayer: roles.isPlayer,
+        isMedic: roles.isMedic,
         id: users.clerkId,
       })
       .from(users)
@@ -66,20 +74,48 @@ class UserHandler {
     return result[0];
   }
 
-  public async changePlayerState(id: string, isPlayer: boolean) {
-    const result = await db
-      .update(roles)
-      .set({ isPlayer })
-      .where(eq(roles.userId, id));
-    if (result.count === 0) {
-      return {
-        success: false,
-        reason: "not-found" as const,
-      };
-    }
-    return {
-      success: true,
+  public async changeUserState(
+    id: string,
+    isPlayer?: boolean,
+    isMedic?: boolean,
+  ) {
+    if (isPlayer === undefined && isMedic === undefined)
+      return { success: true } as const;
+
+    const update = {
+      ...(isPlayer !== undefined ? { isPlayer } : {}),
+      ...(isMedic !== undefined ? { isMedic } : {}),
     };
+
+    return db.transaction(async (tx) => {
+      const result = await tx
+        .update(roles)
+        .set(update)
+        .where(eq(roles.userId, id));
+      if (result.count === 0) {
+        tx.rollback();
+        return {
+          success: false,
+          reason: "not-found" as const,
+        } as const;
+      }
+
+      if (isPlayer === undefined) return { success: true } as const;
+
+      const stateUpdate = await (isPlayer
+        ? gameStateHandler.createPlayerState(id, tx)
+        : gameStateHandler.deletePlayerState(id, tx));
+      if (stateUpdate.count === 0) {
+        tx.rollback();
+        return {
+          success: false,
+          reason: "not-found" as const,
+        } as const;
+      }
+      return {
+        success: true,
+      } as const;
+    });
   }
 
   public async createUser(userId: string) {
@@ -106,6 +142,23 @@ class UserHandler {
 
   public async createRoles(userId: string, dbReference = db) {
     return dbReference.insert(roles).values({ userId });
+  }
+
+  public async isPlayer(playerId: string) {
+    return userHandler.checkRole("player", playerId);
+  }
+
+  public async assertUserIsPlayer(
+    playerId: string,
+    messageIfNotPlayer: string,
+  ) {
+    const isPlayer = await this.isPlayer(playerId);
+    if (!isPlayer) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: messageIfNotPlayer,
+      });
+    }
   }
 }
 

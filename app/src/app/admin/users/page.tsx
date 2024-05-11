@@ -3,6 +3,8 @@ import { UserTable } from "./_components/user-table";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { FindUser } from "~/app/_components/find-user";
 
+export const dynamic = "force-dynamic";
+
 export default async function UsersOverview() {
   const users = await api.user.allUsers.query();
 

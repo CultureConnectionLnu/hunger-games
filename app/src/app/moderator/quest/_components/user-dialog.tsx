@@ -99,6 +99,7 @@ function User({
         closeButton={closeButton}
       />
       <NoPlayer params={{ data, title }} closeButton={closeButton} />
+      <PlayerWounded params={{ data, title }} closeButton={closeButton} />
     </DialogContent>
   );
 }
@@ -268,6 +269,31 @@ function NoPlayer({
         <DialogDescription>
           The selected user is no player. Please forward the user to an admin so
           that he can be registered.
+        </DialogDescription>
+        <DialogFooter className="flex flex-row justify-between">
+          {closeButton}
+        </DialogFooter>
+      </DialogHeader>
+    </>
+  );
+}
+
+function PlayerWounded({
+  params,
+  closeButton,
+}: {
+  params: { data: QuestData; title: string };
+  closeButton: React.ReactNode;
+}) {
+  if (params.data.state !== "player-is-wounded") return;
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{params.title}</DialogTitle>
+        <DialogDescription>
+          The selected player is wounded. Please forward the player to the next
+          medic.
         </DialogDescription>
         <DialogFooter className="flex flex-row justify-between">
           {closeButton}
