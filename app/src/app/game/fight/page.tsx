@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { FaGamepad, FaSpinner } from "react-icons/fa";
 import { RxCross2 } from "react-icons/rx";
+import OrderedMemoryGame from "~/app/_game/ordered-memory";
+import { RockPaperScissorsGame } from "~/app/_game/rock-paper-scissors";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,12 +25,10 @@ import { CardTitle } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
-import { GameCard, GameContentLoading } from "../../_game/base";
+import { useFight } from "../../_feature/auto-join-game/fight-provider";
 import { Timer } from "../../_feature/timer/timer";
 import { useTimers } from "../../_feature/timer/timer-provider";
-import { useFight } from "../../_feature/auto-join-game/fight-provider";
-import { OrderedMemoryGame } from "~/app/_game/ordered-memory";
-import { RockPaperScissorsGame } from "~/app/_game/rock-paper-scissors";
+import { GameCard, GameContentLoading } from "../../_game/base";
 
 type ServerEvent =
   RouterOutputs["lobby"]["onGameAction"] extends Observable<infer R, never>
@@ -46,25 +46,23 @@ export default function CurrentGame() {
   const { user, isLoaded: userLoaded } = useUser();
   const { currentFight } = useFight();
 
-  return <OrderedMemoryGame />;
+  if (!userLoaded) {
+    return <GameLoadingScreen />;
+  }
 
-  // if (!userLoaded) {
-  //   return <GameLoadingScreen />;
-  // }
+  if (currentFight === undefined || user == null) {
+    return <NoFightOngoing />;
+  }
 
-  // if (currentFight === undefined || user == null) {
-  //   return <NoFightOngoing />;
-  // }
-
-  // return (
-  //   <JoiningGame
-  //     params={{
-  //       gameName: currentFight.game,
-  //       fightId: currentFight.id,
-  //       userId: user.id,
-  //     }}
-  //   />
-  // );
+  return (
+    <JoiningGame
+      params={{
+        gameName: currentFight.game,
+        fightId: currentFight.id,
+        userId: user.id,
+      }}
+    />
+  );
 }
 
 function JoiningGame({
@@ -161,6 +159,9 @@ function GameLobby({
   switch (params.gameName) {
     case "rock-paper-scissors":
       game = <RockPaperScissorsGame params={params} />;
+      break;
+    case "ordered-memory":
+      game = <OrderedMemoryGame params={params} />;
       break;
     default:
       return `Selected game is not implemented: ${params.gameName}`;

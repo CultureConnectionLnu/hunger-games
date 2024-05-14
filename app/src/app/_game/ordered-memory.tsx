@@ -1,18 +1,21 @@
 "use client";
 
+import { type Observable } from "@trpc/server/observable";
 import { useState } from "react";
-import { useTimers } from "../_feature/timer/timer-provider";
-import { GameCard, GameContentLoading } from "./base";
 import { CardTitle } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
-import { Button } from "~/components/ui/button";
+import { api } from "~/trpc/react";
+import { type RouterOutputs } from "~/trpc/shared";
+import { useTimers } from "../_feature/timer/timer-provider";
+import { GameCard, GameContentLoading } from "./base";
+import { toast } from "~/components/ui/use-toast";
 
-type View =
-  | "show-pattern"
-  | "input-pattern"
-  | "wait-for-opponent"
-  | "show-result"
-  | "none";
+type ServerEvent =
+  RouterOutputs["orderedMemory"]["onAction"] extends Observable<infer R, never>
+    ? R
+    : never;
+
+type View = ServerEvent["view"];
 
 type BoardEntry = {
   col: number;
@@ -21,53 +24,45 @@ type BoardEntry = {
   isFail?: boolean;
 };
 
-// export default function OrderedMemoryGame({
-//   params,
-// }: {
-//   params: { fightId: string; userId: string };
-// }) {
-export function OrderedMemoryGame() {
+export default function OrderedMemoryGame({
+  params,
+}: {
+  params: { fightId: string; userId: string };
+}) {
   const { handleEvent } = useTimers();
   const [view, setView] = useState<View>("show-pattern");
-  //   const [lastEvent, setLastEvent] = useState<ServerEvent>();
+  const [lastEvent, setLastEvent] = useState<ServerEvent>();
 
-  //   api.rockPaperScissors.onAction.useSubscription(params, {
-  //     onData(data) {
-  //       switch (data.event) {
-  //         case "choose-timer":
-  //           return handleEvent(data.event, data.data, "Choose timeout");
-  //         case "next-round-timer":
-  //           return handleEvent(data.event, data.data, "Next round timeout");
-  //         default:
-  //           setLastEvent(data);
-  //           setView(data.view);
-  //       }
-  //     },
-  //   });
+  api.orderedMemory.onAction.useSubscription(params, {
+    onData(data) {
+      switch (data.event) {
+        case "show-timer":
+          return handleEvent(data.event, data.data, "Show pattern timeout");
+        case "input-timer":
+          return handleEvent(
+            data.event,
+            data.data,
+            "Reproduce pattern timeout",
+          );
+        case "next-round-timer":
+          return handleEvent(data.event, data.data, "Next round timeout");
+        default:
+          setLastEvent(data);
+          setView(data.view);
+      }
+    },
+  });
 
-  //   if (!lastEvent) return <GameContentLoading />;
-  // return (
-  //   <MemoryBoard
-  //     params={{
-  //       state: "show-pattern",
-  //       entries: [
-  //         { col: 1, row: 1, number: 1 },
-  //         { col: 0, row: 0, isFail: true },
-  //         { col: 1, row: 0, isFail: false },
-  //       ],
-  //     }}
-  //     onClick={(args) => console.log(args)}
-  //   />
-  // );
+  if (!lastEvent) return <GameContentLoading />;
 
   return (
     <>
       <ViewContainer
         params={{
           view: view,
+          lastEvent,
         }}
       />
-      <Button onClick={() => setView("input-pattern")}>next</Button>
     </>
   );
 }
@@ -77,58 +72,104 @@ function ViewContainer({
 }: {
   params: {
     view: View;
+    lastEvent: ServerEvent;
   };
 }) {
   switch (params.view) {
     case "none":
       return <></>;
     case "show-pattern":
+      if (params.lastEvent.event === "show-pattern") {
+        return (
+          <MemoryBoard
+            params={{
+              state: "show-pattern",
+              entries: params.lastEvent.data.pattern,
+            }}
+          />
+        );
+      }
+      console.error(`Invalid data for view. Expected 'show-pattern'`, params);
       return (
         <MemoryBoard
           params={{
             state: "show-pattern",
-            entries: [
-              { col: 1, row: 1, number: 1 },
-              { col: 0, row: 0, number: 2 },
-              { col: 1, row: 0, number: 3 },
-            ],
+            entries: [],
           }}
         />
       );
     case "input-pattern":
-      return <MemoryBoard params={{ state: "input-pattern", entries: [] }} />;
+      if (params.lastEvent.event === "enable-input") {
+        return <MemoryBoard params={{ state: "input-pattern", entries: [] }} />;
+      }
+      if (params.lastEvent.event === "input-response") {
+        return (
+          <MemoryBoard
+            params={{
+              state: "input-pattern",
+              entries: params.lastEvent.data.pattern,
+            }}
+          />
+        );
+      }
+      console.error(
+        "Invalid data for view. Expected 'enable-input' or 'input-response'",
+        params,
+      );
+      return (
+        <MemoryBoard
+          params={{
+            state: "input-pattern",
+            entries: [],
+          }}
+        />
+      );
     case "wait-for-opponent":
+      if (params.lastEvent.event === "show-waiting") {
+        return <WaitForOpponentToFinishInput />;
+      }
+      console.error("Invalid data for view. Expected 'show-waiting'", params);
       return <WaitForOpponentToFinishInput />;
     case "show-result":
-    //   const { outcome } = params.result!;
-    //   const titleMap = {
-    //     win: "You won",
-    //     draw: "Draw",
-    //     loose: "You lost",
-    //   } as const;
-    //   return (
-    //     <ShowResult
-    //       params={{
-    //         title: titleMap[outcome],
-    //         ...params.result!,
-    //       }}
-    //     />
-    //   );
+      if (params.lastEvent.event === "show-result") {
+        <ShowResult
+          params={{
+            ...params.lastEvent.data,
+          }}
+        />;
+      }
+      console.error("Invalid data for view. Expected 'show-result'", params);
+      return (
+        <ShowResult
+          params={{
+            yourName: "You",
+            opponentName: "Opponent",
+          }}
+        />
+      );
   }
 }
 
 function MemoryBoard({
   params,
-  onClick,
 }: {
   params: {
     state: "show-pattern" | "input-pattern";
     entries: BoardEntry[];
   };
-  onClick?: (args: { col: number; row: number }) => void;
 }) {
   const rows = 4;
   const columns = 4;
+  const click = api.orderedMemory.clickCard.useMutation({
+    onError(err) {
+      console.log("failed the click card mutation", err);
+      toast({
+        title: "Error",
+        variant: "destructive",
+        description: err.message,
+      });
+    },
+  });
 
   return (
     <GameCard header={<CardTitle>Remember the pattern</CardTitle>}>
@@ -143,7 +184,10 @@ function MemoryBoard({
                   row: rowIndex,
                   entries: params.entries,
                 }}
-                onClick={onClick}
+                onClick={() =>
+                  params.state === "input-pattern" &&
+                  click.mutate({ col: columnIndex, row: rowIndex })
+                }
               />
             ))}
           </div>
@@ -189,10 +233,6 @@ function ShowResult({
   params,
 }: {
   params: {
-    title: string;
-    anotherRound: boolean;
-    wins: number;
-    looses: number;
     yourName: string;
     opponentName: string;
   };
@@ -201,16 +241,13 @@ function ShowResult({
     <GameCard
       header={
         <>
-          <CardTitle>{params.title}</CardTitle>
+          <CardTitle>Draw</CardTitle>
         </>
       }
-      footer={params.anotherRound ? "Next round coming up" : undefined}
+      footer="Next round coming up"
     >
-      <div className="flex w-full justify-between">
+      <div className="space-between flex w-full">
         <div>{params.yourName}</div>
-        <div>
-          {params.wins} - {params.looses}
-        </div>
         <div>{params.opponentName}</div>
       </div>
     </GameCard>
