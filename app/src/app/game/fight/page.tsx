@@ -24,10 +24,11 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import { GameCard, GameContentLoading } from "../../_game/base";
-import RockPaperScissorsGame from "../../_game/rock-paper-scissors";
 import { Timer } from "../../_feature/timer/timer";
 import { useTimers } from "../../_feature/timer/timer-provider";
 import { useFight } from "../../_feature/auto-join-game/fight-provider";
+import { OrderedMemoryGame } from "~/app/_game/ordered-memory";
+import { RockPaperScissorsGame } from "~/app/_game/rock-paper-scissors";
 
 type ServerEvent =
   RouterOutputs["lobby"]["onGameAction"] extends Observable<infer R, never>
@@ -45,23 +46,25 @@ export default function CurrentGame() {
   const { user, isLoaded: userLoaded } = useUser();
   const { currentFight } = useFight();
 
-  if (!userLoaded) {
-    return <GameLoadingScreen />;
-  }
+  return <OrderedMemoryGame />;
 
-  if (currentFight === undefined || user == null) {
-    return <NoFightOngoing />;
-  }
+  // if (!userLoaded) {
+  //   return <GameLoadingScreen />;
+  // }
 
-  return (
-    <JoiningGame
-      params={{
-        gameName: currentFight.game,
-        fightId: currentFight.id,
-        userId: user.id,
-      }}
-    />
-  );
+  // if (currentFight === undefined || user == null) {
+  //   return <NoFightOngoing />;
+  // }
+
+  // return (
+  //   <JoiningGame
+  //     params={{
+  //       gameName: currentFight.game,
+  //       fightId: currentFight.id,
+  //       userId: user.id,
+  //     }}
+  //   />
+  // );
 }
 
 function JoiningGame({
