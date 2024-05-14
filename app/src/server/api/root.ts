@@ -6,6 +6,7 @@ import { userRouter } from "./routers/user";
 import { hubRouter } from "./routers/hub";
 import { questRouter } from "./routers/quest";
 import { medicRouter } from "./routers/medic";
+import { orderedMemoryRouter } from "./routers/games/ordered-memory";
 
 /**
  * This is the primary router for your server.
@@ -15,6 +16,7 @@ import { medicRouter } from "./routers/medic";
 export const appRouter = createTRPCRouter({
   lobby: lobbyRouter,
   rockPaperScissors: rockPaperScissorsRouter,
+  orderedMemory: orderedMemoryRouter,
   score: scoreRouter,
   user: userRouter,
   hub: hubRouter,

@@ -8,12 +8,14 @@ import { clerkHandler, questHandler } from ".";
 import { scoreHandler } from "./score";
 import { getHandler } from "./base";
 import { gameStateHandler } from "./game-state";
+import { OMGame } from "../games/om";
 
 /**
  * insert a new entry for each game added
  */
 const knownGames = {
   "rock-paper-scissors": RpsGame,
+  "ordered-memory": OMGame,
 };
 export type KnownGames = keyof typeof knownGames;
 
@@ -152,7 +154,6 @@ class LobbyHandler {
       await scoreHandler.updateScoreForFight(winnerId, looserId, game.fightId);
       await questHandler.markQuestAsLost(looserId);
       await gameStateHandler.markPlayerAsWounded(looserId);
-      
     } catch (error) {
       console.log("Game completed with an error", error);
     }
@@ -169,6 +170,10 @@ type KnownGamesMap = {
     gameDone?: Promise<void>;
   };
 }[keyof typeof knownGames];
+
+type GetSpecificGame<T extends KnownGames, Map> = Map extends { type: T }
+  ? Map
+  : never;
 
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();
@@ -193,7 +198,7 @@ class GameHandler {
   public createGame<T extends keyof typeof knownGames>(
     type: T,
     props: { fightId: string; players: { id: string; name: string }[] },
-  ): KnownGamesMap {
+  ) {
     const game = new knownGames[type](props.fightId, props.players);
     const lobby = new BaseGame(props.fightId, props.players, game);
 
@@ -201,7 +206,7 @@ class GameHandler {
       type,
       lobby,
       game,
-    };
+    } as GetSpecificGame<T, KnownGamesMap>;
     this.runningGames.set(props.fightId, setup);
 
     lobby.once("destroy", () => {

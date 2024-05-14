@@ -210,7 +210,7 @@ export class OMGame
     this.showPattern();
   }
 
-  playerChoose(playerId: string, position: Position) {
+  playerClick(playerId: string, position: Position) {
     this.assertGameHasStarted();
     this.assertPlayer(playerId).playerClick(position);
   }
