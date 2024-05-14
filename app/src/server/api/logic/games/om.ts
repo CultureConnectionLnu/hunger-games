@@ -1,5 +1,5 @@
 import { GenericEventEmitter } from "~/lib/event-emitter";
-import { orderedMemoryConfig, rockPaperScissorsConfig } from "../config";
+import { orderedMemoryConfig } from "../config";
 import type { SpecificGame } from "../core/base-game";
 import { GameEventingHandler } from "../core/game-parts/eventing";
 import { GameTimerHandler } from "../core/game-parts/timer";
@@ -18,8 +18,9 @@ export type OrderedMemoryConfig = {
 
 const MAX_CELL_COUNT = 16;
 
-type PatternEntry = { col: number; row: number; order: number };
-type InputEntry = { col: number; row: number; isFail: boolean };
+type PatternEntry = Position & { order: number };
+type InputEntry = Position & { isFail: boolean };
+type Position = { col: number; row: number };
 
 export type OrderedMemoryEvents = EventTemplate<
   {
@@ -34,12 +35,9 @@ export type OrderedMemoryEvents = EventTemplate<
       pattern: InputEntry[];
     };
     // user that finished or user that did a wrong input
-    "show-waiting": {
-      doneInput: string[];
-    };
+    "show-waiting": undefined;
     "show-result": {
-      outcome: "draw" | "win" | "loose";
-      anotherRound: boolean;
+      outcome: "draw";
       yourName: string;
       opponentName: string;
     };
@@ -63,8 +61,6 @@ export type OrderedMemoryEvents = EventTemplate<
 class OMPlayer extends GenericEventEmitter<{
   click: {
     id: string;
-    col: number;
-    row: number;
   };
 }> {
   private _view:
@@ -86,6 +82,10 @@ class OMPlayer extends GenericEventEmitter<{
   constructor(
     public readonly id: string,
     public readonly name: string,
+    private readonly evalClick: (
+      currentInputs: InputEntry[],
+      position: Position,
+    ) => { isFail: boolean },
   ) {
     super();
   }
@@ -94,11 +94,21 @@ class OMPlayer extends GenericEventEmitter<{
     this._view = "input-pattern";
   }
 
-  click(col: number, row: number) {
+  playerClick(position: Position) {
     if (this._view !== "input-pattern") {
       throw new Error(`Player can't click right now`);
     }
-    this.emit("click", { id: this.id, col, row });
+    const newInput = {
+      ...position,
+      isFail: this.evalClick(this.inputs, position).isFail,
+    };
+    this.inputs.push(newInput);
+
+    this.emit("click", { id: this.id });
+  }
+
+  markAsDone() {
+    this._view = "wait-for-opponent";
   }
 
   showResult() {
@@ -117,7 +127,8 @@ export class OMGame
 {
   private readonly players = new Map<string, OMPlayer>();
   private timerHandler;
-  private roundCounter = 1;
+  private roundsCounter = 1;
+  private currentPattern: PatternEntry[] = [];
   private endGame?: (winnerId: string, looserId: string) => void;
   private readonly config: OrderedMemoryConfig = orderedMemoryConfig;
 
@@ -164,20 +175,17 @@ export class OMGame
         {
           name: "show-timer",
           time: this.config.showPatternTimeoutInSeconds,
-          timeoutEvent: () => console.log("enable players to input pattern"),
+          timeoutEvent: () => this.enableInputForPlayers(),
         },
         {
           name: "input-timer",
           time: this.config.inputPatternTimeoutInSeconds,
-          timeoutEvent: () => console.log("evaluate and show results"),
+          timeoutEvent: () => this.evaluateState(),
         },
         {
           name: "next-round-timer",
           time: this.config.nextRoundTimeoutInSeconds,
-          timeoutEvent: () =>
-            console.log(
-              "function that either ends the game or starts the next round",
-            ),
+          timeoutEvent: () => setTimeout(() => this.showPattern()),
         },
       ],
     );
@@ -199,12 +207,12 @@ export class OMGame
 
   startGame(endGame: (winnerId: string, looserId: string) => void): void {
     this.endGame = endGame;
-    this.startChoose();
+    this.showPattern();
   }
 
-  playerChoose(playerId: string, choice: PlayerChooseItem) {
+  playerChoose(playerId: string, position: Position) {
     this.assertGameHasStarted();
-    this.assertPlayer(playerId).choose(choice);
+    this.assertPlayer(playerId).playerClick(position);
   }
 
   pauseGame() {
@@ -215,93 +223,101 @@ export class OMGame
     this.timerHandler.resumeAllTimers();
   }
 
+  private enableInputForPlayers() {
+    this.players.forEach((player) => {
+      player.enableInput();
+      this.emitEvent(
+        {
+          event: "enable-input",
+          data: undefined,
+        },
+        player.id,
+      );
+    });
+  }
+
   private showPattern() {
-    const nextPattern = this.getNextPattern(this.roundCounter);
-    this.roundCounter = Math.min(MAX_CELL_COUNT, this.roundCounter);
+    this.currentPattern = this.getNextPattern();
     this.emitEvent({
       event: "show-pattern",
-      data: { pattern: nextPattern },
+      data: { pattern: this.currentPattern },
     });
     this.timerHandler.startTimer("show-timer");
   }
 
-  private getNextPattern(roundCounter: number): PatternEntry[] {
+  private getNextPattern(): PatternEntry[] {
+    const rounds = Math.min(MAX_CELL_COUNT, this.roundsCounter);
+    this.roundsCounter++;
+
     /**
      * index of array: order in which it has to be clicked
      * number: cell index (row * column + column)
      */
-    const boardPositions: number[] = [];
-    const getNextFreeCellPosition = (randomNumber: number) => {
-      if (!boardPositions.includes(randomNumber)) {
-        // if it is not included, then it is a valid position
-        return randomNumber;
-      }
-      const orderedPositions = boardPositions.sort((a, b) => a - b);
-      const indexOfExisting = orderedPositions.findIndex(
-        (x) => x === randomNumber,
-      );
-      /**
-       * example 1:
-       * - randomNumber: 10
-       * - orderedPosition: [ 10, 11, 12 ]
-       * - should return 13
-       *
-       * example 2:
-       * - randomNumber: 10
-       * - orderedPosition: [ 10, 11, 13, 14, 15 ]
-       * - should return 12
-       */
-      let nextFreePosition = randomNumber;
-      for (let i = indexOfExisting; i < MAX_CELL_COUNT; i++) {
-        if (orderedPositions[i] !== nextFreePosition) {
-          return nextFreePosition;
-        }
-        nextFreePosition++;
-      }
+    const allAvailableCells = Array.from(
+      { length: MAX_CELL_COUNT },
+      (_, i) => i + 1,
+    ).sort(() => Math.random() - 0.5);
 
-      return undefined;
-    };
-
-    for (let i = 0; i < roundCounter; i++) {
-      const availableCellsCount = MAX_CELL_COUNT - i;
-      const nextCell = Math.floor(Math.random() * availableCellsCount);
-      const cellPosition = getNextFreeCellPosition(nextCell);
-      if (cellPosition === undefined) {
-        throw new Error("Could not find a free cell position");
-      }
-      boardPositions.push(cellPosition);
-    }
-
-    return boardPositions.map((position, index) => {
-      const col = position % 4;
-      const row = Math.floor(position / 4);
-      return { col, row, order: index + 1 };
+    return allAvailableCells.slice(0, rounds).map((number) => {
+      const col = number % 4;
+      const row = Math.floor(number / 4);
+      return { col, row, order: number };
     });
   }
 
   private setupPlayers(playerTuple: { id: string; name: string }[]) {
     playerTuple.forEach(({ id, name }) => {
-      const player = new OMPlayer(id, name);
+      const player = new OMPlayer(id, name, this.handleClickEval.bind(this));
       this.players.set(id, player);
-      this.handleChoose(player);
+      this.handleClick(player);
     });
   }
 
-  private handleChoose(player: OMPlayer) {
-    player.on("chosen", (e) => {
-      const doneChoosing = [...this.players.values()]
-        .filter((x) => x.view === "chosen")
-        .map((x) => x.id);
+  private handleClickEval(currentInputs: InputEntry[], { col, row }: Position) {
+    const currentOrder = currentInputs.length + 1;
+    const expected = this.currentPattern[currentOrder - 1];
+
+    if (!expected) {
+      return { isFail: true };
+    }
+    return {
+      isFail: expected.col !== col || expected.row !== row,
+    };
+  }
+
+  private handleClick(player: OMPlayer) {
+    player.on("click", (e) => {
+      const currentPlayer = this.assertPlayer(e.id);
       this.emitEvent(
         {
-          event: "show-waiting",
-          data: { doneChoosing },
+          event: "input-response",
+          data: { pattern: currentPlayer.inputEntries },
         },
         e.id,
       );
-      if (doneChoosing.length !== this.players.size) return;
 
-      this.timerHandler.cancelTimer("choose-timer");
+      if (currentPlayer.inputEntries.length !== this.currentPattern.length) {
+        return;
+      }
+      // current player done
+      currentPlayer.markAsDone();
+      this.emitEvent(
+        {
+          event: "show-waiting",
+          data: undefined,
+        },
+        e.id,
+      );
+
+      if (
+        ![...this.players.values()].every(
+          (player) => player.view === "wait-for-opponent",
+        )
+      ) {
+        return;
+      }
+      // all players done
+      this.timerHandler.cancelTimer("input-timer");
       this.evaluateState();
     });
   }
@@ -318,12 +334,6 @@ export class OMGame
     if (!this.hasStarted) {
       throw new Error(`The game has not been started yet`);
     }
-  }
-
-  private getWinLooseRate(playerId: string) {
-    const wins = this.winners.filter((winner) => winner === playerId).length;
-    const looses = this.winners.length - wins;
-    return { wins, looses };
   }
 
   private evaluateState() {
@@ -349,10 +359,8 @@ export class OMGame
             event: "show-result",
             data: {
               outcome: "draw",
-              anotherRound: true,
               yourName: name,
               opponentName: opponent,
-              ...this.getWinLooseRate(id),
             },
           },
           id,
@@ -362,55 +370,18 @@ export class OMGame
       return;
     }
 
-    this.winners.push(result.winner);
-    const overAllWinner = this.getWinner();
-    playerStats.forEach(({ id, name, opponent }) => {
-      this.emitEvent(
-        {
-          event: "show-result",
-          data: {
-            outcome: id === result.winner ? "win" : "loose",
-            anotherRound: !overAllWinner,
-            yourName: name,
-            opponentName: opponent,
-            ...this.getWinLooseRate(id),
-          },
-        },
-        id,
-      );
-    });
-
-    if (!overAllWinner) {
-      // continue with the next round
-      this.timerHandler.startTimer("next-round-timer");
-    } else {
-      const winnerId = overAllWinner[0];
-      this.endGame!(
-        winnerId,
-        player1.id === winnerId ? player2.id : player1.id,
-      );
-    }
-  }
-
-  private getWinner() {
-    const winCount = this.winners.reduce<Record<string, number>>(
-      (acc, winner) => {
-        acc[winner] = (acc[winner] ?? 0) + 1;
-        return acc;
-      },
-      {},
+    this.endGame!(
+      result.winner,
+      player1.id === result.winner ? player2.id : player1.id,
     );
-
-    const winsNeeded =
-      Math.ceil(this.config.bestOf / 2) + (this.config.bestOf % 2);
-
-    return Object.entries(winCount).find(([, count]) => count >= winsNeeded);
   }
 
   private findWinner(firstPlayer: OMPlayer, secondPlayer: OMPlayer) {
+    const firstPlayerDone = firstPlayer.view === "wait-for-opponent";
+    const secondPlayerDone = secondPlayer.view === "wait-for-opponent";
     if (
-      firstPlayer.selectedItem === undefined &&
-      secondPlayer.selectedItem === undefined
+      (firstPlayerDone && secondPlayerDone) ||
+      (!firstPlayerDone && !secondPlayerDone)
     ) {
       return {
         winner: undefined,
@@ -418,15 +389,8 @@ export class OMGame
         draw: true,
       } as const;
     }
-    if (firstPlayer.selectedItem === undefined) {
-      return {
-        winner: secondPlayer.id,
-        looser: firstPlayer.id,
-        draw: false,
-      } as const;
-    }
 
-    if (secondPlayer.selectedItem === undefined) {
+    if (firstPlayerDone) {
       return {
         winner: firstPlayer.id,
         looser: secondPlayer.id,
@@ -434,42 +398,11 @@ export class OMGame
       } as const;
     }
 
-    if (firstPlayer.selectedItem === secondPlayer.selectedItem) {
-      return {
-        winner: null,
-        looser: null,
-        draw: true,
-      } as const;
-    }
-
-    const firstPlayerBeats = this.config.evaluation.find(
-      (item) => item.item === firstPlayer.selectedItem,
-    )!.beats;
-
-    if (firstPlayerBeats.includes(secondPlayer.selectedItem)) {
-      return {
-        winner: firstPlayer.id,
-        looser: secondPlayer.id,
-        draw: false,
-      } as const;
-    }
-
-    const secondPlayerBeats = this.config.evaluation.find(
-      (item) => item.item === secondPlayer.selectedItem,
-    )!.beats;
-
-    if (secondPlayerBeats.includes(firstPlayer.selectedItem)) {
-      return {
-        winner: secondPlayer.id,
-        looser: firstPlayer.id,
-        draw: false,
-      } as const;
-    }
-
+    // only option left is that secondPlayer is done
     return {
-      winner: null,
-      looser: null,
-      draw: true,
+      winner: secondPlayer.id,
+      looser: firstPlayer.id,
+      draw: false,
     } as const;
   }
 }
