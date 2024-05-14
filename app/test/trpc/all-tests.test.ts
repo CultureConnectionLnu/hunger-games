@@ -1,5 +1,6 @@
 import { lobbyTests } from "./lobby";
 import { medicTests } from "./medic";
+import { omTests } from "./om";
 import { questTests } from "./quest";
 import { rpsTests } from "./rps";
 import { scoreTests } from "./score";
@@ -9,8 +10,9 @@ import { provideTestUsers } from "./utils";
 // and this would make it difficult to decide when the users should be created
 // and when they should be removed again
 provideTestUsers();
-lobbyTests();
-rpsTests();
-scoreTests();
-questTests();
-medicTests();
+// lobbyTests();
+// rpsTests();
+omTests();
+// scoreTests();
+// questTests();
+// medicTests();

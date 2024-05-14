@@ -116,6 +116,10 @@ class OMPlayer extends GenericEventEmitter<{
     this.inputs = [];
   }
 
+  showPattern() {
+    this._view = "show-pattern";
+  }
+
   cleanup() {
     this.removeAllListeners();
   }
@@ -238,6 +242,7 @@ export class OMGame
 
   private showPattern() {
     this.currentPattern = this.getNextPattern();
+    this.players.forEach((player) => player.showPattern());
     this.emitEvent({
       event: "show-pattern",
       data: { pattern: this.currentPattern },
