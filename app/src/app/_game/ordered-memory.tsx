@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useTimers } from "../_feature/timer/timer-provider";
 import { GameCard, GameContentLoading } from "./base";
 import { CardTitle } from "~/components/ui/card";
+import { cn } from "~/lib/utils";
+import { Button } from "~/components/ui/button";
 
 type View =
   | "show-pattern"
@@ -12,6 +14,13 @@ type View =
   | "show-result"
   | "none";
 
+type BoardEntry = {
+  col: number;
+  row: number;
+  number?: number;
+  isFail?: boolean;
+};
+
 // export default function OrderedMemoryGame({
 //   params,
 // }: {
@@ -19,7 +28,7 @@ type View =
 // }) {
 export function OrderedMemoryGame() {
   const { handleEvent } = useTimers();
-  const [view, setView] = useState<View>("none");
+  const [view, setView] = useState<View>("show-pattern");
   //   const [lastEvent, setLastEvent] = useState<ServerEvent>();
 
   //   api.rockPaperScissors.onAction.useSubscription(params, {
@@ -37,22 +46,29 @@ export function OrderedMemoryGame() {
   //   });
 
   //   if (!lastEvent) return <GameContentLoading />;
-  return (
-    <MemoryBoard
-      params={{
-        state: "show-pattern",
-        pattern: [{ col: 1, row: 1, number: 1 }],
-      }}
-      onClick={(args) => console.log(args)}
-    />
-  );
+  // return (
+  //   <MemoryBoard
+  //     params={{
+  //       state: "show-pattern",
+  //       entries: [
+  //         { col: 1, row: 1, number: 1 },
+  //         { col: 0, row: 0, isFail: true },
+  //         { col: 1, row: 0, isFail: false },
+  //       ],
+  //     }}
+  //     onClick={(args) => console.log(args)}
+  //   />
+  // );
 
   return (
-    <ViewContainer
-      params={{
-        view: view,
-      }}
-    />
+    <>
+      <ViewContainer
+        params={{
+          view: view,
+        }}
+      />
+      <Button onClick={() => setView("input-pattern")}>next</Button>
+    </>
   );
 }
 
@@ -67,7 +83,20 @@ function ViewContainer({
     case "none":
       return <></>;
     case "show-pattern":
+      return (
+        <MemoryBoard
+          params={{
+            state: "show-pattern",
+            entries: [
+              { col: 1, row: 1, number: 1 },
+              { col: 0, row: 0, number: 2 },
+              { col: 1, row: 0, number: 3 },
+            ],
+          }}
+        />
+      );
     case "input-pattern":
+      return <MemoryBoard params={{ state: "input-pattern", entries: [] }} />;
     case "wait-for-opponent":
       return <WaitForOpponentToFinishInput />;
     case "show-result":
@@ -94,7 +123,7 @@ function MemoryBoard({
 }: {
   params: {
     state: "show-pattern" | "input-pattern";
-    pattern: { col: number; row: number; number: number }[];
+    entries: BoardEntry[];
   };
   onClick?: (args: { col: number; row: number }) => void;
 }) {
@@ -107,23 +136,15 @@ function MemoryBoard({
         {Array.from({ length: rows }).map((_, rowIndex) => (
           <div key={rowIndex} className="flex">
             {Array.from({ length: columns }).map((_, columnIndex) => (
-              <div
+              <MemoryCell
                 key={columnIndex}
-                className="m-1 flex h-16 w-16 items-center justify-center rounded-sm bg-gray-200"
-                onClick={() => onClick?.({ col: columnIndex, row: rowIndex })}
-              >
-                <MemoryCell
-                  params={{
-                    col: columnIndex,
-                    row: rowIndex,
-                    number: getNumberAtPosition(
-                      params.pattern,
-                      columnIndex,
-                      rowIndex,
-                    ),
-                  }}
-                />
-              </div>
+                params={{
+                  col: columnIndex,
+                  row: rowIndex,
+                  entries: params.entries,
+                }}
+                onClick={onClick}
+              />
             ))}
           </div>
         ))}
@@ -134,18 +155,30 @@ function MemoryBoard({
 
 function MemoryCell({
   params,
+  onClick,
 }: {
-  params: { col: number; row: number; number?: number };
+  params: {
+    col: number;
+    row: number;
+    entries: BoardEntry[];
+  };
+  onClick?: (args: { col: number; row: number }) => void;
 }) {
-  return <div className="text-xl">{params.number}</div>;
-}
-
-function getNumberAtPosition(
-  pattern: { col: number; row: number; number: number }[],
-  col: number,
-  row: number,
-) {
-  return pattern.find((p) => p.col === col && p.row === row)?.number;
+  const match = params.entries.find(
+    (p) => p.col === params.col && p.row === params.row,
+  );
+  return (
+    // conditionally change color if a number was found to green otherwise keep it at gray
+    <div
+      className={cn(
+        "m-1 flex h-16 w-16 items-center justify-center rounded-sm transition-all duration-300",
+        !match ? "bg-gray-200" : match.isFail ? "bg-red-200" : "bg-green-200",
+      )}
+      onClick={() => onClick?.({ col: params.col, row: params.row })}
+    >
+      <div className="text-xl">{match?.number}</div>
+    </div>
+  );
 }
 
 function WaitForOpponentToFinishInput() {
