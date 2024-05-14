@@ -41,8 +41,9 @@ export function OrderedMemoryGame() {
     <MemoryBoard
       params={{
         state: "show-pattern",
-        pattern: [{ col: 1, row: 1 }],
+        pattern: [{ col: 1, row: 1, number: 1 }],
       }}
+      onClick={(args) => console.log(args)}
     />
   );
 
@@ -89,11 +90,13 @@ function ViewContainer({
 
 function MemoryBoard({
   params,
+  onClick,
 }: {
   params: {
     state: "show-pattern" | "input-pattern";
     pattern: { col: number; row: number; number: number }[];
   };
+  onClick?: (args: { col: number; row: number }) => void;
 }) {
   const rows = 4;
   const columns = 4;
@@ -106,9 +109,20 @@ function MemoryBoard({
             {Array.from({ length: columns }).map((_, columnIndex) => (
               <div
                 key={columnIndex}
-                className="m-1 h-16 w-16 rounded-sm bg-gray-200"
+                className="m-1 flex h-16 w-16 items-center justify-center rounded-sm bg-gray-200"
+                onClick={() => onClick?.({ col: columnIndex, row: rowIndex })}
               >
-                {getNumberAtPosition(params.pattern, columnIndex, rowIndex)}
+                <MemoryCell
+                  params={{
+                    col: columnIndex,
+                    row: rowIndex,
+                    number: getNumberAtPosition(
+                      params.pattern,
+                      columnIndex,
+                      rowIndex,
+                    ),
+                  }}
+                />
               </div>
             ))}
           </div>
@@ -116,6 +130,14 @@ function MemoryBoard({
       </div>
     </GameCard>
   );
+}
+
+function MemoryCell({
+  params,
+}: {
+  params: { col: number; row: number; number?: number };
+}) {
+  return <div className="text-xl">{params.number}</div>;
 }
 
 function getNumberAtPosition(
