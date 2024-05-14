@@ -238,6 +238,7 @@ export class OMGame
         player.id,
       );
     });
+    this.timerHandler.startTimer("input-timer");
   }
 
   private showPattern() {
