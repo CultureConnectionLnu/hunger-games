@@ -18,8 +18,8 @@ export type OrderedMemoryConfig = {
 
 const MAX_CELL_COUNT = 16;
 
-type PatternEntry = Position & { order: number };
-type InputEntry = Position & { isFail: boolean };
+type PatternEntry = Position & { order: number; isFail?: undefined };
+type InputEntry = Position & { order?: undefined; isFail: boolean };
 type Position = { col: number; row: number };
 
 export type OrderedMemoryEvents = EventTemplate<

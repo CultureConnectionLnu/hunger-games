@@ -16,13 +16,21 @@ type ServerEvent =
     : never;
 
 type View = ServerEvent["view"];
+type GetSpecificEvent<T, Event extends ServerEvent["event"]> = T extends {
+  event: Event;
+}
+  ? T
+  : never;
 
-type BoardEntry = {
-  col: number;
-  row: number;
-  number?: number;
-  isFail?: boolean;
-};
+type UnwrapArray<T> = T extends (infer U)[] ? U : T;
+type ShowPatternEvent = UnwrapArray<
+  GetSpecificEvent<ServerEvent, "show-pattern">["data"]["pattern"]
+>;
+type InputResponseEvent = UnwrapArray<
+  GetSpecificEvent<ServerEvent, "input-response">["data"]["pattern"]
+>;
+
+type BoardEntry = ShowPatternEvent | InputResponseEvent;
 
 export default function OrderedMemoryGame({
   params,
@@ -216,11 +224,11 @@ function MemoryCell({
     <div
       className={cn(
         "m-1 flex h-16 w-16 items-center justify-center rounded-sm transition-all duration-300",
-        !match ? "bg-gray-200" : match.isFail ? "bg-red-200" : "bg-green-200",
+        !match ? "bg-gray-200" : match?.isFail ? "bg-red-200" : "bg-green-200",
       )}
       onClick={() => onClick?.({ col: params.col, row: params.row })}
     >
-      <div className="text-xl">{match?.number}</div>
+      <div className="text-xl">{match?.order}</div>
     </div>
   );
 }
