@@ -18,6 +18,7 @@ type ScoreEntry = UnwrapArray<RouterOutputs["score"]["getHistory"]>;
 
 const gameNameMap = {
   "rock-paper-scissors": "Rock Paper Scissors",
+  "ordered-memory": "Ordered Memory",
 } satisfies Record<FightEntry["game"], string>;
 
 export function FightHistory({
