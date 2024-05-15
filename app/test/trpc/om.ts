@@ -1,7 +1,10 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { describe, expect, it, vi } from "vitest";
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
+import { type GetTimerEvents } from "~/server/api/logic/core/types";
+import { type OrderedMemoryEvents } from "~/server/api/logic/games/om";
 import { lobbyHandler } from "~/server/api/logic/handler";
+import { type OrderedMemoryPlayerEvents } from "~/server/api/routers/games/ordered-memory";
 import {
   cleanupLeftovers,
   expectEventEmitted,
@@ -13,7 +16,6 @@ import {
   useAutomaticTimer,
   useManualTimer,
 } from "./utils";
-import { type OrderedMemoryPlayerEvents } from "~/server/api/routers/games/ordered-memory";
 
 export const omTests = () =>
   describe("Ordered Memory", () => {
@@ -22,19 +24,25 @@ export const omTests = () =>
 
     describe("Evaluation", () => {
       it("should be a draw no one inputs the pattern", () =>
-        testFight(async ({ startGame, timer, expectDraw }) => {
+        testFight(async ({ startGame, timeoutTimer, expectDraw }) => {
           await startGame();
-          timer.getFirstByName("show-timer").emitTimeout();
-          timer.getFirstByName("input-timer").emitTimeout();
+
+          await timeoutTimer("show-timer");
+          await timeoutTimer("input-timer");
 
           await expectDraw();
         }));
 
       it("should be a draw if both input the wrong pattern", () =>
         testFight(
-          async ({ startGame, timer, inputIncorrectPattern, expectDraw }) => {
+          async ({
+            startGame,
+            timeoutTimer,
+            inputIncorrectPattern,
+            expectDraw,
+          }) => {
             await startGame(true);
-            timer.getFirstByName("show-timer").emitTimeout();
+            await timeoutTimer("show-timer");
 
             await inputIncorrectPattern("test_user_1");
             await inputIncorrectPattern("test_user_2");
@@ -47,13 +55,13 @@ export const omTests = () =>
         testFight(
           async ({
             startGame,
-            timer,
+            timeoutTimer,
             inputCorrectPattern,
             inputIncorrectPattern,
             expectGameEnded,
           }) => {
             await startGame(true);
-            timer.getFirstByName("show-timer").emitTimeout();
+            await timeoutTimer("show-timer");
 
             await inputCorrectPattern("test_user_1");
             await inputIncorrectPattern("test_user_2");
@@ -66,13 +74,13 @@ export const omTests = () =>
         testFight(
           async ({
             startGame,
-            timer,
+            timeoutTimer,
             inputCorrectPattern,
             inputIncorrectPattern,
             expectGameEnded,
           }) => {
             await startGame(true);
-            timer.getFirstByName("show-timer").emitTimeout();
+            await timeoutTimer("show-timer");
 
             await inputCorrectPattern("test_user_2");
             await inputIncorrectPattern("test_user_1");
@@ -83,9 +91,14 @@ export const omTests = () =>
 
       it("should be draw if both enter correct pattern", () =>
         testFight(
-          async ({ startGame, timer, inputCorrectPattern, expectDraw }) => {
+          async ({
+            startGame,
+            timeoutTimer,
+            inputCorrectPattern,
+            expectDraw,
+          }) => {
             await startGame(true);
-            timer.getFirstByName("show-timer").emitTimeout();
+            await timeoutTimer("show-timer");
 
             await inputCorrectPattern("test_user_1");
             await inputCorrectPattern("test_user_2");
@@ -93,6 +106,32 @@ export const omTests = () =>
             await expectDraw();
           },
         ));
+
+      it("player 1 should win in round 2", () => {
+        return testFight(
+          async ({
+            startGame,
+            timeoutTimer,
+            inputCorrectPattern,
+            inputIncorrectPattern,
+            expectGameEnded,
+          }) => {
+            await startGame(true);
+            //round 1
+            await timeoutTimer("show-timer");
+            await inputCorrectPattern("test_user_1");
+            await inputCorrectPattern("test_user_2");
+            await timeoutTimer("next-round-timer");
+
+            //round 2
+            await timeoutTimer("show-timer");
+            await inputCorrectPattern("test_user_2");
+            await inputIncorrectPattern("test_user_1");
+
+            await expectGameEnded("test_user_1");
+          },
+        );
+      });
     });
 
     describe("Views", () => {
@@ -111,9 +150,9 @@ export const omTests = () =>
         ));
 
       it("once the 'show-timer' is done, it should show the 'input-pattern' view", () =>
-        testFight(async ({ startGame, timer, firstRpsListener }) => {
+        testFight(async ({ startGame, timeoutTimer, firstRpsListener }) => {
           await startGame();
-          timer.getFirstByName("show-timer").emitTimeout();
+          await timeoutTimer("show-timer");
 
           expect(
             getLastEventOf(firstRpsListener, "enable-input")?.view,
@@ -124,12 +163,12 @@ export const omTests = () =>
         testFight(
           async ({
             startGame,
-            timer,
+            timeoutTimer,
             inputCorrectPattern,
             firstRpsListener,
           }) => {
             await startGame();
-            timer.getFirstByName("show-timer").emitTimeout();
+            await timeoutTimer("show-timer");
             await inputCorrectPattern("test_user_1");
 
             expect(
@@ -142,12 +181,12 @@ export const omTests = () =>
         testFight(
           async ({
             startGame,
-            timer,
+            timeoutTimer,
             inputCorrectPattern,
             firstRpsListener,
           }) => {
             await startGame();
-            timer.getFirstByName("show-timer").emitTimeout();
+            await timeoutTimer("show-timer");
             await inputCorrectPattern("test_user_1");
             await inputCorrectPattern("test_user_2");
 
@@ -160,24 +199,45 @@ export const omTests = () =>
 
     describe("Timers", () => {
       it("should start show timer", () =>
-        testFight(async ({ startGame, timer, firstRpsListener }) => {
+        testFight(async ({ startGame, expectRunningTimer }) => {
           await startGame();
-          expect(() => timer.getLastByName("show-timer")).not.toThrow();
-          expect(
-            getLastEventOf(firstRpsListener, "show-timer")?.data.secondsLeft,
-          ).toBeGreaterThan(0);
+          expectRunningTimer("show-timer");
         }));
 
       it("should show input timer when input starts", () =>
-        testFight(async ({ startGame, timer, firstRpsListener }) => {
+        testFight(async ({ startGame, timeoutTimer, expectRunningTimer }) => {
           await startGame();
-          timer.getFirstByName("show-timer").emitTimeout();
-          expect(() => timer.getLastByName("input-timer")).not.toThrow();
-          await runAllMacroTasks();
-          expect(
-            getLastEventOf(firstRpsListener, "input-timer")?.data.secondsLeft,
-          ).toBeGreaterThan(0);
+          await timeoutTimer("show-timer");
+          expectRunningTimer("input-timer");
         }));
+
+      it("should start next round timer, if the game is not over", () =>
+        testFight(async ({ startGame, timeoutTimer, expectRunningTimer }) => {
+          await startGame();
+
+          await timeoutTimer("show-timer");
+          await timeoutTimer("input-timer");
+
+          expectRunningTimer("next-round-timer");
+        }));
+
+      it("should not show next round timer, if the game is over", () =>
+        testFight(
+          async ({
+            startGame,
+            timeoutTimer,
+            expectNotRunningTimer,
+            inputCorrectPattern,
+          }) => {
+            await startGame();
+
+            await timeoutTimer("show-timer");
+            await inputCorrectPattern("test_user_1");
+            await timeoutTimer("input-timer");
+
+            expectNotRunningTimer("next-round-timer");
+          },
+        ));
     });
   });
 
@@ -272,17 +332,18 @@ async function setupTest() {
     position: { row: number; col: number },
   ) => await callers[player].orderedMemory.clickCard(position);
 
+  const timer = getManualTimer();
+  type KnownTimers = GetTimerEvents<OrderedMemoryEvents>;
+
   return {
     getFightId: () => state.fightId,
     getGame: () => state.fight!.game,
     getFight: () => state.fight!,
     startGame,
-    clickCard,
     firstListener,
     firstRpsListener,
     secondListener,
     secondRpsListener,
-    timer: getManualTimer(),
     expectGameEnded: async (winnerId: `test_user_${1 | 2}`) => {
       expectEventEmitted(firstListener, "game-ended");
       const event = getLastEventOf(firstListener, "game-ended");
@@ -312,6 +373,19 @@ async function setupTest() {
       // it starts with 0,0
       // therefore clicking anything else is wrong
       await clickCard(player, { row: 1, col: 0 });
+    },
+    expectRunningTimer: (name: KnownTimers) => {
+      expect(() => timer.getLastByName(name)).not.toThrow();
+      expect(
+        getLastEventOf(firstRpsListener, name)?.data.secondsLeft,
+      ).toBeGreaterThan(0);
+    },
+    expectNotRunningTimer: (name: KnownTimers) => {
+      expect(() => timer.getLastByName(name)).toThrow();
+    },
+    timeoutTimer: async (name: KnownTimers) => {
+      timer.getFirstByName(name).emitTimeout();
+      await runAllMacroTasks();
     },
   };
 }

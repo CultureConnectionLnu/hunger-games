@@ -190,7 +190,7 @@ export class OMGame
         {
           name: "next-round-timer",
           time: this.config.nextRoundTimeoutInSeconds,
-          timeoutEvent: () => setTimeout(() => this.showPattern()),
+          timeoutEvent: () => () => this.showPattern(),
         },
       ],
     );
