@@ -100,6 +100,7 @@ function User({
       />
       <NoPlayer params={{ data, title }} closeButton={closeButton} />
       <PlayerWounded params={{ data, title }} closeButton={closeButton} />
+      <PlayerInAFight params={{ data, title }} closeButton={closeButton} />
     </DialogContent>
   );
 }
@@ -294,6 +295,31 @@ function PlayerWounded({
         <DialogDescription>
           The selected player is wounded. Please forward the player to the next
           medic.
+        </DialogDescription>
+        <DialogFooter className="flex flex-row justify-between">
+          {closeButton}
+        </DialogFooter>
+      </DialogHeader>
+    </>
+  );
+}
+
+function PlayerInAFight({
+  params,
+  closeButton,
+}: {
+  params: { data: QuestData; title: string };
+  closeButton: React.ReactNode;
+}) {
+  if (params.data.state !== "player-in-fight") return;
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>{params.title}</DialogTitle>
+        <DialogDescription>
+          The selected player is fighting right now. While a player is in a
+          fight, no quest activity can happen.
         </DialogDescription>
         <DialogFooter className="flex flex-row justify-between">
           {closeButton}

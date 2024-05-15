@@ -3,31 +3,27 @@ import { observable } from "@trpc/server/observable";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
 import { catchMatchError, inFightProcedure } from "../lobby";
-import {
-  type RockPaperScissorsEvents,
-  rockPaperScissorsItemsSchema,
-} from "../../logic/games/rps";
 import type { OnlyPlayerEvents } from "../../logic/core/types";
 import { lobbyHandler } from "../../logic/handler";
+import { type OrderedMemoryEvents } from "../../logic/games/om";
 
-export type RockPaperScissorsPlayerEvents =
-  OnlyPlayerEvents<RockPaperScissorsEvents>;
+export type OrderedMemoryPlayerEvents = OnlyPlayerEvents<OrderedMemoryEvents>;
 
 /**
- * makes sure the user is actually in a rock-paper-scissors fight
+ * makes sure the user is actually in a ordered-memory fight
  */
-const rockPaperScissorsProcedure = inFightProcedure.use(({ ctx, next }) => {
-  if (ctx.currentFight.game !== "rock-paper-scissors") {
+const orderedMemoryProcedure = inFightProcedure.use(({ ctx, next }) => {
+  if (ctx.currentFight.game !== "ordered-memory") {
     throw new TRPCError({
       code: "BAD_REQUEST",
       message: "Invalid game type",
     });
   }
 
-  if (ctx.fight.type !== "rock-paper-scissors") {
+  if (ctx.fight.type !== "ordered-memory") {
     // TODO: introduce delete action for the invalid fight
     console.error(
-      `The fight with id '${ctx.currentFight.fightId}' is not of type 'rock-paper-scissors', even though it is supposed to be.`,
+      `The fight with id '${ctx.currentFight.fightId}' is not of type 'ordered-memory', even though it is supposed to be.`,
     );
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
@@ -41,12 +37,17 @@ const rockPaperScissorsProcedure = inFightProcedure.use(({ ctx, next }) => {
   });
 });
 
-export const rockPaperScissorsRouter = createTRPCRouter({
-  choose: rockPaperScissorsProcedure
-    .input(rockPaperScissorsItemsSchema)
+export const orderedMemoryRouter = createTRPCRouter({
+  clickCard: orderedMemoryProcedure
+    .input(
+      z.object({
+        col: z.number(),
+        row: z.number(),
+      }),
+    )
     .mutation(({ ctx, input }) => {
       catchMatchError(() => {
-        ctx.currentGame.playerChoose(ctx.user.clerkId, input);
+        ctx.currentGame.playerClick(ctx.user.clerkId, input);
       });
       return true;
     }),
@@ -59,7 +60,7 @@ export const rockPaperScissorsRouter = createTRPCRouter({
       }),
     )
     .subscription(({ input }) => {
-      return observable<RockPaperScissorsPlayerEvents>((emit) => {
+      return observable<OrderedMemoryPlayerEvents>((emit) => {
         const lobby = lobbyHandler.getFight(input.fightId);
         if (!lobby) {
           throw new TRPCError({
@@ -67,7 +68,7 @@ export const rockPaperScissorsRouter = createTRPCRouter({
             message: "Match not found",
           });
         }
-        if (lobby.type !== "rock-paper-scissors") {
+        if (lobby.type !== "ordered-memory") {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Invalid game type",
@@ -80,14 +81,14 @@ export const rockPaperScissorsRouter = createTRPCRouter({
           });
         }
 
-        const onMessage = (data: RockPaperScissorsPlayerEvents) => {
+        const onMessage = (data: OrderedMemoryPlayerEvents) => {
           emit.next(data);
         };
         lobby.game.on(`player-${input.userId}`, onMessage);
         (
           lobby.game.getEventHistory(
             input.userId,
-          ) as RockPaperScissorsPlayerEvents[]
+          ) as OrderedMemoryPlayerEvents[]
         ).forEach(onMessage);
 
         lobby.game.once("destroy", () => {

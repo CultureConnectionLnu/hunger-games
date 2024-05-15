@@ -59,9 +59,9 @@ class ClerkHandler {
       if (!user) {
         return false;
       }
-      return Boolean(user.publicMetadata.isAdmin);
+      return Boolean(user?.publicMetadata?.isAdmin);
     }
-    return sessionClaims?.metadata.isAdmin ?? false;
+    return Boolean(sessionClaims?.metadata?.isAdmin);
   }
 
   private async actualGetAllUsers() {
@@ -75,7 +75,7 @@ class ClerkHandler {
           return {
             userId: id,
             name: this.userToName(user),
-            isAdmin: Boolean(publicMetadata.isAdmin),
+            isAdmin: Boolean(publicMetadata?.isAdmin),
           };
         }),
       } as const;

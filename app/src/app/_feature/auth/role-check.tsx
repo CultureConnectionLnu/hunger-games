@@ -12,7 +12,7 @@ const RolesContext = createContext<Record<UserRoles, boolean> | undefined>(
 export function RolesProvider({ children }: { children: React.ReactNode }) {
   const { user } = useUser();
   const { data } = api.user.getYourRoles.useQuery(undefined, {
-    enabled: Boolean(user),
+    enabled: Boolean(user?.id),
   });
 
   const roles = {

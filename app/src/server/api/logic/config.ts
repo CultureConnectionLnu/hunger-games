@@ -2,6 +2,7 @@ import { env } from "~/env";
 import type { BaseGameConfig } from "./core/base-game";
 import type { RockPaperScissorsConfig } from "./games/rps";
 import { type QuestKind } from "./handler";
+import { type OrderedMemoryConfig } from "./games/om";
 
 const longAssTime = 1_000_000;
 
@@ -56,4 +57,10 @@ export const rockPaperScissorsConfig: RockPaperScissorsConfig = {
       beats: ["rock"],
     },
   ],
+};
+
+export const orderedMemoryConfig: OrderedMemoryConfig = {
+  showPatternTimeoutInSeconds: 2,
+  inputPatternTimeoutInSeconds: 10,
+  nextRoundTimeoutInSeconds: 5,
 };

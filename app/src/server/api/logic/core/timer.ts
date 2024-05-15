@@ -69,6 +69,7 @@ export class TimerFactory {
   }
   public useAutomatic() {
     this.clazz = AutomaticTimer;
+    this.manualLookup.forEach((timer) => timer.cleanup());
     this.manualLookup = [];
   }
 }
@@ -89,6 +90,8 @@ abstract class TimerLogic extends GenericEventEmitter<{
   }
 
   public get isRunning() {
+    if (!this.wasStarted) return false;
+    if (this.isCanceled) return false;
     return this.running;
   }
 
@@ -129,6 +132,7 @@ abstract class TimerLogic extends GenericEventEmitter<{
 
   public emitTimeout() {
     this.emit("timeout", undefined);
+    this.running = false;
     this.cleanup();
   }
 

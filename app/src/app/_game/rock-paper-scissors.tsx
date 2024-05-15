@@ -1,3 +1,5 @@
+"use client";
+
 import type { Observable } from "@trpc/server/observable";
 import { useState } from "react";
 import { FaSpinner } from "react-icons/fa";
@@ -24,7 +26,7 @@ type GetSpecificEvent<T, Event extends ServerEvent["event"]> = T extends {
   : never;
 type ResultEvent = GetSpecificEvent<ServerEvent, "show-result">;
 
-export default function RockPaperScissorsGame({
+export function RockPaperScissorsGame({
   params,
 }: {
   params: { fightId: string; userId: string };
