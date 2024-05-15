@@ -125,8 +125,8 @@ export const omTests = () =>
 
             //round 2
             await timeoutTimer("show-timer");
-            await inputCorrectPattern("test_user_2");
-            await inputIncorrectPattern("test_user_1");
+            await inputCorrectPattern("test_user_1");
+            await inputIncorrectPattern("test_user_2");
 
             await expectGameEnded("test_user_1");
           },
@@ -195,6 +195,46 @@ export const omTests = () =>
             ).toEqual("show-result");
           },
         ));
+
+      it('when both players clicked the wrong card, then the view should change to "show-result"', () =>
+        testFight(
+          async ({
+            startGame,
+            timeoutTimer,
+            inputIncorrectPattern,
+            firstRpsListener,
+          }) => {
+            await startGame(true);
+            await timeoutTimer("show-timer");
+            await inputIncorrectPattern("test_user_1");
+            await inputIncorrectPattern("test_user_2");
+
+            expect(
+              getLastEventOf(firstRpsListener, "show-result")?.view,
+            ).toEqual("show-result");
+          },
+        ));
+
+      it('when round 2 starts, then it should show "input-pattern" view after show pattern', () =>
+        testFight(
+          async ({
+            startGame,
+            timeoutTimer,
+            inputCorrectPattern,
+            firstRpsListener,
+          }) => {
+            await startGame(true);
+            await timeoutTimer("show-timer");
+            await inputCorrectPattern("test_user_1");
+            await inputCorrectPattern("test_user_2");
+            await timeoutTimer("next-round-timer");
+            await timeoutTimer("show-timer");
+
+            expect(
+              getLastEventOf(firstRpsListener, "enable-input")?.view,
+            ).toEqual("input-pattern");
+          },
+        ));
     });
 
     describe("Timers", () => {
@@ -238,6 +278,29 @@ export const omTests = () =>
             expectNotRunningTimer("next-round-timer");
           },
         ));
+
+      it("should start show timer again after next round timer", () =>
+        testFight(async ({ startGame, timeoutTimer, expectRunningTimer }) => {
+          await startGame();
+
+          await timeoutTimer("show-timer");
+          await timeoutTimer("input-timer");
+          await timeoutTimer("next-round-timer");
+
+          expectRunningTimer("show-timer");
+        }));
+
+      it("in round 2 should show input timer after show timer", () =>
+        testFight(async ({ startGame, timeoutTimer, expectRunningTimer }) => {
+          await startGame(true);
+
+          await timeoutTimer("show-timer");
+          await timeoutTimer("input-timer");
+          await timeoutTimer("next-round-timer");
+
+          await timeoutTimer("show-timer");
+          expectRunningTimer("input-timer");
+        }));
     });
   });
 
