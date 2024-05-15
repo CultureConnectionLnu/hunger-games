@@ -155,15 +155,14 @@ export const rpsTests = () =>
           await startGame();
           await choose("test_user_1", "rock");
           await choose("test_user_2", "scissors");
-          timer.getLastByName("next-round-timer").emitTimeout();
+          timer.getLastRunningByName("next-round-timer").emitTimeout();
 
           await choose("test_user_1", "rock");
           await choose("test_user_2", "scissors");
-          timer.getLastByName("next-round-timer").emitTimeout();
+          timer.getLastRunningByName("next-round-timer").emitTimeout();
 
           await choose("test_user_1", "rock");
           await choose("test_user_2", "scissors");
-          timer.getLastByName("next-round-timer").emitTimeout();
 
           expectEventEmitted(firstListener, "game-ended");
           const event = getLastEventOf(firstListener, "game-ended");
@@ -244,7 +243,7 @@ export const rpsTests = () =>
             await startGame();
             await choose("test_user_1", "rock");
             await choose("test_user_2", "rock");
-            timer.getLastByName("next-round-timer").emitTimeout();
+            timer.getLastRunningByName("next-round-timer").emitTimeout();
 
             expect(
               getLastEventOf(firstRpsListener, "enable-choose")?.view,
@@ -262,7 +261,9 @@ export const rpsTests = () =>
         testFight(async ({ startGame, timer, firstRpsListener }) => {
           await startGame();
 
-          expect(() => timer.getLastByName("choose-timer")).not.toThrow();
+          expect(() =>
+            timer.getLastRunningByName("choose-timer"),
+          ).not.toThrow();
           expect(
             getLastEventOf(firstRpsListener, "choose-timer")?.data.secondsLeft,
           ).toBeGreaterThan(0);
@@ -286,7 +287,9 @@ export const rpsTests = () =>
         testFight(async ({ startGame, timer }) => {
           await startGame();
 
-          expect(() => timer.getLastByName("next-round-timer")).toThrow();
+          expect(() =>
+            timer.getLastRunningByName("next-round-timer"),
+          ).toThrow();
         }));
 
       it("should start next round timer once everyone has chosen", () =>
@@ -295,7 +298,9 @@ export const rpsTests = () =>
           await choose("test_user_1", "rock");
           await choose("test_user_2", "rock");
 
-          expect(() => timer.getLastByName("next-round-timer")).not.toThrow();
+          expect(() =>
+            timer.getLastRunningByName("next-round-timer"),
+          ).not.toThrow();
           expect(
             getLastEventOf(firstRpsListener, "next-round-timer")?.data
               .secondsLeft,
@@ -308,7 +313,7 @@ export const rpsTests = () =>
           await choose("test_user_1", "rock");
           await choose("test_user_2", "rock");
 
-          const nextRoundTimer = timer.getLastByName("next-round-timer");
+          const nextRoundTimer = timer.getLastRunningByName("next-round-timer");
           await timer.simulateNormalTimeout(nextRoundTimer);
 
           expect(timer.getLastByName("choose-timer").isCanceled).toBeFalsy();

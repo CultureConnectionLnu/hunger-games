@@ -189,6 +189,7 @@ async function setupTest() {
   };
 
   const playGame = async (winner: `test_user_${1 | 2}`) => {
+    lobbyHandler.defineNextGameType("rock-paper-scissors");
     const { id } = await callers.test_user_1.lobby.create({
       opponent: `test_user_2`,
     });

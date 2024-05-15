@@ -402,6 +402,7 @@ async function setupTest() {
     getFightId: () => state.fightId,
     getGame: () => state.fight!.game,
     getFight: () => state.fight!,
+    timer,
     startGame,
     firstListener,
     firstRpsListener,
@@ -438,16 +439,16 @@ async function setupTest() {
       await clickCard(player, { row: 1, col: 0 });
     },
     expectRunningTimer: (name: KnownTimers) => {
-      expect(() => timer.getLastByName(name)).not.toThrow();
+      expect(() => timer.getLastRunningByName(name)).not.toThrow();
       expect(
         getLastEventOf(firstRpsListener, name)?.data.secondsLeft,
       ).toBeGreaterThan(0);
     },
     expectNotRunningTimer: (name: KnownTimers) => {
-      expect(() => timer.getLastByName(name)).toThrow();
+      expect(() => timer.getLastRunningByName(name)).toThrow();
     },
     timeoutTimer: async (name: KnownTimers) => {
-      timer.getFirstByName(name).emitTimeout();
+      timer.getLastRunningByName(name).emitTimeout();
       await runAllMacroTasks();
     },
   };

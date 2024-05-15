@@ -174,6 +174,12 @@ export function getManualTimer() {
     if (!lastTimer) throw new Error("No timer created");
     return lastTimer;
   };
+  const getLastRunningByName = (name: string) => {
+    const all = getByName(name).filter((x) => x.isRunning);
+    const lastTimer = all[all.length - 1];
+    if (!lastTimer) throw new Error("No timer created");
+    return lastTimer;
+  };
   const getAll = () => TimerFactory.instance.manualLookup;
 
   const simulateNormalTimeout = async (
@@ -192,6 +198,7 @@ export function getManualTimer() {
     getByName,
     getFirstByName,
     getLastByName,
+    getLastRunningByName,
     simulateNormalTimeout,
   };
 }

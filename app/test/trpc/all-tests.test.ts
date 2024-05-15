@@ -10,9 +10,9 @@ import { provideTestUsers } from "./utils";
 // and this would make it difficult to decide when the users should be created
 // and when they should be removed again
 provideTestUsers();
-// lobbyTests();
-// rpsTests();
+lobbyTests();
+rpsTests();
 omTests();
-// scoreTests();
-// questTests();
-// medicTests();
+scoreTests();
+questTests();
+medicTests();

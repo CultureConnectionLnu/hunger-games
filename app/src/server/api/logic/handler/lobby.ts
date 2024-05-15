@@ -14,7 +14,7 @@ import { OMGame } from "../games/om";
  * insert a new entry for each game added
  */
 const knownGames = {
-  // "rock-paper-scissors": RpsGame,
+  "rock-paper-scissors": RpsGame,
   "ordered-memory": OMGame,
 };
 export type KnownGames = keyof typeof knownGames;
