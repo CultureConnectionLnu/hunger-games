@@ -44,7 +44,10 @@ export class GameTimerHandler<T, Addition extends string = never> {
     this.timers.set(name, timer);
 
     if (config.timeoutEvent) {
-      timer.once("timeout", config.timeoutEvent);
+      timer.once("timeout", () => {
+        this.timers.delete(name);
+        config.timeoutEvent?.();
+      });
     }
 
     timer.on("timer", (e) => this.emit({ event: name as string, data: e }));

@@ -61,6 +61,7 @@ export type OrderedMemoryEvents = EventTemplate<
 class OMPlayer extends GenericEventEmitter<{
   click: {
     id: string;
+    isFail: boolean;
   };
 }> {
   private _view:
@@ -104,7 +105,7 @@ class OMPlayer extends GenericEventEmitter<{
     };
     this.inputs.push(newInput);
 
-    this.emit("click", { id: this.id });
+    this.emit("click", { id: this.id, isFail: newInput.isFail });
   }
 
   markAsDone() {
@@ -190,7 +191,7 @@ export class OMGame
         {
           name: "next-round-timer",
           time: this.config.nextRoundTimeoutInSeconds,
-          timeoutEvent: () => () => this.showPattern(),
+          timeoutEvent: () => this.showPattern(),
         },
       ],
     );
@@ -306,7 +307,10 @@ export class OMGame
         e.id,
       );
 
-      if (currentPlayer.inputEntries.length !== this.currentPattern.length) {
+      if (
+        !e.isFail &&
+        currentPlayer.inputEntries.length !== this.currentPattern.length
+      ) {
         return;
       }
       // current player done

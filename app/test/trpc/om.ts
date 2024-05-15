@@ -117,6 +117,7 @@ export const omTests = () =>
             expectGameEnded,
           }) => {
             await startGame(true);
+
             //round 1
             await timeoutTimer("show-timer");
             await inputCorrectPattern("test_user_1");
