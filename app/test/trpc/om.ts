@@ -138,6 +138,58 @@ export const omTests = () =>
       });
     });
 
+    describe("Rounds", () => {
+      it("should have one item in first round", () =>
+        testFight(async ({ startGame, timeoutTimer, firstRpsListener }) => {
+          await startGame();
+          await timeoutTimer("show-timer");
+          const event = getLastEventOf(firstRpsListener, "show-pattern");
+          expect(event?.data.pattern).toHaveLength(1);
+        }));
+
+      it("should have two items in second round", () =>
+        testFight(async ({ startGame, timeoutTimer, firstRpsListener }) => {
+          await startGame();
+          await timeoutTimer("show-timer");
+          await timeoutTimer("input-timer");
+          await timeoutTimer("next-round-timer");
+          await timeoutTimer("show-timer");
+
+          const event = getLastEventOf(firstRpsListener, "show-pattern");
+          expect(event?.data.pattern).toHaveLength(2);
+        }));
+
+      it("should have 16 items in round 16", () =>
+        testFight(async ({ startGame, timeoutTimer, firstRpsListener }) => {
+          await startGame();
+
+          for (let i = 0; i < 16; i++) {
+            await timeoutTimer("show-timer");
+            await timeoutTimer("input-timer");
+            await timeoutTimer("next-round-timer");
+          }
+
+          await timeoutTimer("show-timer");
+          const event = getLastEventOf(firstRpsListener, "show-pattern");
+          expect(event?.data.pattern).toHaveLength(16);
+        }));
+
+      it("should not have more than 16 items in round after 16", () =>
+        testFight(async ({ startGame, timeoutTimer, firstRpsListener }) => {
+          await startGame();
+
+          for (let i = 0; i < 17; i++) {
+            await timeoutTimer("show-timer");
+            await timeoutTimer("input-timer");
+            await timeoutTimer("next-round-timer");
+          }
+
+          await timeoutTimer("show-timer");
+          const event = getLastEventOf(firstRpsListener, "show-pattern");
+          expect(event?.data.pattern).toHaveLength(16);
+        }));
+    });
+
     describe("Views", () => {
       it("after game start, should show 'show-pattern' view", () =>
         testFight(
