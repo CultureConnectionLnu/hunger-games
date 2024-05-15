@@ -262,7 +262,10 @@ async function SideBar({ config }: { config: HeaderConfig }) {
               </SheetClose>
             );
             return (
-              <RequirePermission key={link.title} permission={link.require}>
+              <RequirePermission
+                key={link.title}
+                params={{ permission: link.require }}
+              >
                 {itemContent}
               </RequirePermission>
             );
@@ -271,7 +274,10 @@ async function SideBar({ config }: { config: HeaderConfig }) {
       </ListGroup>
     );
     return (
-      <RequirePermission key={group.title} permission={group.require}>
+      <RequirePermission
+        key={group.title}
+        params={{ permission: group.require }}
+      >
         {groupContent}
       </RequirePermission>
     );
@@ -295,24 +301,24 @@ async function SideBar({ config }: { config: HeaderConfig }) {
 
 function RequirePermission({
   children,
-  permission,
-  key,
+  params,
 }: {
   children: React.ReactNode;
-  key: string;
-  permission?: Permission | Permission[];
+  params: {
+    permission?: Permission | Permission[];
+  };
 }) {
   const permissions = (
-    Array.isArray(permission) ? permission : [permission]
+    Array.isArray(params.permission) ? params.permission : [params.permission]
   ).filter(Boolean);
   if (permissions.length === 0 || permissions.includes("none")) {
     return children;
   }
   if (permissions.includes("sign-in")) {
-    return <SignedIn key={key}>{children}</SignedIn>;
+    return <SignedIn>{children}</SignedIn>;
   }
   if (permissions.includes("sign-out")) {
-    return <SignedOut key={key}>{children}</SignedOut>;
+    return <SignedOut>{children}</SignedOut>;
   }
 
   type OnlyRolePrefix<T> = T extends `role-${string}` ? T : never;
@@ -333,11 +339,7 @@ function RequirePermission({
     )
     .filter(Boolean);
 
-  return (
-    <RenderOnAnyRole key={key} roleConditions={roles}>
-      {children}
-    </RenderOnAnyRole>
-  );
+  return <RenderOnAnyRole roleConditions={roles}>{children}</RenderOnAnyRole>;
 }
 
 function List({ children }: { children: React.ReactNode }) {
