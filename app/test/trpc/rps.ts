@@ -1,7 +1,10 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { describe, expect, it, vi } from "vitest";
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
-import { lobbyHandler } from "~/server/api/logic/handler";
+import {
+  type RockPaperScissorsGame,
+  lobbyHandler,
+} from "~/server/api/logic/handler";
 import type { RockPaperScissorsPlayerEvents } from "~/server/api/routers/games/rock-paper-scissors";
 import {
   cleanupLeftovers,
@@ -375,7 +378,7 @@ async function setupTest() {
 
   const state = {
     fightId,
-    fight: lobbyHandler.getFight(fightId),
+    fight: lobbyHandler.getFight(fightId) as RockPaperScissorsGame,
     test_user_1: {
       base: (
         await callers.test_user_1.lobby.onGameAction({
@@ -425,8 +428,8 @@ async function setupTest() {
   return {
     callers,
     getFightId: () => state.fightId,
-    getGame: () => state.fight!.game,
-    getFight: () => state.fight!,
+    getGame: () => state.fight.game,
+    getFight: () => state.fight,
     startGame,
     choose,
     firstListener,

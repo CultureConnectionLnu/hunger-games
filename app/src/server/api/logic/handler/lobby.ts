@@ -175,6 +175,9 @@ type GetSpecificGame<T extends KnownGames, Map> = Map extends { type: T }
   ? Map
   : never;
 
+  export type RockPaperScissorsGame = GetSpecificGame<"rock-paper-scissors", KnownGamesMap>;
+export type OrderedMemoryGame = GetSpecificGame<"ordered-memory", KnownGamesMap>;
+
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();
   private nextGameType?: keyof typeof knownGames;

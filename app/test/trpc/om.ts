@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 import { type GetTimerEvents } from "~/server/api/logic/core/types";
 import { type OrderedMemoryEvents } from "~/server/api/logic/games/om";
-import { lobbyHandler } from "~/server/api/logic/handler";
+import {
+  lobbyHandler,
+  type OrderedMemoryGame,
+} from "~/server/api/logic/handler";
 import { type OrderedMemoryPlayerEvents } from "~/server/api/routers/games/ordered-memory";
 import {
   cleanupLeftovers,
@@ -352,7 +355,7 @@ async function setupTest() {
 
   const state = {
     fightId,
-    fight: lobbyHandler.getFight(fightId),
+    fight: lobbyHandler.getFight(fightId) as OrderedMemoryGame,
     test_user_1: {
       base: (
         await callers.test_user_1.lobby.onGameAction({
@@ -384,7 +387,7 @@ async function setupTest() {
   };
 
   const startGame = async (disableRandom = false) => {
-    state.fight!.game.disableRandom = disableRandom;
+    state.fight.game.disableRandom = disableRandom;
     await callers.test_user_1.lobby.ready();
     await callers.test_user_2.lobby.ready();
     await runAllMacroTasks();
@@ -401,8 +404,8 @@ async function setupTest() {
 
   return {
     getFightId: () => state.fightId,
-    getGame: () => state.fight!.game,
-    getFight: () => state.fight!,
+    getGame: () => state.fight.game,
+    getFight: () => state.fight,
     timer,
     startGame,
     firstListener,
