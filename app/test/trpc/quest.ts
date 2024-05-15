@@ -7,7 +7,6 @@ import {
   getTestUserCallers,
   makeHubs,
   makePlayer,
-  resetWoundedPlayers,
   useAutomaticTimer,
   useManualTimer,
   type ModeratorIds,
@@ -241,6 +240,18 @@ export const questTests = () =>
           });
         }));
 
+      it("see that the player is in a fight right now", () =>
+        testQuest(async ({ startGame, moderator }) => {
+          await startGame();
+
+          const quest = await moderator.getQuestOfPlayer(
+            "test_moderator_1",
+            "test_user_1",
+          );
+
+          expect(quest).toMatchObject({ state: "player-in-fight" });
+        }));
+
       describe("visited", () => {
         it("by default, should show that the hub was not yet visited", () =>
           testQuest(async ({ moderator }) => {
@@ -361,15 +372,20 @@ async function setupTest() {
     allQuestIds: [] as string[],
   };
 
-  const playGame = async (winner: `test_user_${1 | 2}`) => {
+  const startGame = async () => {
     const { id } = await callers.test_user_1.lobby.create({
       opponent: `test_user_2`,
     });
+    state.allFightIds.push(id);
+    return id;
+  };
+
+  const playGame = async (winner: `test_user_${1 | 2}`) => {
+    const id = await startGame();
     const looser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
     const fight = lobbyHandler.getFight(id)!;
     fight.lobby.endGame(winner, looser);
     await fight.gameDone;
-    state.allFightIds.push(id);
   };
 
   const getCurrentQuest = async (player: `test_user_${1 | 2}`) => {
@@ -417,6 +433,7 @@ async function setupTest() {
   return {
     callers,
     playGame,
+    startGame,
     getAllFightIds: () => state.allFightIds,
     getAllQuestIds: () => state.allQuestIds,
     player: {

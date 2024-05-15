@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   clerkHandler,
   hubHandler,
+  lobbyHandler,
   questHandler,
   questKind,
   userHandler,
@@ -135,6 +136,14 @@ export const questRouter = createTRPCRouter({
           } as const;
         }
 
+        const currentFight = await lobbyHandler.getCurrentFight(input.userId);
+        if(currentFight) {
+          return {
+            state: "player-in-fight",
+            playerName,
+          } as const;
+        }
+
         const result = await questHandler.getCurrentQuestForPlayer(
           input.userId,
         );
@@ -175,6 +184,15 @@ export const questRouter = createTRPCRouter({
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: "You are not assigned as a hub moderator",
+          });
+        }
+
+        const currentFight = await lobbyHandler.getCurrentFight(input.playerId);
+        if (currentFight) {
+          throw new TRPCError({
+            code: "CONFLICT",
+            message:
+              "The player is currently in a fight and therefore can't continue with a quest",
           });
         }
 

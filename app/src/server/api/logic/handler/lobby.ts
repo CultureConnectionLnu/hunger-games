@@ -48,10 +48,7 @@ class LobbyHandler {
       .execute();
 
     if (existingFight.length === 0) {
-      throw new TRPCError({
-        code: "NOT_FOUND",
-        message: "No ongoing fight",
-      });
+      return undefined;
     }
 
     return {
@@ -59,6 +56,17 @@ class LobbyHandler {
       game: existingFight[0]!.fight.game,
       players: existingFight.map((f) => f.usersToMatch?.userId).filter(Boolean),
     };
+  }
+
+  public async assertCurrentFight(userId: string) {
+    const existingFight = await this.getCurrentFight(userId);
+    if (!existingFight) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "No ongoing fight",
+      });
+    }
+    return existingFight;
   }
 
   public async getAllFightsOfPlayer(userId: string) {
@@ -175,8 +183,14 @@ type GetSpecificGame<T extends KnownGames, Map> = Map extends { type: T }
   ? Map
   : never;
 
-  export type RockPaperScissorsGame = GetSpecificGame<"rock-paper-scissors", KnownGamesMap>;
-export type OrderedMemoryGame = GetSpecificGame<"ordered-memory", KnownGamesMap>;
+export type RockPaperScissorsGame = GetSpecificGame<
+  "rock-paper-scissors",
+  KnownGamesMap
+>;
+export type OrderedMemoryGame = GetSpecificGame<
+  "ordered-memory",
+  KnownGamesMap
+>;
 
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();

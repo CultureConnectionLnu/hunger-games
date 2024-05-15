@@ -36,7 +36,7 @@ declare module "~/lib/event-emitter" {
  * makes sure that a user is in a fight
  */
 export const inFightProcedure = playerProcedure.use(async ({ ctx, next }) => {
-  const currentFight = await lobbyHandler.getCurrentFight(ctx.user.clerkId);
+  const currentFight = await lobbyHandler.assertCurrentFight(ctx.user.clerkId);
 
   const fight = lobbyHandler.getFight(currentFight.fightId);
   if (!fight) {
@@ -143,7 +143,7 @@ export const lobbyRouter = createTRPCRouter({
   currentFight: playerProcedure.query(async ({ ctx }) => {
     try {
       return {
-        fight: await lobbyHandler.getCurrentFight(ctx.user.clerkId),
+        fight: await lobbyHandler.assertCurrentFight(ctx.user.clerkId),
         success: true,
       } as const;
     } catch (error) {
@@ -226,7 +226,7 @@ export const lobbyRouter = createTRPCRouter({
         }
 
         lobbyHandler
-          .getCurrentFight(input.id)
+          .assertCurrentFight(input.id)
           .then(({ fightId, game }) => {
             onMessage({
               type: "join",
