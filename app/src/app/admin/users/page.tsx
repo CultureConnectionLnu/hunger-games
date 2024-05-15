@@ -6,7 +6,8 @@ import { FindUser } from "~/app/_components/find-user";
 export const dynamic = "force-dynamic";
 
 export default async function UsersOverview() {
-  const users = await api.user.allUsers.query();
+  debugger
+  const users = await api.user.allUsers.query().catch(() => []);
 
   return (
     <div className="flex h-full flex-col gap-4 pb-4">

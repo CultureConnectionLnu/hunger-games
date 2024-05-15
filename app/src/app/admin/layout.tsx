@@ -6,6 +6,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+
   if (!(await userHandler.checkRole("admin"))) {
     notFound();
   }

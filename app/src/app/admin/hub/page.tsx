@@ -5,8 +5,8 @@ import { AddHubForm } from "./_components/form";
 export const dynamic = "force-dynamic";
 
 export default async function UsersOverview() {
-  const users = await api.user.allUsers.query();
-  const hubs = await api.hub.allHubs.query();
+  const users = await api.user.allUsers.query().catch(() => []);
+  const hubs = await api.hub.allHubs.query().catch(() => []);
   const allUsers = users.map(({ name, userId }) => ({ id: userId, name }));
 
   return (
