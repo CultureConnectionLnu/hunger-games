@@ -37,15 +37,12 @@ class GameStateHandler {
   }
 
   public async getAllWoundedPlayers() {
-    return db.query.gamePlayerState
-      .findMany({
-        where: ({ isWounded }, { eq }) => eq(isWounded, true),
-      })
-      .then((allWoundedPlayers) =>
-        allWoundedPlayers
-          .map((player) => parsePlayerState(player))
-          .filter(Boolean),
-      );
+    const allWoundedPlayers = await db.query.gamePlayerState.findMany({
+      where: ({ isWounded }, { eq }) => eq(isWounded, true),
+    });
+    return allWoundedPlayers
+      .map((player) => parsePlayerState(player))
+      .filter(Boolean);
   }
 
   public async getWoundedPlayer(playerId: string) {

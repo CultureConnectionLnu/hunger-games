@@ -167,6 +167,7 @@ export const questRelations = relations(quest, ({ one }) => ({
 
 export const gamePlayerState = createTable("game_player_state", {
   userId: varchar("user_id", { length: 255 })
+    .primaryKey()
     .references(() => users.clerkId, { onDelete: "cascade" })
     .notNull(),
   isWounded: boolean("is_wounded").default(false).notNull(),

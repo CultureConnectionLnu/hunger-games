@@ -1,14 +1,13 @@
+import { TRPCError } from "@trpc/server";
+import { observable } from "@trpc/server/observable";
 import { z } from "zod";
-import { clerkHandler, gameStateHandler, ee } from "../logic/handler";
+import { clerkHandler, ee, gameStateHandler } from "../logic/handler";
 import {
   createTRPCRouter,
   errorBoundary,
   medicProcedure,
-  playerProcedure,
   publicProcedure,
 } from "../trpc";
-import { TRPCError } from "@trpc/server";
-import { observable } from "@trpc/server/observable";
 
 type WoundedPlayer = Awaited<
   ReturnType<(typeof gameStateHandler)["getWoundedPlayer"]>
