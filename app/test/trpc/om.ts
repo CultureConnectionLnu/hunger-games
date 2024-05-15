@@ -21,21 +21,78 @@ export const omTests = () =>
     makePlayer("test_user_2");
 
     describe("Evaluation", () => {
-      //   it("should be a draw if no one chooses", () =>
-      //     testFight(async ({ startGame, firstRpsListener, timer }) => {
-      //       await startGame();
-      //       timer.getFirstByName("choose-timer").emitTimeout();
-      //       expectEventEmitted(firstRpsListener, "show-result");
-      //       const event = getLastEventOf(firstRpsListener, "show-result");
-      //       expect(event?.data).toEqual({
-      //         outcome: "draw",
-      //         anotherRound: true,
-      //         wins: 0,
-      //         looses: 0,
-      //         yourName: "Test User 1",
-      //         opponentName: "Test User 2",
-      //       });
-      //     }));
+      it("should be a draw no one inputs the pattern", () =>
+        testFight(async ({ startGame, timer, expectDraw }) => {
+          await startGame();
+          timer.getFirstByName("show-timer").emitTimeout();
+          timer.getFirstByName("input-timer").emitTimeout();
+
+          await expectDraw();
+        }));
+
+      it("should be a draw if both input the wrong pattern", () =>
+        testFight(
+          async ({ startGame, timer, inputIncorrectPattern, expectDraw }) => {
+            await startGame(true);
+            timer.getFirstByName("show-timer").emitTimeout();
+
+            await inputIncorrectPattern("test_user_1");
+            await inputIncorrectPattern("test_user_2");
+
+            await expectDraw();
+          },
+        ));
+
+      it("player 1 should win when only he enters the correct pattern", () =>
+        testFight(
+          async ({
+            startGame,
+            timer,
+            inputCorrectPattern,
+            inputIncorrectPattern,
+            expectGameEnded,
+          }) => {
+            await startGame(true);
+            timer.getFirstByName("show-timer").emitTimeout();
+
+            await inputCorrectPattern("test_user_1");
+            await inputIncorrectPattern("test_user_2");
+
+            await expectGameEnded("test_user_1");
+          },
+        ));
+
+      it("player 2 should win when only he enters the correct pattern", () =>
+        testFight(
+          async ({
+            startGame,
+            timer,
+            inputCorrectPattern,
+            inputIncorrectPattern,
+            expectGameEnded,
+          }) => {
+            await startGame(true);
+            timer.getFirstByName("show-timer").emitTimeout();
+
+            await inputCorrectPattern("test_user_2");
+            await inputIncorrectPattern("test_user_1");
+
+            await expectGameEnded("test_user_2");
+          },
+        ));
+
+      it("should be draw if both enter correct pattern", () =>
+        testFight(
+          async ({ startGame, timer, inputCorrectPattern, expectDraw }) => {
+            await startGame(true);
+            timer.getFirstByName("show-timer").emitTimeout();
+
+            await inputCorrectPattern("test_user_1");
+            await inputCorrectPattern("test_user_2");
+
+            await expectDraw();
+          },
+        ));
     });
 
     describe("Views", () => {
@@ -64,29 +121,41 @@ export const omTests = () =>
         }));
 
       it("when the user clicks on any card, the view should change to 'wait-for-opponent'", () =>
-        testFight(async ({ startGame, timer, clickCard, firstRpsListener }) => {
-          await startGame();
-          timer.getFirstByName("show-timer").emitTimeout();
-          await clickCard("test_user_1", { row: 0, col: 0 });
+        testFight(
+          async ({
+            startGame,
+            timer,
+            inputCorrectPattern,
+            firstRpsListener,
+          }) => {
+            await startGame();
+            timer.getFirstByName("show-timer").emitTimeout();
+            await inputCorrectPattern("test_user_1");
 
-          expect(
-            getLastEventOf(firstRpsListener, "show-waiting")?.view,
-          ).toEqual("wait-for-opponent");
-        }));
+            expect(
+              getLastEventOf(firstRpsListener, "show-waiting")?.view,
+            ).toEqual("wait-for-opponent");
+          },
+        ));
 
       it('when both players have clicked on the correct card, then the view should change to "show-result"', () =>
-        testFight(async ({ startGame, timer, clickCard, firstRpsListener }) => {
-          await startGame();
-          timer.getFirstByName("show-timer").emitTimeout();
-          const toBeClicked = getLastEventOf(firstRpsListener, "show-pattern")!
-            .data.pattern[0]!;
-          await clickCard("test_user_1", toBeClicked);
-          await clickCard("test_user_2", toBeClicked);
+        testFight(
+          async ({
+            startGame,
+            timer,
+            inputCorrectPattern,
+            firstRpsListener,
+          }) => {
+            await startGame();
+            timer.getFirstByName("show-timer").emitTimeout();
+            await inputCorrectPattern("test_user_1");
+            await inputCorrectPattern("test_user_2");
 
-          expect(getLastEventOf(firstRpsListener, "show-result")?.view).toEqual(
-            "show-result",
-          );
-        }));
+            expect(
+              getLastEventOf(firstRpsListener, "show-result")?.view,
+            ).toEqual("show-result");
+          },
+        ));
     });
 
     describe("Timers", () => {
@@ -190,7 +259,8 @@ async function setupTest() {
     },
   };
 
-  const startGame = async () => {
+  const startGame = async (disableRandom = false) => {
+    state.fight!.game.disableRandom = disableRandom;
     await callers.test_user_1.lobby.ready();
     await callers.test_user_2.lobby.ready();
     await runAllMacroTasks();
@@ -213,5 +283,35 @@ async function setupTest() {
     secondListener,
     secondRpsListener,
     timer: getManualTimer(),
+    expectGameEnded: async (winnerId: `test_user_${1 | 2}`) => {
+      expectEventEmitted(firstListener, "game-ended");
+      const event = getLastEventOf(firstListener, "game-ended");
+      expect(event?.data).toEqual({
+        winnerId,
+        looserId: winnerId === "test_user_1" ? "test_user_2" : "test_user_1",
+      });
+    },
+    expectDraw: async () => {
+      expectEventEmitted(firstRpsListener, "show-result");
+      const event = getLastEventOf(firstRpsListener, "show-result");
+      expect(event?.data).toEqual({
+        outcome: "draw",
+        yourName: "Test User 1",
+        opponentName: "Test User 2",
+      });
+    },
+    inputCorrectPattern: async (player: `test_user_${1 | 2}`) => {
+      const toBeClicked = getLastEventOf(firstRpsListener, "show-pattern")!.data
+        .pattern;
+      for (const next of toBeClicked) {
+        await clickCard(player, next);
+      }
+    },
+    inputIncorrectPattern: async (player: `test_user_${1 | 2}`) => {
+      expect(state.fight?.game.disableRandom).toBe(true);
+      // it starts with 0,0
+      // therefore clicking anything else is wrong
+      await clickCard(player, { row: 1, col: 0 });
+    },
   };
 }

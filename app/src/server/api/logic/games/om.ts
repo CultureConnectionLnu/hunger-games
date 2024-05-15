@@ -133,6 +133,7 @@ export class OMGame
   private timerHandler;
   private roundsCounter = 1;
   private currentPattern: PatternEntry[] = [];
+  public disableRandom = false;
   private endGame?: (winnerId: string, looserId: string) => void;
   private readonly config: OrderedMemoryConfig = orderedMemoryConfig;
 
@@ -261,13 +262,16 @@ export class OMGame
      */
     const allAvailableCells = Array.from(
       { length: MAX_CELL_COUNT },
-      (_, i) => i + 1,
-    ).sort(() => Math.random() - 0.5);
+      (_, i) => i,
+    );
+    const shuffledCells = this.disableRandom
+      ? allAvailableCells
+      : allAvailableCells.sort(() => Math.random() - 0.5);
 
-    return allAvailableCells.slice(0, rounds).map((number) => {
-      const col = number % 4;
-      const row = Math.floor(number / 4);
-      return { col, row, order: number };
+    return shuffledCells.slice(0, rounds).map((originalIndex, index) => {
+      const col = originalIndex % 4;
+      const row = Math.floor(originalIndex / 4);
+      return { col, row, order: index + 1 };
     });
   }
 
@@ -385,9 +389,40 @@ export class OMGame
   private findWinner(firstPlayer: OMPlayer, secondPlayer: OMPlayer) {
     const firstPlayerDone = firstPlayer.view === "wait-for-opponent";
     const secondPlayerDone = secondPlayer.view === "wait-for-opponent";
+    if (!firstPlayerDone && !secondPlayerDone) {
+      return {
+        winner: undefined,
+        looser: undefined,
+        draw: true,
+      } as const;
+    }
+
+    if (!firstPlayerDone) {
+      return {
+        winner: firstPlayer.id,
+        looser: secondPlayer.id,
+        draw: false,
+      } as const;
+    }
+
+    if (!secondPlayerDone) {
+      return {
+        winner: secondPlayer.id,
+        looser: firstPlayer.id,
+        draw: false,
+      } as const;
+    }
+
+    const firstPlayerMadeMistake = firstPlayer.inputEntries.some(
+      (x) => x.isFail,
+    );
+    const secondPlayerMadeMistake = secondPlayer.inputEntries.some(
+      (x) => x.isFail,
+    );
+
     if (
-      (firstPlayerDone && secondPlayerDone) ||
-      (!firstPlayerDone && !secondPlayerDone)
+      (!firstPlayerMadeMistake && !secondPlayerMadeMistake) ||
+      (firstPlayerMadeMistake && secondPlayerMadeMistake)
     ) {
       return {
         winner: undefined,
@@ -396,18 +431,17 @@ export class OMGame
       } as const;
     }
 
-    if (firstPlayerDone) {
+    if (firstPlayerMadeMistake) {
       return {
-        winner: firstPlayer.id,
-        looser: secondPlayer.id,
+        winner: secondPlayer.id,
+        looser: firstPlayer.id,
         draw: false,
       } as const;
     }
 
-    // only option left is that secondPlayer is done
     return {
-      winner: secondPlayer.id,
-      looser: firstPlayer.id,
+      winner: firstPlayer.id,
+      looser: secondPlayer.id,
       draw: false,
     } as const;
   }
