@@ -29,6 +29,7 @@ import { useFight } from "../../_feature/auto-join-game/fight-provider";
 import { Timer } from "../../_feature/timer/timer";
 import { useTimers } from "../../_feature/timer/timer-provider";
 import { GameCard, GameContentLoading } from "../../_game/base";
+import { type KnownGames } from "~/server/api/logic/handler";
 
 type ServerEvent =
   RouterOutputs["lobby"]["onGameAction"] extends Observable<infer R, never>
@@ -69,7 +70,7 @@ function JoiningGame({
   params,
 }: {
   params: {
-    gameName: string;
+    gameName: KnownGames;
     fightId: string;
     userId: string;
   };
@@ -89,7 +90,7 @@ function GameLobby({
   params,
 }: {
   params: {
-    gameName: string;
+    gameName: KnownGames;
     fightId: string;
     userId: string;
   };
@@ -163,8 +164,6 @@ function GameLobby({
     case "ordered-memory":
       game = <OrderedMemoryGame params={params} />;
       break;
-    default:
-      return `Selected game is not implemented: ${params.gameName}`;
   }
 
   if (game !== undefined) {
@@ -183,10 +182,12 @@ function GameLobby({
   );
 }
 
-function getReadableGameName(gameName: string) {
+function getReadableGameName(gameName: KnownGames) {
   switch (gameName) {
     case "rock-paper-scissors":
       return "Rock Paper Scissors";
+    case "ordered-memory":
+      return "Ordered Memory";
     default:
       return "No Game";
   }

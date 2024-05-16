@@ -4,10 +4,11 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import React, { useContext } from "react";
 import { createContext, useState } from "react";
+import { type KnownGames } from "~/server/api/logic/handler";
 import { api } from "~/trpc/react";
 
 export type FightContext = {
-  currentFight: { id: string; game: string } | undefined;
+  currentFight: { id: string; game: KnownGames } | undefined;
 };
 
 const FightContext = createContext<FightContext>({ currentFight: undefined });
