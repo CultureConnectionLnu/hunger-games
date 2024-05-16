@@ -27,7 +27,7 @@ export function ScoreTable({
 
   const scores = params.scores.map((x) => ({
     id: (x.questId ?? x.fightId)!,
-    type: x.questId !== undefined ? "quest" : "fight",
+    type: x.questId !== null ? "quest" : "fight",
     scoreChange: x.scoreChange,
     score: x.score,
   }));
