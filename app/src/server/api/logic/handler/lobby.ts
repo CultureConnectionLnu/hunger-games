@@ -24,15 +24,9 @@ class LobbyHandler {
   private gameHandler = new GameHandler();
 
   public async assertHasNoFight(userId: string) {
-    const existingFight = await db
-      .select()
-      .from(fight)
-      .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
-      .where(and(isNull(fight.winner), eq(usersToFight.userId, userId)))
-      .limit(1)
-      .execute();
+    const existingFight = await this.getCurrentFight(userId);
 
-    if (existingFight.length > 0) {
+    if (existingFight !== undefined) {
       throw new TRPCError({
         code: "CONFLICT",
         message: "You already have an ongoing fight",
