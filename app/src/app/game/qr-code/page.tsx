@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParamState } from "~/app/_feature/url-sync/query";
 import { Button } from "~/components/ui/button";
 import { toast } from "~/components/ui/use-toast";
@@ -21,9 +21,13 @@ export default function MatchOverviewPage() {
     },
   });
 
-  if (opponent && !createMatch.isLoading) {
-    createMatch.mutate({ opponent });
-  }
+  useEffect(() => {
+    if (createMatch.isLoading) return;
+    if (opponent) {
+      createMatch.mutate({ opponent });
+      setOpponent(undefined);
+    }
+  }, [opponent, setOpponent, createMatch]);
 
   return (
     <div>
