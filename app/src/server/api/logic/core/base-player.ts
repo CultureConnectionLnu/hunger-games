@@ -12,6 +12,7 @@ export class BasePlayer extends GenericEventEmitter<{
   private _view: GeneralState = "none";
   private isConnected = false;
   private identity;
+  private markedReady = false;
 
   get view() {
     return this._view;
@@ -22,6 +23,10 @@ export class BasePlayer extends GenericEventEmitter<{
    */
   get connected() {
     return this.isConnected;
+  }
+
+  get isReadyToPlay() {
+    return this.markedReady && this.connected;
   }
 
   private get hasCommittedToPlayTheGame() {
@@ -61,6 +66,7 @@ export class BasePlayer extends GenericEventEmitter<{
 
   ready() {
     this._view = "ready";
+    this.markedReady = true;
     this.emit("ready", this.identity);
   }
 

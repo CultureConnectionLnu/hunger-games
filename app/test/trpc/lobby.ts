@@ -40,6 +40,8 @@ export const lobbyTests = () =>
             await callers.test_user_1.lobby.currentFight(undefined);
           expect(result).toHaveProperty("success", true);
         }));
+
+      it("should not consider aborted matches");
     });
 
     describe("onFightUpdate", () => {
@@ -213,32 +215,35 @@ export const lobbyTests = () =>
             });
           }));
 
-        it("should cancel the game if only one player joins", () =>
-          testFight(async ({ createGame, getLobby, connect, timer }) => {
+        it("should mark the game as aborted if no player joins the game", () =>
+          testFight(async ({ createGame, getLobby, timer }) => {
             await createGame();
-            const lobby = getLobby();
-            const listener = vi.fn();
-            lobby.on("canceled", listener);
-
-            await connect("test_user_1");
 
             timer.getFirstByName("start-timer").emitTimeout();
+            await runAllMacroTasks();
 
-            expect(listener).toHaveBeenCalledWith({
-              data: {
-                reason: "start-timeout",
-              },
-              fightId: lobby.fightId,
-            });
+            expect(getLobby().isAborted).toBeTruthy();
           }));
 
-        it("should cancel the game if only one player is ready", () =>
+        it("should mark the game as aborted if no player hits ready", () =>
+          testFight(async ({ createGame, getLobby, timer, connect }) => {
+            await createGame();
+
+            await connect("test_user_1");
+            await connect("test_user_2");
+            timer.getFirstByName("start-timer").emitTimeout();
+            await runAllMacroTasks();
+
+            expect(getLobby().isAborted).toBeTruthy();
+          }));
+
+        it("if only one player marks ready, then he wins", () =>
           testFight(async ({ createGame, getLobby, ready, connect, timer }) => {
             await createGame();
 
             const lobby = getLobby();
             const listener = vi.fn();
-            lobby.on("canceled", listener);
+            lobby.on("game-ended", listener);
 
             await connect("test_user_1");
             await ready("test_user_1");
@@ -247,34 +252,12 @@ export const lobbyTests = () =>
 
             expect(listener).toHaveBeenCalledWith({
               data: {
-                reason: "start-timeout",
+                winnerId: "test_user_1",
+                looserId: "test_user_2",
               },
               fightId: lobby.fightId,
             });
           }));
-
-        it("should cancel the game if someone disconnected before the game started", () =>
-          testFight(
-            async ({ createGame, getLobby, connect, disconnect, timer }) => {
-              await createGame();
-              const lobby = getLobby();
-              const listener = vi.fn();
-              lobby.on("canceled", listener);
-
-              await connect("test_user_1");
-              await connect("test_user_2");
-              disconnect("test_user_1");
-
-              timer.getFirstByName("start-timer").emitTimeout();
-
-              expect(listener).toHaveBeenCalledWith({
-                data: {
-                  reason: "start-timeout",
-                },
-                fightId: lobby.fightId,
-              });
-            },
-          ));
 
         it("should not start disconnected timer while the player did not mark as ready", () =>
           testFight(async ({ createGame, connect, timer, disconnect }) => {

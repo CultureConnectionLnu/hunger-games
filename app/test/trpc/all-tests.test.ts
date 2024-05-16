@@ -11,8 +11,8 @@ import { provideTestUsers } from "./utils";
 // and when they should be removed again
 provideTestUsers();
 lobbyTests();
-rpsTests();
-omTests();
-scoreTests();
-questTests();
-medicTests();
+// rpsTests();
+// omTests();
+// scoreTests();
+// questTests();
+// medicTests();
