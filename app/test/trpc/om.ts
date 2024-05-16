@@ -148,6 +148,26 @@ export const omTests = () =>
         }));
 
       it("should have two items in second round", () =>
+        testFight(
+          async ({
+            startGame,
+            inputCorrectPattern,
+            timeoutTimer,
+            firstRpsListener,
+          }) => {
+            await startGame();
+            await timeoutTimer("show-timer");
+            await inputCorrectPattern("test_user_1");
+            await inputCorrectPattern("test_user_2");
+            await timeoutTimer("next-round-timer");
+            await timeoutTimer("show-timer");
+
+            const event = getLastEventOf(firstRpsListener, "show-pattern");
+            expect(event?.data.pattern).toHaveLength(2);
+          },
+        ));
+
+      it("should not increase the item count if both players were unable to input the pattern", () =>
         testFight(async ({ startGame, timeoutTimer, firstRpsListener }) => {
           await startGame();
           await timeoutTimer("show-timer");
@@ -156,38 +176,74 @@ export const omTests = () =>
           await timeoutTimer("show-timer");
 
           const event = getLastEventOf(firstRpsListener, "show-pattern");
-          expect(event?.data.pattern).toHaveLength(2);
+          expect(event?.data.pattern).toHaveLength(1);
         }));
+
+      it("should not increase the item count if both players inputed the wrong pattern", () =>
+        testFight(
+          async ({
+            startGame,
+            inputIncorrectPattern,
+            timeoutTimer,
+            firstRpsListener,
+          }) => {
+            await startGame(true);
+            await timeoutTimer("show-timer");
+            await inputIncorrectPattern("test_user_1");
+            await inputIncorrectPattern("test_user_2");
+            await timeoutTimer("next-round-timer");
+            await timeoutTimer("show-timer");
+
+            const event = getLastEventOf(firstRpsListener, "show-pattern");
+            expect(event?.data.pattern).toHaveLength(1);
+          },
+        ));
 
       it("should have 16 items in round 16", () =>
-        testFight(async ({ startGame, timeoutTimer, firstRpsListener }) => {
-          await startGame();
+        testFight(
+          async ({
+            startGame,
+            inputCorrectPattern,
+            timeoutTimer,
+            firstRpsListener,
+          }) => {
+            await startGame();
 
-          for (let i = 0; i < 16; i++) {
+            for (let i = 0; i < 16; i++) {
+              await timeoutTimer("show-timer");
+              await inputCorrectPattern("test_user_1");
+              await inputCorrectPattern("test_user_2");
+              await timeoutTimer("next-round-timer");
+            }
+
             await timeoutTimer("show-timer");
-            await timeoutTimer("input-timer");
-            await timeoutTimer("next-round-timer");
-          }
-
-          await timeoutTimer("show-timer");
-          const event = getLastEventOf(firstRpsListener, "show-pattern");
-          expect(event?.data.pattern).toHaveLength(16);
-        }));
+            const event = getLastEventOf(firstRpsListener, "show-pattern");
+            expect(event?.data.pattern).toHaveLength(16);
+          },
+        ));
 
       it("should not have more than 16 items in round after 16", () =>
-        testFight(async ({ startGame, timeoutTimer, firstRpsListener }) => {
-          await startGame();
+        testFight(
+          async ({
+            startGame,
+            inputCorrectPattern,
+            timeoutTimer,
+            firstRpsListener,
+          }) => {
+            await startGame();
 
-          for (let i = 0; i < 17; i++) {
+            for (let i = 0; i < 17; i++) {
+              await timeoutTimer("show-timer");
+              await inputCorrectPattern("test_user_1");
+              await inputCorrectPattern("test_user_2");
+              await timeoutTimer("next-round-timer");
+            }
+
             await timeoutTimer("show-timer");
-            await timeoutTimer("input-timer");
-            await timeoutTimer("next-round-timer");
-          }
-
-          await timeoutTimer("show-timer");
-          const event = getLastEventOf(firstRpsListener, "show-pattern");
-          expect(event?.data.pattern).toHaveLength(16);
-        }));
+            const event = getLastEventOf(firstRpsListener, "show-pattern");
+            expect(event?.data.pattern).toHaveLength(16);
+          },
+        ));
     });
 
     describe("Views", () => {

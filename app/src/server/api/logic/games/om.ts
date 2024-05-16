@@ -132,9 +132,10 @@ export class OMGame
 {
   private readonly players = new Map<string, OMPlayer>();
   private timerHandler;
-  private roundsCounter = 1;
+  private roundsCounter = 0;
   private currentPattern: PatternEntry[] = [];
   public disableRandom = false;
+  public shouldNotIncrease = false;
   private endGame?: (winnerId: string, looserId: string) => void;
   private readonly config: OrderedMemoryConfig = orderedMemoryConfig;
 
@@ -254,8 +255,11 @@ export class OMGame
   }
 
   private getNextPattern(): PatternEntry[] {
+    if (!this.shouldNotIncrease) {
+      this.roundsCounter++;
+    }
+    this.shouldNotIncrease = false;
     const rounds = Math.min(MAX_CELL_COUNT, this.roundsCounter);
-    this.roundsCounter++;
 
     /**
      * index of array: order in which it has to be clicked
@@ -394,6 +398,7 @@ export class OMGame
     const firstPlayerDone = firstPlayer.view === "wait-for-opponent";
     const secondPlayerDone = secondPlayer.view === "wait-for-opponent";
     if (!firstPlayerDone && !secondPlayerDone) {
+      this.shouldNotIncrease = true;
       return {
         winner: undefined,
         looser: undefined,
@@ -424,9 +429,15 @@ export class OMGame
       (x) => x.isFail,
     );
 
+    const bothIncorrect = firstPlayerMadeMistake && secondPlayerMadeMistake;
+
+    if (bothIncorrect) {
+      this.shouldNotIncrease = true;
+    }
+
     if (
-      (!firstPlayerMadeMistake && !secondPlayerMadeMistake) ||
-      (firstPlayerMadeMistake && secondPlayerMadeMistake)
+      bothIncorrect ||
+      (!firstPlayerMadeMistake && !secondPlayerMadeMistake)
     ) {
       return {
         winner: undefined,
