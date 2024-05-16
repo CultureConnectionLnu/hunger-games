@@ -10,19 +10,11 @@ import {
   TooltipTrigger,
 } from "~/components/ui/tooltip";
 
-export function QrCode({
-  route,
-  params,
-  text,
-}: {
-  route: string;
-  params?: URLSearchParams;
-  text: string;
-}) {
+export function QrCode({ route, text }: { route: string; text: string }) {
   const { isLoaded, user } = useUser();
-  const searchParams = params ?? new URLSearchParams();
-  searchParams.set("userId", user?.id ?? "");
-  const currentUrl = `${route}?${searchParams.toString()}`;
+  const url = new URL(route, window.location.origin);
+  url.searchParams.set("userId", user?.id ?? "");
+  const currentUrl = url.toString();
 
   return (
     <div className="relative mx-auto grid w-full max-w-xs items-center gap-2">
@@ -47,7 +39,9 @@ export function QrCode({
               <TooltipContent>{currentUrl}</TooltipContent>
             </Tooltip>
           </div>
-          <p className="flex flex-col items-center text-center text-sm font-medium not-italic text-gray-500">{text}</p>
+          <p className="flex flex-col items-center text-center text-sm font-medium not-italic text-gray-500">
+            {text}
+          </p>
         </>
       )}
     </div>
