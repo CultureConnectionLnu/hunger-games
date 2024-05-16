@@ -106,7 +106,7 @@ function NavigationBarEntry({ entry }: { entry: EvaluatedNavigationBarEntry }) {
   return <NavigationMenuItem>{link}</NavigationMenuItem>;
 }
 
-async function SideBar({ config }: { config: EvaluatedHeaderConfig }) {
+function SideBar({ config }: { config: EvaluatedHeaderConfig }) {
   const listContent = config.groups.map((group) => {
     return (
       <ListGroup key={group.title}>
