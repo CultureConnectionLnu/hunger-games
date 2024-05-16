@@ -7,9 +7,9 @@ const headerConfig: HeaderConfig = {
       title: "General",
       links: [
         {
-          title: "Overview",
+          title: "Home",
           href: "/",
-          icon: "MdMap",
+          icon: "MdHome",
         },
         {
           title: "Rules 🏗️",
@@ -63,9 +63,9 @@ const headerConfig: HeaderConfig = {
           require: "sign-in",
         },
         {
-          title: "Settings 🏗️",
-          href: "#",
-          icon: "MdSettings",
+          title: "Your ID",
+          href: "/qr-code",
+          icon: "MdQrCode",
           require: "sign-in",
         },
         {
@@ -146,8 +146,9 @@ const navConfig: NavigationBarConfig = {
       require: "role-player",
     },
     {
-      title: "No Player",
-      href: "/no-player",
+      icon: "MdQrCode",
+      title: "Your ID",
+      href: "/qr-code",
       require: "not-role-player",
     },
   ],

@@ -31,7 +31,10 @@ export default function MatchOverviewPage() {
 
   return (
     <div>
-      <QrCode route="/qr-code" />
+      <QrCode
+        route="/qr-code"
+        text="When the opponent scans this QR code with his phone, then you start a match."
+      />
       {env.NEXT_PUBLIC_FEATURE_MANUAL_JOIN === "true" ? (
         <StartMatch opponent={opponent} setOpponent={setOpponent} />
       ) : (

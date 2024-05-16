@@ -13,9 +13,11 @@ import {
 export function QrCode({
   route,
   params,
+  text,
 }: {
   route: string;
   params?: URLSearchParams;
+  text: string;
 }) {
   const { isLoaded, user } = useUser();
   const searchParams = params ?? new URLSearchParams();
@@ -45,10 +47,7 @@ export function QrCode({
               <TooltipContent>{currentUrl}</TooltipContent>
             </Tooltip>
           </div>
-          <p className="flex flex-col items-center text-center text-sm font-medium not-italic text-gray-500">
-            When the opponent scans this QR code with his phone, then you start
-            a match.
-          </p>
+          <p className="flex flex-col items-center text-center text-sm font-medium not-italic text-gray-500">{text}</p>
         </>
       )}
     </div>
