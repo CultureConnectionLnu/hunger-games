@@ -1,38 +1,55 @@
 "use client";
-import { useSearchParams } from "next/navigation";
-import { QrCode } from "../../_feature/qrcode/qr-code-visualizer";
 import { useState } from "react";
-import { api } from "~/trpc/react";
-import { FaSpinner } from "react-icons/fa";
+import { useSearchParamState } from "~/app/_feature/url-sync/query";
 import { Button } from "~/components/ui/button";
+import { toast } from "~/components/ui/use-toast";
 import { env } from "~/env";
+import { api } from "~/trpc/react";
+import { QrCode } from "../../_feature/qrcode/qr-code-visualizer";
 
 export default function MatchOverviewPage() {
-  const searchParams = useSearchParams();
-  const createMatch = api.lobby.create.useMutation();
-  const userId = searchParams.get("userId");
+  const [opponent, setOpponent] = useSearchParamState("userId");
+  const createMatch = api.lobby.create.useMutation({
+    onError: (error) => {
+      setOpponent(undefined);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
 
-  if (userId && !createMatch.isLoading) {
-    createMatch.mutate({ opponent: userId });
+  if (opponent && !createMatch.isLoading) {
+    createMatch.mutate({ opponent });
   }
 
   return (
     <div>
       <QrCode route="/qr-code" />
-      {env.NEXT_PUBLIC_FEATURE_MANUAL_JOIN === "true" ? <StartMatch /> : <></>}
+      {env.NEXT_PUBLIC_FEATURE_MANUAL_JOIN === "true" ? (
+        <StartMatch opponent={opponent} setOpponent={setOpponent} />
+      ) : (
+        <></>
+      )}
     </div>
   );
 }
 
-function StartMatch() {
-  const searchParams = useSearchParams();
-  const [opponent, setOpponent] = useState(searchParams.get("userId") ?? "");
-  const createMatch = api.lobby.create.useMutation();
+function StartMatch({
+  opponent,
+  setOpponent,
+}: {
+  opponent?: string;
+  setOpponent?: (value: string) => void;
+}) {
+  const [newOpponent, setNewOpponent] = useState(opponent ?? "");
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        createMatch.mutate({ opponent });
+        setOpponent?.(newOpponent);
       }}
       className="flex flex-col gap-2"
     >
@@ -40,14 +57,10 @@ function StartMatch() {
         type="text"
         placeholder="Opponent id"
         value={opponent}
-        onChange={(e) => setOpponent(e.target.value)}
+        onChange={(e) => setNewOpponent(e.target.value)}
         className="w-full rounded-full px-4 py-2 text-black"
       />
-      {createMatch.isLoading ? (
-        <FaSpinner className="animate-spin" />
-      ) : (
-        <Button type="submit">enter match</Button>
-      )}
+      <Button type="submit">enter match</Button>
     </form>
   );
 }
