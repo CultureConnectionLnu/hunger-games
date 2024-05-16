@@ -20,18 +20,18 @@ class ScoreHandler {
 
   public async updateScoreForFight(
     winnerId: string,
-    looserId: string,
+    loserId: string,
     fightId: string,
   ) {
     try {
-      const currentLooserScore = await this.currentScore(looserId);
-      const { looserSubtraction, winnerAddition } =
-        this.calculateScoreEntries(currentLooserScore);
+      const currentLoserScore = await this.currentScore(loserId);
+      const { loserSubtraction, winnerAddition } =
+        this.calculateScoreEntries(currentLoserScore);
       await db.insert(score).values([
         {
           fightId,
-          score: looserSubtraction,
-          userId: looserId,
+          score: loserSubtraction,
+          userId: loserId,
         },
         {
           fightId,
@@ -138,17 +138,17 @@ class ScoreHandler {
         }
 
         if (result.winner !== result.userId) {
-          entry.looserScore = result.score;
-          entry.looserId = result.userId;
+          entry.loserScore = result.score;
+          entry.loserId = result.userId;
         }
 
         return entry;
       },
       {} as {
         winnerId: string;
-        looserId: string;
+        loserId: string;
         winnerScore: number;
-        looserScore: number;
+        loserScore: number;
         youWon: boolean;
         game: KnownGames;
       },
@@ -170,25 +170,25 @@ class ScoreHandler {
     return { success: true, score: score.score };
   }
 
-  private calculateScoreEntries(looserCurrentScore: number) {
+  private calculateScoreEntries(loserCurrentScore: number) {
     const reducePointsBy =
-      (looserCurrentScore * fightScoringConfig.winnerGetsPercent) / 100;
+      (loserCurrentScore * fightScoringConfig.winnerGetsPercent) / 100;
     const winnerAddition = Math.max(
       fightScoringConfig.winnerMinimumPointsBonus,
       reducePointsBy,
     );
 
-    const newLooserScore = looserCurrentScore - reducePointsBy;
-    if (newLooserScore < fightScoringConfig.lowestScore) {
+    const newLoserScore = loserCurrentScore - reducePointsBy;
+    if (newLoserScore < fightScoringConfig.lowestScore) {
       return {
         // the result would be 0 then
-        looserSubtraction: -looserCurrentScore,
-        winnerAddition: looserCurrentScore,
+        loserSubtraction: -loserCurrentScore,
+        winnerAddition: loserCurrentScore,
       };
     }
 
     return {
-      looserSubtraction: -reducePointsBy,
+      loserSubtraction: -reducePointsBy,
       winnerAddition,
     };
   }

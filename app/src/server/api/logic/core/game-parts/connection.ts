@@ -14,7 +14,7 @@ type Input = Readonly<{
   emit: BaseGame["emitEvent"];
   pauseGame: () => void;
   resumeGame: () => void;
-  endGame: (winnerId: string, looserId: string) => void;
+  endGame: (winnerId: string, loserId: string) => void;
   cancelGame: () => void;
 }>;
 
@@ -40,8 +40,8 @@ export class GameConnectionHandler {
     const winner = this.input.players.find(
       (x) => !this.disconnectedPlayers.has(x.id),
     )!.id;
-    const looser = this.input.players.find((x) => x.id !== winner)!.id;
-    this.input.endGame(winner, looser);
+    const loser = this.input.players.find((x) => x.id !== winner)!.id;
+    this.input.endGame(winner, loser);
   };
 
   private handleConnectDisconnect(player: BasePlayer) {

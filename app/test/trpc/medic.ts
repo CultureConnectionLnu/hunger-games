@@ -260,9 +260,9 @@ async function setupTest() {
     const { id } = await callers.test_user_1.lobby.create({
       opponent: `test_user_2`,
     });
-    const looser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
+    const loser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
     const fight = lobbyHandler.getFight(id)!;
-    fight.lobby.endGame(winner, looser);
+    fight.lobby.endGame(winner, loser);
     await fight.gameDone;
     state.allFightIds.push(id);
   };

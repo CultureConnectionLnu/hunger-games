@@ -36,7 +36,7 @@ export const rpsTests = () =>
             outcome: "draw",
             anotherRound: true,
             wins: 0,
-            looses: 0,
+            loses: 0,
             yourName: "Test User 1",
             opponentName: "Test User 2",
           });
@@ -55,7 +55,7 @@ export const rpsTests = () =>
             outcome: "win",
             anotherRound: true,
             wins: 1,
-            looses: 0,
+            loses: 0,
             yourName: "Test User 1",
             opponentName: "Test User 2",
           });
@@ -75,7 +75,7 @@ export const rpsTests = () =>
             outcome: "draw",
             anotherRound: true,
             wins: 0,
-            looses: 0,
+            loses: 0,
             yourName: "Test User 1",
             opponentName: "Test User 2",
           });
@@ -87,53 +87,53 @@ export const rpsTests = () =>
             p1: "rock",
             p2: "scissors",
             wins: 1,
-            looses: 0,
+            loses: 0,
             outcome: "win",
           },
           {
             p1: "scissors",
             p2: "paper",
             wins: 1,
-            looses: 0,
+            loses: 0,
             outcome: "win",
           },
           {
             p1: "paper",
             p2: "rock",
             wins: 1,
-            looses: 0,
+            loses: 0,
             outcome: "win",
           },
           {
             p1: "scissors",
             p2: "rock",
             wins: 0,
-            looses: 1,
-            outcome: "loose",
+            loses: 1,
+            outcome: "lose",
           },
           {
             p1: "paper",
             p2: "scissors",
             wins: 0,
-            looses: 1,
-            outcome: "loose",
+            loses: 1,
+            outcome: "lose",
           },
           {
             p1: "rock",
             p2: "paper",
             wins: 0,
-            looses: 1,
-            outcome: "loose",
+            loses: 1,
+            outcome: "lose",
           },
         ] satisfies Array<{
           p1: "rock" | "paper" | "scissors";
           p2: "rock" | "paper" | "scissors";
           wins: number;
-          looses: number;
-          outcome: "win" | "draw" | "loose";
+          loses: number;
+          outcome: "win" | "draw" | "lose";
         }>
       ).forEach((x) => {
-        it(`if player 1 chooses "${x.p1}" and player 2 chooses "${x.p2}", then player 1 ${x.outcome === "win" ? "wins" : "looses"}`, () =>
+        it(`if player 1 chooses "${x.p1}" and player 2 chooses "${x.p2}", then player 1 ${x.outcome === "win" ? "wins" : "loses"}`, () =>
           testFight(async ({ startGame, firstRpsListener, choose }) => {
             await startGame();
             await choose("test_user_1", x.p1);
@@ -145,7 +145,7 @@ export const rpsTests = () =>
               outcome: x.outcome,
               anotherRound: true,
               wins: x.wins,
-              looses: x.looses,
+              loses: x.loses,
 
               yourName: "Test User 1",
               opponentName: "Test User 2",
@@ -171,7 +171,7 @@ export const rpsTests = () =>
           const event = getLastEventOf(firstListener, "game-ended");
           expect(event?.data).toEqual({
             winnerId: "test_user_1",
-            looserId: "test_user_2",
+            loserId: "test_user_2",
           });
         }));
     });

@@ -313,7 +313,7 @@ export const lobbyTests = () =>
             expect(listener).toHaveBeenCalledWith({
               data: {
                 winnerId: "test_user_1",
-                looserId: "test_user_2",
+                loserId: "test_user_2",
               },
               fightId: lobby.fightId,
             });
@@ -399,7 +399,7 @@ export const lobbyTests = () =>
             const winEvent = getLastEventOf(firstListener, "game-ended")!;
             expect(winEvent.data).toEqual({
               winnerId: "test_user_1",
-              looserId: "test_user_2",
+              loserId: "test_user_2",
             });
           }));
 

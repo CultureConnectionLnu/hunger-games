@@ -45,13 +45,13 @@ export const scoreRouter = createTRPCRouter({
           message: `Could not find a history entry for the current user with fightId: ${input.fightId}`,
         });
       }
-      const { winnerId, looserId, ...data } = result.data;
+      const { winnerId, loserId: loserId, ...data } = result.data;
 
-      const userNames = await clerkHandler.getUserNames([winnerId, looserId]);
+      const userNames = await clerkHandler.getUserNames([winnerId, loserId]);
 
       return {
         winnerName: userNames[winnerId]!,
-        looserName: userNames[looserId]!,
+        loserName: userNames[loserId]!,
         ...data,
       };
     }),

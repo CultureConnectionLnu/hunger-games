@@ -9,7 +9,6 @@ import { scoreHandler } from "./score";
 import { getHandler } from "./base";
 import { gameStateHandler } from "./game-state";
 import { OMGame } from "../games/om";
-import { resolve } from "path";
 
 /**
  * insert a new entry for each game added
@@ -141,7 +140,7 @@ class LobbyHandler {
             type: "ended";
             data: {
               winnerId: string;
-              looserId: string;
+              loserId: string;
             };
           }
         | {
@@ -178,7 +177,7 @@ class LobbyHandler {
           await gameStateHandler.markPlayerAsWounded(playerId);
         }
       } else {
-        const { winnerId, looserId } = result.data;
+        const { winnerId, loserId } = result.data;
         await db
           .update(fight)
           .set({ outcome: "completed", winner: winnerId })
@@ -186,13 +185,9 @@ class LobbyHandler {
           .catch((error) => {
             throw new Error("Failed to update fight", { cause: error });
           });
-        await scoreHandler.updateScoreForFight(
-          winnerId,
-          looserId,
-          game.fightId,
-        );
-        await questHandler.markQuestAsLost(looserId);
-        await gameStateHandler.markPlayerAsWounded(looserId);
+        await scoreHandler.updateScoreForFight(winnerId, loserId, game.fightId);
+        await questHandler.markQuestAsLost(loserId);
+        await gameStateHandler.markPlayerAsWounded(loserId);
       }
     } catch (error) {
       console.log("Game completed with an error", error);

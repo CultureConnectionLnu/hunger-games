@@ -525,7 +525,7 @@ async function setupTest() {
       const event = getLastEventOf(firstListener, "game-ended");
       expect(event?.data).toEqual({
         winnerId,
-        looserId: winnerId === "test_user_1" ? "test_user_2" : "test_user_1",
+        loserId: winnerId === "test_user_1" ? "test_user_2" : "test_user_1",
       });
     },
     expectDraw: async () => {
