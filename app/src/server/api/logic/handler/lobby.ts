@@ -180,6 +180,7 @@ class LobbyHandler {
           });
         for (const playerId of game.playerTuple.map((x) => x.id)) {
           await questHandler.markQuestAsLost(playerId);
+          await gameStateHandler.markPlayerAsWounded(playerId);
         }
       } else {
         const { winnerId, looserId } = result.data;

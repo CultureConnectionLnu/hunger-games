@@ -9,6 +9,7 @@ import {
 import { gameStateHandler } from "~/server/api/logic/handler/game-state";
 import {
   cleanupLeftovers,
+  getManualTimer,
   getTestUserCallers,
   makeHubs,
   makeMedic,
@@ -36,6 +37,22 @@ export const medicTests = () =>
         await playGame("test_user_1");
         const wounded = await getWoundedPlayers();
         expect(wounded).toMatchObject([
+          {
+            userId: "test_user_2",
+            isWounded: true,
+          },
+        ]);
+      }));
+
+    it("when player abandons a fight, he is wounded", () =>
+      testFight(async ({ abandonGame, getWoundedPlayers }) => {
+        await abandonGame();
+        const wounded = await getWoundedPlayers();
+        expect(wounded).toMatchObject([
+          {
+            userId: "test_user_1",
+            isWounded: true,
+          },
           {
             userId: "test_user_2",
             isWounded: true,
@@ -227,6 +244,17 @@ async function setupTest() {
     state.allFightIds.push(id);
   };
 
+  const abandonGame = async () => {
+    const { id } = await callers.test_user_1.lobby.create({
+      opponent: `test_user_2`,
+    });
+    state.allFightIds.push(id);
+    getManualTimer().getFirstByName("start-timer").emitTimeout();
+    await new Promise((resolve) =>
+      lobbyHandler.getFight(id)!.game.on("destroy", resolve),
+    );
+  };
+
   const startQuest = async (
     userId: `test_user_${1 | 2}`,
     questKind: QuestKind,
@@ -271,6 +299,7 @@ async function setupTest() {
   return {
     callers,
     playGame,
+    abandonGame,
     startQuest,
     getAllFightIds: () => state.allFightIds,
     getAllQuestIds: () => state.allQuestIds,
