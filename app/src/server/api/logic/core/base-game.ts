@@ -32,20 +32,18 @@ export type GeneralGameEvents = EventTemplate<
       winnerId: string;
       looserId: string;
     };
+    "game-aborted": undefined;
     "game-halted": {
       disconnected: string[];
     };
     "game-resume": undefined;
-    canceled: {
-      reason: "start-timeout" | "disconnect-timeout" | "force-stop";
-    };
     destroy: undefined;
   },
   BasePlayer["view"],
-  | "canceled"
   | "all-player-ready"
   | "game-in-progress"
   | "game-ended"
+  | "game-aborted"
   | "destroy",
   | "player-joined-readying"
   | "start-timer"
@@ -54,12 +52,12 @@ export type GeneralGameEvents = EventTemplate<
   | "game-ended"
   | "game-halted"
   | "game-resume"
-  | "canceled"
+  | "game-aborted"
 >;
 
 export type BaseGamePlayerEvents = OnlyPlayerEvents<GeneralGameEvents>;
 
-type GameState = "none" | "initialized" | "running" | "ended";
+type GameState = "none" | "initialized" | "running" | "ended" | "aborted";
 export type SpecificGame = {
   pauseGame: () => void;
   resumeGame: () => void;
@@ -75,6 +73,10 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
 
   public get isRunning() {
     return this.state === "running";
+  }
+
+  public get isAborted() {
+    return this.state === "aborted";
   }
 
   protected emitEvent: (
@@ -106,14 +108,14 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
         "game-ended",
         "game-halted",
         "game-resume",
-        "canceled",
+        "game-aborted",
       ],
       serverSpecificEvents: [
         "destroy",
-        "canceled",
         "all-player-ready",
         "game-in-progress",
         "game-ended",
+        "game-aborted",
       ],
     });
 
@@ -127,12 +129,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
       {
         name: "start-timer",
         time: this.config.startTimeoutInSeconds,
-        timeoutEvent: () => {
-          this.emitEvent({
-            event: "canceled",
-            data: { reason: "start-timeout" },
-          });
-        },
+        timeoutEvent: () => this.onStartTimeout(),
       },
       {
         name: "disconnect-timer",
@@ -142,10 +139,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
         name: "force-game-end",
         time: this.config.forceStopInSeconds,
         timeoutEvent: () => {
-          this.emitEvent({
-            event: "canceled",
-            data: { reason: "force-stop" },
-          });
+          this.abortGame();
         },
         normal: true,
       },
@@ -163,10 +157,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
       resumeGame: this.specificGame.resumeGame.bind(this.specificGame),
       endGame: this.endGame.bind(this),
       cancelGame: () => {
-        this.emitEvent({
-          event: "canceled",
-          data: { reason: "disconnect-timeout" },
-        });
+        this.abortGame();
       },
     });
   }
@@ -192,6 +183,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
   }
 
   endGame(winnerId: string, looserId: string) {
+    this.state = "ended";
     this.assertPlayer(winnerId);
     this.assertPlayer(looserId);
 
@@ -205,6 +197,34 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
     });
   }
 
+  private onStartTimeout() {
+    const ids = [...this.players.keys()];
+
+    const playerOne = this.assertPlayer(ids[0]!);
+    const playerTwo = this.assertPlayer(ids[1]!);
+
+    const noOneIsready = !playerOne.isReadyToPlay && !playerTwo.isReadyToPlay;
+
+    if (noOneIsready) {
+      this.abortGame();
+      return;
+    }
+
+    if (playerOne.isReadyToPlay) {
+      this.endGame(playerOne.id, playerTwo.id);
+    }
+    this.endGame(playerTwo.id, playerOne.id);
+  }
+
+  private abortGame() {
+    this.state = "aborted";
+
+    this.players.forEach((x) => x.gameEnd());
+    this.emitEvent({
+      event: "game-aborted",
+      data: undefined,
+    });
+  }
   private assertPlayer(id: string) {
     const player = this.getPlayer(id);
     if (!player) {

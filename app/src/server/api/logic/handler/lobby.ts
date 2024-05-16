@@ -9,6 +9,7 @@ import { scoreHandler } from "./score";
 import { getHandler } from "./base";
 import { gameStateHandler } from "./game-state";
 import { OMGame } from "../games/om";
+import { resolve } from "path";
 
 /**
  * insert a new entry for each game added
@@ -23,15 +24,9 @@ class LobbyHandler {
   private gameHandler = new GameHandler();
 
   public async assertHasNoFight(userId: string) {
-    const existingFight = await db
-      .select()
-      .from(fight)
-      .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
-      .where(and(isNull(fight.winner), eq(usersToFight.userId, userId)))
-      .limit(1)
-      .execute();
+    const existingFight = await this.getCurrentFight(userId);
 
-    if (existingFight.length > 0) {
+    if (existingFight !== undefined) {
       throw new TRPCError({
         code: "CONFLICT",
         message: "You already have an ongoing fight",
@@ -44,7 +39,7 @@ class LobbyHandler {
       .select()
       .from(fight)
       .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
-      .where(and(isNull(fight.winner), eq(usersToFight.userId, userId)))
+      .where(and(isNull(fight.outcome), eq(usersToFight.userId, userId)))
       .execute();
 
     if (existingFight.length === 0) {
@@ -75,6 +70,7 @@ class LobbyHandler {
         fightId: fight.id,
         game: sql<KnownGames>`${fight.game}`,
         youWon: sql<boolean>`CASE WHEN ${fight.winner} = ${userId} THEN true ELSE false END`,
+        abandoned: sql<boolean>`CASE WHEN ${fight.outcome} = 'aborted' THEN true ELSE false END`,
       })
       .from(fight)
       .innerJoin(usersToFight, eq(fight.id, usersToFight.fightId))
@@ -140,28 +136,64 @@ class LobbyHandler {
 
   private async registerEndListener(game: BaseGame) {
     try {
-      const { winnerId, looserId } = await new Promise<{
-        winnerId: string;
-        looserId: string;
-      }>((resolve, reject) => {
+      const result = await new Promise<
+        | {
+            type: "ended";
+            data: {
+              winnerId: string;
+              looserId: string;
+            };
+          }
+        | {
+            type: "aborted";
+          }
+        | {
+            type: "destroyed";
+          }
+      >((resolve) => {
         game.once("game-ended", (event) => {
-          resolve(event.data);
+          resolve({ type: "ended", data: event.data });
         });
+        game.once("game-aborted", () => resolve({ type: "aborted" }));
         game.once("destroy", () => {
-          reject(new Error("Game destroyed before it ended"));
+          resolve({ type: "destroyed" });
         });
       });
-      await db
-        .update(fight)
-        .set({ winner: winnerId })
-        .where(eq(fight.id, game.fightId))
-        .catch((error) => {
-          throw new Error("Failed to update fight", { cause: error });
-        });
 
-      await scoreHandler.updateScoreForFight(winnerId, looserId, game.fightId);
-      await questHandler.markQuestAsLost(looserId);
-      await gameStateHandler.markPlayerAsWounded(looserId);
+      if (result.type === "destroyed") {
+        // future logic that allows admins to destroy a fight, so this becomes intended behavior
+        console.log(`Fight ${game.fightId} ended before it completed`);
+        console.log(`Deleting fight`);
+        await db.delete(fight).where(eq(fight.id, game.fightId));
+      } else if (result.type === "aborted") {
+        await db
+          .update(fight)
+          .set({ outcome: "aborted" })
+          .where(eq(fight.id, game.fightId))
+          .catch((error) => {
+            throw new Error("Failed to update fight", { cause: error });
+          });
+        for (const playerId of game.playerTuple.map((x) => x.id)) {
+          await questHandler.markQuestAsLost(playerId);
+          await gameStateHandler.markPlayerAsWounded(playerId);
+        }
+      } else {
+        const { winnerId, looserId } = result.data;
+        await db
+          .update(fight)
+          .set({ outcome: "completed", winner: winnerId })
+          .where(eq(fight.id, game.fightId))
+          .catch((error) => {
+            throw new Error("Failed to update fight", { cause: error });
+          });
+        await scoreHandler.updateScoreForFight(
+          winnerId,
+          looserId,
+          game.fightId,
+        );
+        await questHandler.markQuestAsLost(looserId);
+        await gameStateHandler.markPlayerAsWounded(looserId);
+      }
     } catch (error) {
       console.log("Game completed with an error", error);
     }

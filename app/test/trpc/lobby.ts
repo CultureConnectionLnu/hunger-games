@@ -17,6 +17,7 @@ import {
   useAutomaticTimer,
   useManualTimer,
 } from "./utils";
+import { db } from "~/server/db";
 
 export const lobbyTests = () =>
   describe("Lobby", () => {
@@ -39,6 +40,19 @@ export const lobbyTests = () =>
           const result =
             await callers.test_user_1.lobby.currentFight(undefined);
           expect(result).toHaveProperty("success", true);
+        }));
+
+      it("should not consider aborted matches", () =>
+        testFight(async ({ callers, createGame, getLobby, timer }) => {
+          await createGame();
+
+          timer.getFirstByName("start-timer").emitTimeout();
+          await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+          const result =
+            await callers.test_user_1.lobby.currentFight(undefined);
+
+          expect(result).toEqual({ success: false });
         }));
     });
 
@@ -82,6 +96,24 @@ export const lobbyTests = () =>
 
           await startGame();
           getLobby().endGame("test_user_1", "test_user_2");
+          await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+          expect(listener).toHaveBeenCalledWith({
+            type: "end",
+            fightId: getLobby().fightId,
+          });
+          un.unsubscribe();
+        }));
+
+      it("should emit game ended, even when game was abandoned instead", () =>
+        testFight(async ({ createGame, getLobby, callers, timer }) => {
+          const listener = vi.fn();
+          const un = (
+            await callers.test_user_1.lobby.onFightUpdate({ id: "test_user_1" })
+          ).subscribe({ next: listener });
+
+          await createGame();
+          timer.getFirstByName("start-timer").emitTimeout();
           await new Promise((resolve) => getLobby().on("destroy", resolve));
 
           expect(listener).toHaveBeenCalledWith({
@@ -201,44 +233,46 @@ export const lobbyTests = () =>
             await createGame();
             const lobby = getLobby();
             const listener = vi.fn();
-            lobby.on("canceled", listener);
+            lobby.on("game-aborted", listener);
 
             timer.getFirstByName("force-game-end").emitTimeout();
 
             expect(listener).toHaveBeenCalledWith({
-              data: {
-                reason: "force-stop",
-              },
+              data: undefined,
               fightId: lobby.fightId,
             });
+            expect(lobby.isAborted).toBeTruthy();
           }));
 
-        it("should cancel the game if only one player joins", () =>
-          testFight(async ({ createGame, getLobby, connect, timer }) => {
+        it("should mark the game as aborted if no player joins the game", () =>
+          testFight(async ({ createGame, getLobby, timer }) => {
             await createGame();
-            const lobby = getLobby();
-            const listener = vi.fn();
-            lobby.on("canceled", listener);
-
-            await connect("test_user_1");
 
             timer.getFirstByName("start-timer").emitTimeout();
+            await runAllMacroTasks();
 
-            expect(listener).toHaveBeenCalledWith({
-              data: {
-                reason: "start-timeout",
-              },
-              fightId: lobby.fightId,
-            });
+            expect(getLobby().isAborted).toBeTruthy();
           }));
 
-        it("should cancel the game if only one player is ready", () =>
+        it("should mark the game as aborted if no player hits ready", () =>
+          testFight(async ({ createGame, getLobby, timer, connect }) => {
+            await createGame();
+
+            await connect("test_user_1");
+            await connect("test_user_2");
+            timer.getFirstByName("start-timer").emitTimeout();
+            await runAllMacroTasks();
+
+            expect(getLobby().isAborted).toBeTruthy();
+          }));
+
+        it("if only one player marks ready, then he wins", () =>
           testFight(async ({ createGame, getLobby, ready, connect, timer }) => {
             await createGame();
 
             const lobby = getLobby();
             const listener = vi.fn();
-            lobby.on("canceled", listener);
+            lobby.on("game-ended", listener);
 
             await connect("test_user_1");
             await ready("test_user_1");
@@ -247,34 +281,12 @@ export const lobbyTests = () =>
 
             expect(listener).toHaveBeenCalledWith({
               data: {
-                reason: "start-timeout",
+                winnerId: "test_user_1",
+                looserId: "test_user_2",
               },
               fightId: lobby.fightId,
             });
           }));
-
-        it("should cancel the game if someone disconnected before the game started", () =>
-          testFight(
-            async ({ createGame, getLobby, connect, disconnect, timer }) => {
-              await createGame();
-              const lobby = getLobby();
-              const listener = vi.fn();
-              lobby.on("canceled", listener);
-
-              await connect("test_user_1");
-              await connect("test_user_2");
-              disconnect("test_user_1");
-
-              timer.getFirstByName("start-timer").emitTimeout();
-
-              expect(listener).toHaveBeenCalledWith({
-                data: {
-                  reason: "start-timeout",
-                },
-                fightId: lobby.fightId,
-              });
-            },
-          ));
 
         it("should not start disconnected timer while the player did not mark as ready", () =>
           testFight(async ({ createGame, connect, timer, disconnect }) => {
@@ -360,7 +372,7 @@ export const lobbyTests = () =>
             });
           }));
 
-        it("should end the game if all player are disconnected for to long", () =>
+        it("should abort the game if all player are disconnected for to long", () =>
           testFight(
             async ({
               startGame,
@@ -371,20 +383,19 @@ export const lobbyTests = () =>
             }) => {
               await startGame();
               const lobby = getLobby();
-              const cancelListener = vi.fn();
-              lobby.on("canceled", cancelListener);
+              const listener = vi.fn();
+              lobby.on("game-aborted", listener);
 
               disconnect("test_user_2");
               disconnect("test_user_1");
               timer.getFirstByName("disconnect-timer").emitTimeout();
 
-              expect(cancelListener).toHaveBeenLastCalledWith({
-                data: {
-                  reason: "disconnect-timeout",
-                },
+              expect(getLobby().isAborted).toBeTruthy();
+              expectNotEvenEmitted(firstListener, "game-ended");
+              expect(listener).toHaveBeenCalledWith({
+                data: undefined,
                 fightId: lobby.fightId,
               });
-              expectNotEvenEmitted(firstListener, "game-ended");
             },
           ));
 
@@ -401,6 +412,43 @@ export const lobbyTests = () =>
             ).toBeFalsy();
           }));
       });
+    });
+
+    describe("Data", () => {
+      it("should write to database the winner and completed state", () =>
+        testFight(async ({ startGame, getLobby }) => {
+          await startGame();
+          getLobby().endGame("test_user_1", "test_user_2");
+          const fightId = getLobby().fightId;
+          await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+          const dbEntry = await db.query.fight.findFirst({
+            where: ({ id }, { eq }) => eq(id, fightId),
+          });
+
+          expect(dbEntry).toMatchObject({
+            outcome: "completed",
+            winner: "test_user_1",
+          });
+        }));
+
+      it("should wirte to db that game was aborted", () =>
+        testFight(async ({ createGame, getLobby, timer }) => {
+          await createGame();
+
+          timer.getFirstByName("start-timer").emitTimeout();
+          const fightId = getLobby().fightId;
+          await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+          const dbEntry = await db.query.fight.findFirst({
+            where: ({ id }, { eq }) => eq(id, fightId),
+          });
+
+          expect(dbEntry).toMatchObject({
+            outcome: "aborted",
+            winner: null,
+          });
+        }));
     });
   });
 

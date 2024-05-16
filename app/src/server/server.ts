@@ -50,7 +50,7 @@ void app.prepare().then(() => {
 });
 
 async function removeNotFinishedFights() {
-  return db.delete(fight).where(isNull(fight.winner));
+  return db.delete(fight).where(isNull(fight.outcome));
 }
 
 async function syncUsersWithClerk() {

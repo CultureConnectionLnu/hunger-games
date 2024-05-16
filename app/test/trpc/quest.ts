@@ -4,9 +4,11 @@ import { lobbyHandler, questHandler } from "~/server/api/logic/handler";
 import { type RouterOutputs } from "~/trpc/shared";
 import {
   cleanupLeftovers,
+  getManualTimer,
   getTestUserCallers,
   makeHubs,
   makePlayer,
+  runAllMacroTasks,
   useAutomaticTimer,
   useManualTimer,
   type ModeratorIds,
@@ -99,6 +101,19 @@ export const questTests = () =>
             "walk-1",
           );
           await playGame("test_user_2");
+
+          const quest = await player.getCurrentQuest("test_user_1");
+          expect(quest).toBeUndefined();
+        }));
+
+      it("should loose a quest upon aborting a fight", () =>
+        testQuest(async ({ player, moderator, abortGame }) => {
+          await moderator.assignQuest(
+            "test_moderator_1",
+            "test_user_1",
+            "walk-1",
+          );
+          await abortGame();
 
           const quest = await player.getCurrentQuest("test_user_1");
           expect(quest).toBeUndefined();
@@ -388,6 +403,14 @@ async function setupTest() {
     await fight.gameDone;
   };
 
+  const abortGame = async () => {
+    const id = await startGame();
+    getManualTimer().getFirstByName("start-timer").emitTimeout();
+    await new Promise((resolve) =>
+      lobbyHandler.getFight(id)!.game.on("destroy", resolve),
+    );
+  };
+
   const getCurrentQuest = async (player: `test_user_${1 | 2}`) => {
     return callers[player].quest.getCurrentQuestForPlayer();
   };
@@ -434,6 +457,7 @@ async function setupTest() {
     callers,
     playGame,
     startGame,
+    abortGame,
     getAllFightIds: () => state.allFightIds,
     getAllQuestIds: () => state.allQuestIds,
     player: {

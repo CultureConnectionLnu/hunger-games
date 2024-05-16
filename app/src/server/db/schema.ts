@@ -49,12 +49,15 @@ export const roles = createTable("role", {
   ...metadata,
 });
 
+export const fightOutcome = pgEnum("fight_outcome", ["completed", "aborted"]);
+
 export const fight = createTable("fight", {
   id: uuid("id").primaryKey().defaultRandom(),
   game: varchar("game", { length: 255 }).notNull(),
   winner: varchar("winner", { length: 255 }).references(() => users.clerkId, {
     onDelete: "cascade",
   }),
+  outcome: fightOutcome("outcome"),
   ...metadata,
 });
 export const fightRelations = relations(fight, ({ many }) => ({

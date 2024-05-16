@@ -120,14 +120,16 @@ export const lobbyRouter = createTRPCRouter({
         });
       });
 
-      newFight.lobby.on("game-ended", () => {
+      const sendEndGameEvents = () =>
         players.forEach((player) => {
           ee.emit(`fight.end.${player}`, {
             type: "end",
             fightId: newFight.lobby.fightId,
           });
         });
-      });
+
+      newFight.lobby.on("game-ended", () => sendEndGameEvents());
+      newFight.lobby.on("game-aborted", () => sendEndGameEvents());
 
       console.log("New fight", {
         id: newFight.lobby.fightId,
@@ -140,20 +142,15 @@ export const lobbyRouter = createTRPCRouter({
       };
     }),
 
-  currentFight: playerProcedure.query(async ({ ctx }) => {
-    try {
-      return {
-        fight: await lobbyHandler.assertCurrentFight(ctx.user.clerkId),
-        success: true,
-      } as const;
-    } catch (error) {
-      console.error(
-        `[Lobby:currentFight]: loading the current fight failed: ${String(error)}`,
-        error,
-      );
-      return { success: false } as const;
-    }
-  }),
+  currentFight: playerProcedure.query(({ ctx }) =>
+    errorBoundary(async () => {
+      const currentFight = await lobbyHandler.getCurrentFight(ctx.user.clerkId);
+      if (!currentFight) {
+        return { success: false };
+      }
+      return { success: true, fight: currentFight };
+    }),
+  ),
 
   getAllMyFights: playerProcedure.query(({ ctx }) =>
     errorBoundary(async () =>

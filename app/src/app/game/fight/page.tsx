@@ -108,7 +108,7 @@ function GameLobby({
         default:
           setLastEvent(data);
 
-          if (data.event === "game-ended") {
+          if (data.event === "game-ended" || data.event === "game-aborted") {
             // make sure that the end screen does not disappear because of random event
             setGameEnded(true);
           }
