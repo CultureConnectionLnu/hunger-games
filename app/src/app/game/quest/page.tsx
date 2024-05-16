@@ -6,7 +6,7 @@ export default async function QuestHistory() {
   const quest = await api.quest.getCurrentQuestForPlayer.query();
 
   if (!quest) {
-    return <NoQuest />;
+    return     <div className="flex h-full flex-col justify-center px-4"><NoQuest /></div>;
   }
 
   return <WalkQuest params={{ quest }} />;
