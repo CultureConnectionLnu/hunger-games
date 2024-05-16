@@ -165,10 +165,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
       resumeGame: this.specificGame.resumeGame.bind(this.specificGame),
       endGame: this.endGame.bind(this),
       cancelGame: () => {
-        this.emitEvent({
-          event: "canceled",
-          data: { reason: "disconnect-timeout" },
-        });
+        this.abortGame();
       },
     });
   }
@@ -217,13 +214,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
     const noOneIsready = !playerOne.isReadyToPlay && !playerTwo.isReadyToPlay;
 
     if (noOneIsready) {
-      this.state = "aborted";
-
-      this.players.forEach((x) => x.gameEnd());
-      this.emitEvent({
-        event: "game-aborted",
-        data: undefined,
-      });
+      this.abortGame();
       return;
     }
 
@@ -233,6 +224,15 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
     this.endGame(playerTwo.id, playerOne.id);
   }
 
+  private abortGame() {
+    this.state = "aborted";
+
+    this.players.forEach((x) => x.gameEnd());
+    this.emitEvent({
+      event: "game-aborted",
+      data: undefined,
+    });
+  }
   private assertPlayer(id: string) {
     const player = this.getPlayer(id);
     if (!player) {

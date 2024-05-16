@@ -343,7 +343,7 @@ export const lobbyTests = () =>
             });
           }));
 
-        it("should end the game if all player are disconnected for to long", () =>
+        it("should abort the game if all player are disconnected for to long", () =>
           testFight(
             async ({
               startGame,
@@ -361,12 +361,7 @@ export const lobbyTests = () =>
               disconnect("test_user_1");
               timer.getFirstByName("disconnect-timer").emitTimeout();
 
-              expect(cancelListener).toHaveBeenLastCalledWith({
-                data: {
-                  reason: "disconnect-timeout",
-                },
-                fightId: lobby.fightId,
-              });
+              expect(getLobby().isAborted).toBeTruthy();
               expectNotEvenEmitted(firstListener, "game-ended");
             },
           ));
