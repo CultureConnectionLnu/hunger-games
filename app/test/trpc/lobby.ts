@@ -56,6 +56,37 @@ export const lobbyTests = () =>
         }));
     });
 
+    describe("create", () => {
+      it("should create a fight", () =>
+        testFight(async ({ createGame }) => {
+          await expect(createGame()).resolves.not.toThrow();
+        }));
+
+      it("should not create a fight if there is already a fight ongoing", () =>
+        testFight(async ({ createGame }) => {
+          await createGame();
+          await expect(createGame()).rejects.toThrow();
+        }));
+
+      it("should not create a fight if the current player is wounded", () =>
+        testFight(async ({ startGame, getLobby, createGame }) => {
+          await startGame();
+          getLobby().endGame("test_user_1", "test_user_2");
+          await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+          await expect(createGame()).rejects.toThrow();
+        }));
+
+      it("should not create a fight if the opponent is wounded", () =>
+        testFight(async ({ startGame, getLobby, createGame }) => {
+          await startGame();
+          getLobby().endGame("test_user_2", "test_user_1");
+          await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+          await expect(createGame()).rejects.toThrow();
+        }));
+    });
+
     describe("onFightUpdate", () => {
       it("should not emit when no fight is happening", () =>
         testFight(async ({ callers }) => {

@@ -104,6 +104,10 @@ export const lobbyRouter = createTRPCRouter({
         opponent.clerkId,
         `The opponent with id '${opponent.clerkId}' is wounded and can't start a fight`,
       );
+      await gameStateHandler.assertPlayerNotWounded(
+        ctx.user.clerkId,
+        `You are wounded and can't start a fight`,
+      );
 
       await lobbyHandler.assertHasNoFight(ctx.user.clerkId);
       const newFight = await lobbyHandler.createFight(
