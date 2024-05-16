@@ -31,10 +31,10 @@ export const scoreRouter = createTRPCRouter({
     errorBoundary(async () => scoreHandler.currentScore(ctx.user.clerkId)),
   ),
 
-  historyEntry: playerProcedure
+  getFightDetails: playerProcedure
     .input(z.object({ fightId: z.string() }))
     .query(async ({ ctx, input }) => {
-      const result = await scoreHandler.getHistoryEntry(
+      const result = await scoreHandler.getFightDetails(
         ctx.user.clerkId,
         input.fightId,
       );
@@ -45,13 +45,12 @@ export const scoreRouter = createTRPCRouter({
           message: `Could not find a history entry for the current user with fightId: ${input.fightId}`,
         });
       }
-      const { winnerId, loserId: loserId, ...data } = result.data;
+      const { opponentId, ...data } = result.data;
 
-      const userNames = await clerkHandler.getUserNames([winnerId, loserId]);
+      const userNames = await clerkHandler.getUserName(opponentId);
 
       return {
-        winnerName: userNames[winnerId]!,
-        loserName: userNames[loserId]!,
+        opponentName: userNames,
         ...data,
       };
     }),

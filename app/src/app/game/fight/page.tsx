@@ -23,13 +23,14 @@ import {
 import { Button } from "~/components/ui/button";
 import { CardTitle } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
+import { type KnownGames } from "~/server/api/logic/handler";
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/shared";
 import { useFight } from "../../_feature/auto-join-game/fight-provider";
 import { Timer } from "../../_feature/timer/timer";
 import { useTimers } from "../../_feature/timer/timer-provider";
 import { GameCard, GameContentLoading } from "../../_game/base";
-import { type KnownGames } from "~/server/api/logic/handler";
+import { GameName } from "./_components/game-name";
 
 type ServerEvent =
   RouterOutputs["lobby"]["onGameAction"] extends Observable<infer R, never>
@@ -149,7 +150,7 @@ function GameLobby({
 
   if (lobby !== undefined) {
     return (
-      <GameContainer header={getReadableGameName(params.gameName)}>
+      <GameContainer header={<GameName gameName={params.gameName} />}>
         {lobby}
       </GameContainer>
     );
@@ -168,7 +169,7 @@ function GameLobby({
 
   if (game !== undefined) {
     return (
-      <GameContainer header={getReadableGameName(params.gameName)}>
+      <GameContainer header={<GameName gameName={params.gameName} />}>
         {game}
       </GameContainer>
     );
@@ -180,17 +181,6 @@ function GameLobby({
       The game {params.gameName} has no implementation
     </GameContainer>
   );
-}
-
-function getReadableGameName(gameName: KnownGames) {
-  switch (gameName) {
-    case "rock-paper-scissors":
-      return "Rock Paper Scissors";
-    case "ordered-memory":
-      return "Ordered Memory";
-    default:
-      return "No Game";
-  }
 }
 
 function GameContainer({
