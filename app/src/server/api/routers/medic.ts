@@ -89,13 +89,18 @@ export const medicRouter = createTRPCRouter({
         playerId: z.string(),
       }),
     )
-    .subscription(({ input }) => {
+    .subscription(async ({ input }) => {
+      const currentState = await gameStateHandler.getWoundedPlayer(
+        input.playerId,
+      );
       return observable<WoundedPlayer>((emit) => {
         function onMessage(data: WoundedPlayer) {
           emit.next(data);
         }
 
         ee.on(`player-wounded-update.${input.playerId}`, onMessage);
+
+        if (currentState) onMessage(currentState);
 
         return () => {
           ee.off(`player-wounded-update.${input.playerId}`, onMessage);
