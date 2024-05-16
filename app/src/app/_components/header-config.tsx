@@ -1,7 +1,5 @@
-import { userHandler, type UserRoles } from "~/server/api/logic/handler";
 import type * as MdIcons from "react-icons/md";
-import { SignInButton, SignOutButton } from "@clerk/nextjs";
-import Link from "next/link";
+import { userHandler, type UserRoles } from "~/server/api/logic/handler";
 
 const headerConfig: HeaderConfig = {
   groups: [
@@ -72,17 +70,13 @@ const headerConfig: HeaderConfig = {
         },
         {
           title: "Sign Out",
-          customLink: (children) => (
-            <SignOutButton>
-              <Link href="/">{children}</Link>
-            </SignOutButton>
-          ),
+          customLink: "sign-out",
           icon: "MdOutlinePowerSettingsNew",
           require: "sign-in",
         },
         {
           title: "Sign In",
-          customLink: (children) => <SignInButton>{children}</SignInButton>,
+          customLink: "sign-in",
           icon: "MdLockOpen",
           require: "sign-out",
         },
@@ -135,7 +129,7 @@ const navConfig: NavigationBarConfig = {
     {
       icon: "MdLockOpen",
       title: "Sign In",
-      customLink: (children) => <SignInButton>{children}</SignInButton>,
+      customLink: "sign-in",
     },
   ],
   signedInEntries: [
@@ -158,6 +152,7 @@ const navConfig: NavigationBarConfig = {
     },
   ],
 };
+
 type Roles = "role-admin" | "role-moderator" | "role-medic" | "role-player";
 type Permission = "sign-in" | "sign-out";
 type HeaderConfig = {
@@ -176,7 +171,7 @@ type HeaderLinkConfig = {
   | { href: string; customLink?: undefined }
   | {
       href?: undefined;
-      customLink: (children: React.ReactNode) => React.ReactNode;
+      customLink: "sign-in" | "sign-out";
     }
 );
 
@@ -196,7 +191,7 @@ export type EvaluatedHeaderLinkConfig = {
   | { href: string; customLink?: undefined }
   | {
       href?: undefined;
-      customLink: (children: React.ReactNode) => React.ReactNode;
+      customLink: "sign-in" | "sign-out";
     }
 );
 
@@ -213,7 +208,7 @@ type NavigationBarEntry = {
   | { href: string; customLink?: undefined }
   | {
       href?: undefined;
-      customLink: (children: React.ReactNode) => React.ReactNode;
+      customLink: "sign-in" | "sign-out";
     }
 );
 
@@ -240,10 +235,10 @@ export async function getHeaderConfig() {
   const evalNavConfig: EvaluatedNavigationBarConfig = {
     signedInEntries: navConfig.signedInEntries
       .filter((entry) => filterNavRequire(roles, entry.require))
-      .map(({ require, ...entry }) => entry),
+      .map(({ require: _, ...entry }) => entry),
     signedOutEntries: navConfig.signedOutEntries
       .filter((entry) => filterNavRequire(roles, entry.require))
-      .map(({ require, ...entry }) => entry),
+      .map(({ require: _, ...entry }) => entry),
   };
 
   return { headerConfig: evalHeaderConfig, navConfig: evalNavConfig };

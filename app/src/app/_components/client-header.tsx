@@ -1,5 +1,10 @@
 "use client";
-import { SignedIn, SignedOut } from "@clerk/nextjs";
+import {
+  SignInButton,
+  SignOutButton,
+  SignedIn,
+  SignedOut,
+} from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as React from "react";
@@ -85,15 +90,17 @@ function NavigationBarEntry({ entry }: { entry: EvaluatedNavigationBarEntry }) {
 
   const link = entry.href ? (
     <NavigationMenuLink
-      className="flex h-7 items-center justify-center rounded-full px-4 text-center text-sm transition-colors hover:text-primary"
+      className="flex h-7 items-center justify-center rounded-full text-center text-sm transition-colors hover:text-primary"
       href={entry.href}
     >
       {content}
     </NavigationMenuLink>
-  ) : entry.customLink ? (
-    entry.customLink(content)
-  ) : (
+  ) : !entry.customLink ? (
     content
+  ) : entry.customLink === "sign-in" ? (
+    <SignIn>{content}</SignIn>
+  ) : (
+    <SignOut>{content}</SignOut>
   );
 
   return <NavigationMenuItem>{link}</NavigationMenuItem>;
@@ -113,15 +120,27 @@ async function SideBar({ config }: { config: EvaluatedHeaderConfig }) {
                 {link.title}
               </Button>
             );
-            return (
+            const entry = (
               <SheetClose asChild key={link.title}>
                 {link.customLink ? (
-                  link.customLink(button)
+                  link.customLink === "sign-in" ? (
+                    <SignIn>{button}</SignIn>
+                  ) : (
+                    <SignOut>{button}</SignOut>
+                  )
                 ) : (
                   <Link href={link.href}>{button}</Link>
                 )}
               </SheetClose>
             );
+
+            if (link.require === "sign-out") {
+              return <SignedOut key={link.title}>{entry}</SignedOut>;
+            }
+            if (link.require === "sign-in") {
+              return <SignedIn key={link.title}>{entry}</SignedIn>;
+            }
+            return entry;
           })}
         </ListGroupContent>
       </ListGroup>
@@ -185,5 +204,17 @@ function MenuIcon({ className }: { className: string }) {
       <line x1="4" x2="20" y1="6" y2="6" />
       <line x1="4" x2="20" y1="18" y2="18" />
     </svg>
+  );
+}
+
+function SignIn({ children }: { children: React.ReactNode }) {
+  return <SignInButton>{children}</SignInButton>;
+}
+
+function SignOut({ children }: { children: React.ReactNode }) {
+  return (
+    <SignOutButton>
+      <Link href="/">{children}</Link>
+    </SignOutButton>
   );
 }
