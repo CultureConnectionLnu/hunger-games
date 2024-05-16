@@ -52,6 +52,7 @@ export type GeneralGameEvents = EventTemplate<
   | "game-ended"
   | "game-halted"
   | "game-resume"
+  | "game-aborted"
 >;
 
 export type BaseGamePlayerEvents = OnlyPlayerEvents<GeneralGameEvents>;
@@ -107,6 +108,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
         "game-ended",
         "game-halted",
         "game-resume",
+        "game-aborted",
       ],
       serverSpecificEvents: [
         "destroy",

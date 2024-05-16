@@ -104,6 +104,24 @@ export const lobbyTests = () =>
           });
           un.unsubscribe();
         }));
+
+      it("should emit game ended, even when game was abandoned instead", () =>
+        testFight(async ({ createGame, getLobby, callers, timer }) => {
+          const listener = vi.fn();
+          const un = (
+            await callers.test_user_1.lobby.onFightUpdate({ id: "test_user_1" })
+          ).subscribe({ next: listener });
+
+          await createGame();
+          timer.getFirstByName("start-timer").emitTimeout();
+          await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+          expect(listener).toHaveBeenCalledWith({
+            type: "end",
+            fightId: getLobby().fightId,
+          });
+          un.unsubscribe();
+        }));
     });
 
     describe("BaseGame", () => {

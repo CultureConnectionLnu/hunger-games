@@ -120,14 +120,16 @@ export const lobbyRouter = createTRPCRouter({
         });
       });
 
-      newFight.lobby.on("game-ended", () => {
+      const sendEndGameEvents = () =>
         players.forEach((player) => {
           ee.emit(`fight.end.${player}`, {
             type: "end",
             fightId: newFight.lobby.fightId,
           });
         });
-      });
+
+      newFight.lobby.on("game-ended", () => sendEndGameEvents());
+      newFight.lobby.on("game-aborted", () => sendEndGameEvents());
 
       console.log("New fight", {
         id: newFight.lobby.fightId,
