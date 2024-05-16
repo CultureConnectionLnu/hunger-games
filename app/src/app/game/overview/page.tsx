@@ -144,7 +144,7 @@ function JoinGame() {
   return (
     <div>
       <QrCode
-        route="/qr-code"
+        route="/game/overview"
         text="When the opponent scans this QR code with his phone, then you start a match."
       />
       {env.NEXT_PUBLIC_FEATURE_MANUAL_JOIN === "true" ? (

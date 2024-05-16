@@ -32,8 +32,8 @@ export function WalkQuest({
         <HubsTable hubs={params.quest.additionalInformation} />
       </CardContent>
       <CardFooter>
-        <Link href="/game/qr-code">
-          <Button variant="outline">Return to QrCode</Button>
+        <Link href="/game/overview">
+          <Button variant="outline">Return to Overview</Button>
         </Link>
       </CardFooter>
     </Card>

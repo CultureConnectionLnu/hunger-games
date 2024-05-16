@@ -13,7 +13,9 @@ export default function MatchOverviewPage() {
         Scan the QR code of your opponent
       </CardHeader>
       <QrCodeScanner
-        onReadUserId={(userId) => router.push(`/game/qr-code?userId=${userId}`)}
+        onReadUserId={(userId) =>
+          router.push(`/game/overview?userId=${userId}`)
+        }
       />
     </Card>
   );

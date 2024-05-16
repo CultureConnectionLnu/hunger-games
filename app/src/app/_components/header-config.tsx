@@ -23,9 +23,9 @@ const headerConfig: HeaderConfig = {
       require: "sign-in",
       links: [
         {
-          title: "Qr-Code",
-          href: "/game/qr-code",
-          icon: "MdQrCode",
+          title: "Overview",
+          href: "/game/overview",
+          icon: "MdDashboard",
           require: "role-player",
         },
         {
@@ -134,9 +134,9 @@ const navConfig: NavigationBarConfig = {
   ],
   signedInEntries: [
     {
-      icon: "MdQrCode",
-      title: "Qr-Code",
-      href: "/game/qr-code",
+      icon: "MdDashboard",
+      title: "Overview",
+      href: "/game/overview",
       require: "role-player",
     },
     {

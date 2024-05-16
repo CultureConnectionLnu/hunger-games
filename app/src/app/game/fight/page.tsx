@@ -219,7 +219,7 @@ function GameContainer({
           </AlertDialogDescription>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => router.push("/qr-code")}>
+            <AlertDialogAction onClick={() => router.push("/game/overview")}>
               Leave
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -228,7 +228,7 @@ function GameContainer({
     </AlertDialog>
   );
   const leave = (
-    <Link href="/qr-code">
+    <Link href="/game/overview">
       <RxCross2 />
     </Link>
   );
@@ -273,8 +273,8 @@ function NoFightOngoing() {
           </CardTitle>
         }
       >
-        <Link className="mx-auto" href="/game/qr-code">
-          <Button variant="outline">Return to QrCode</Button>
+        <Link className="mx-auto" href="/game/overview">
+          <Button variant="outline">Return to Overview</Button>
         </Link>
       </GameCard>
     </GameContainer>
