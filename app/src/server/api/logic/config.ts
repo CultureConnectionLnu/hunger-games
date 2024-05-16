@@ -31,7 +31,7 @@ export const questScoringConfig = {
 } satisfies Record<QuestKind, number>;
 
 export const playerStateConfig = {
-  reviveTimeInSeconds: 120,
+  reviveTimeInSeconds: env.NEXT_PUBLIC_NODE_ENV === "development" ? 10 : 120,
 };
 
 export const rockPaperScissorsConfig: RockPaperScissorsConfig = {
