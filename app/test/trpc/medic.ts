@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/rules-of-hooks */
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { playerStateConfig } from "~/server/api/logic/config";
 import {
   lobbyHandler,
@@ -199,6 +199,27 @@ export const medicTests = () =>
           });
         }));
     });
+
+    describe("onWoundedUpdate", () => {
+      it("should not emit an event on subscribe if player is not wounded", () =>
+        testFight(async ({ onWoundedUpdateListener }) => {
+          const listener = await onWoundedUpdateListener("test_user_1");
+          expect(listener).not.toHaveBeenCalled();
+        }));
+
+      it("should emit an event on subscribe if player is wounded", () =>
+        testFight(async ({ playGame, onWoundedUpdateListener }) => {
+          await playGame("test_user_1");
+
+          const listener = await onWoundedUpdateListener("test_user_2");
+
+          expect(listener).toHaveBeenCalledTimes(1);
+          expect(listener).toHaveBeenCalledWith({
+            userId: "test_user_2",
+            isWounded: true,
+          });
+        }));
+    });
   });
 
 async function testFight(
@@ -216,6 +237,7 @@ async function testFight(
         fightIds: args.getAllFightIds(),
         questIds: args.getAllQuestIds(),
       });
+      args.getSubscriptions().forEach((x) => x());
       return x;
     })
     .then(({ pass, error }) => {
@@ -231,6 +253,7 @@ async function setupTest() {
   const state = {
     allFightIds: [] as string[],
     allQuestIds: [] as string[],
+    subscriptions: [] as (() => void)[],
   };
 
   const playGame = async (winner: `test_user_${1 | 2}`) => {
@@ -296,6 +319,15 @@ async function setupTest() {
     gameStateHandler.fakeTimePass();
   };
 
+  const onWoundedUpdateListener = async (playerId: `test_user_${1 | 2}`) => {
+    const listener = vi.fn();
+    const subscription = (
+      await callers.test_medic.medic.onWoundedUpdate({ playerId })
+    ).subscribe({ next: listener });
+    state.subscriptions.push(() => subscription.unsubscribe());
+    return listener;
+  };
+
   return {
     callers,
     playGame,
@@ -303,10 +335,12 @@ async function setupTest() {
     startQuest,
     getAllFightIds: () => state.allFightIds,
     getAllQuestIds: () => state.allQuestIds,
+    getSubscriptions: () => state.subscriptions,
     getWoundedPlayers,
     startRevive,
     finishRevive,
     waitForReviveTime,
     getQuestOfPlayer,
+    onWoundedUpdateListener,
   };
 }
