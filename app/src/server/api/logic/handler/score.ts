@@ -1,10 +1,35 @@
-import { and, desc, eq, not, sql, sum } from "drizzle-orm";
-import { type DB, db } from "~/server/db";
+import { and, desc, eq, sql, sum } from "drizzle-orm";
+import { db, type DB } from "~/server/db";
 import { fight, score, usersToFight } from "~/server/db/schema";
-import { type KnownGames } from "./lobby";
 import { fightScoringConfig, questScoringConfig } from "../config";
 import { getHandler } from "./base";
+import { type KnownGames } from "./lobby";
 import { type QuestKind } from "./quest";
+
+type FightEntry =
+  | {
+      yourId: string;
+      opponentId: string;
+      yourScore: number;
+      opponentScore: number;
+      youWon: boolean;
+      outcome: "completed";
+      game: KnownGames;
+    }
+  | {
+      yourId: string;
+      opponentId: string;
+      youWon: boolean;
+      outcome: "aborted";
+      game: KnownGames;
+    }
+  | {
+      yourId: string;
+      opponentId: string;
+      youWon: boolean;
+      outcome: "in-progress";
+      game: KnownGames;
+    };
 
 class ScoreHandler {
   public async currentScore(userId: string) {
@@ -92,25 +117,23 @@ class ScoreHandler {
       .where(eq(score.userId, playerId));
   }
 
-  public async getHistoryEntry(userId: string, fightId: string) {
+  public async getFightDetails(userId: string, fightId: string) {
     const queryResult = await db
       .select({
-        userId: score.userId,
+        userId: usersToFight.userId,
         fightId: fight.id,
         game: fight.game,
         score: score.score,
         winner: fight.winner,
+        outcome: fight.outcome,
       })
-      .from(score)
-      .innerJoin(fight, eq(score.fightId, fight.id))
+      .from(fight)
+      .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
       .leftJoin(
-        usersToFight,
-        and(
-          eq(fight.id, usersToFight.fightId),
-          not(eq(usersToFight.userId, score.userId)),
-        ),
+        score,
+        and(eq(fight.id, score.fightId), eq(usersToFight.userId, score.userId)),
       )
-      .where(eq(score.fightId, fightId));
+      .where(eq(fight.id, fightId));
 
     if (queryResult.length === 0) {
       return { success: false } as const;
@@ -127,32 +150,21 @@ class ScoreHandler {
       return { success: false } as const;
     }
 
-    const data = queryResult.reduce(
-      (entry, result) => {
-        entry.youWon = result.winner === userId;
-        entry.game = result.game as KnownGames;
+    const data = queryResult.reduce((entry, result) => {
+      entry.youWon = result.winner === userId;
+      entry.game = result.game as KnownGames;
+      entry.outcome = result.outcome ?? "in-progress";
 
-        if (result.winner === result.userId) {
-          entry.winnerScore = result.score;
-          entry.winnerId = result.userId;
-        }
+      if (result.userId === userId) {
+        entry.yourId = userId;
+        if (entry.outcome === "completed") entry.yourScore = result.score!;
+      } else {
+        entry.opponentId = result.userId!;
+        if (entry.outcome === "completed") entry.opponentScore = result.score!;
+      }
 
-        if (result.winner !== result.userId) {
-          entry.loserScore = result.score;
-          entry.loserId = result.userId;
-        }
-
-        return entry;
-      },
-      {} as {
-        winnerId: string;
-        loserId: string;
-        winnerScore: number;
-        loserScore: number;
-        youWon: boolean;
-        game: KnownGames;
-      },
-    );
+      return entry;
+    }, {} as FightEntry);
 
     return {
       success: true,

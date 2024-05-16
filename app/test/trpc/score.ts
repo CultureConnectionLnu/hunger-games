@@ -137,20 +137,21 @@ export const scoreTests = () =>
       });
     });
 
-    describe("historyEntry", () => {
-      it("should return the correct history entry", () =>
+    describe("getFightDetails", () => {
+      it("should return the correct fight entry", () =>
         testFight(async ({ playGame, getHistoryEntry, getAllFightIds }) => {
           await playGame("test_user_1");
           const [fight] = getAllFightIds();
           const entry = await getHistoryEntry("test_user_1", fight!);
 
           expect(entry).toEqual({
-            winnerScore: 100,
-            loserScore: 0,
+            yourId: "test_user_1",
+            yourScore: 100,
+            opponentScore: 0,
             youWon: true,
+            outcome: "completed",
             game: "rock-paper-scissors",
-            winnerName: "Test User 1",
-            loserName: "Test User 2",
+            opponentName: "Test User 2",
           });
         }));
     });
@@ -253,7 +254,7 @@ async function setupTest() {
     callers[userId].score.getHistory();
 
   const getHistoryEntry = (userId: `test_user_${1 | 2}`, fightId: string) =>
-    callers[userId].score.historyEntry({ fightId });
+    callers[userId].score.getFightDetails({ fightId });
 
   return {
     callers,

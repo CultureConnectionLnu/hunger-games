@@ -47,7 +47,7 @@ class LobbyHandler {
 
     return {
       fightId: existingFight[0]!.fight.id,
-      game: existingFight[0]!.fight.game,
+      game: existingFight[0]!.fight.game as KnownGames,
       players: existingFight.map((f) => f.usersToMatch?.userId).filter(Boolean),
     };
   }

@@ -9,13 +9,18 @@ import {
   publicProcedure,
 } from "~/server/api/trpc";
 import type { BaseGamePlayerEvents } from "../logic/core/base-game";
-import { ee, lobbyHandler, userHandler } from "../logic/handler";
+import {
+  type KnownGames,
+  ee,
+  lobbyHandler,
+  userHandler,
+} from "../logic/handler";
 import { gameStateHandler } from "../logic/handler/game-state";
 
 type JoinMessage = {
   type: "join";
   fightId: string;
-  game: string;
+  game: KnownGames;
 };
 type EndMessage = {
   type: "end";
