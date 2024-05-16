@@ -145,6 +145,7 @@ export const scoreTests = () =>
           const entry = await getHistoryEntry("test_user_1", fight!);
 
           expect(entry).toEqual({
+            yourId: "test_user_1",
             yourScore: 100,
             opponentScore: 0,
             youWon: true,
