@@ -154,8 +154,11 @@ function WoundedPlayer({
       }),
   });
   const { seconds, isDone } = useCountdown(params.player.userId);
+  const [progress, setProgress] = useState(getProgress(params.player, isDone));
 
-  const progress = getProgress(params.player, isDone);
+  useEffect(() => {
+    setProgress(getProgress(params.player, isDone));
+  }, [params.player, isDone]);
 
   return (
     <>
@@ -209,7 +212,7 @@ function WoundedPlayer({
           </div>
         </div>
       </div>
-      <DialogFooter className="flex flex-row justify-between">
+      <DialogFooter className="flex flex-row-reverse justify-between">
         {closeButton}
       </DialogFooter>
     </>
@@ -220,7 +223,11 @@ function getProgress(player: WoundedPlayer, isDone: boolean) {
   if (player.isWounded && player.initialTimeoutInSeconds === undefined) {
     return "wounded" as const;
   }
-  if (player.initialTimeoutInSeconds === 0 || isDone) {
+  if (
+    isDone ||
+    (player.reviveCoolDownEnd !== undefined &&
+      Date.now() > player.reviveCoolDownEnd.getTime())
+  ) {
     return "wait-finish" as const;
   }
   return "reviving" as const;
