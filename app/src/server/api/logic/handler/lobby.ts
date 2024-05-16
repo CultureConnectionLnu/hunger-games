@@ -76,6 +76,7 @@ class LobbyHandler {
         fightId: fight.id,
         game: sql<KnownGames>`${fight.game}`,
         youWon: sql<boolean>`CASE WHEN ${fight.winner} = ${userId} THEN true ELSE false END`,
+        abandoned: sql<boolean>`CASE WHEN ${fight.outcome} = 'aborted' THEN true ELSE false END`,
       })
       .from(fight)
       .innerJoin(usersToFight, eq(fight.id, usersToFight.fightId))

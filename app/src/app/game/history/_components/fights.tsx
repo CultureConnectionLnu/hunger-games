@@ -50,7 +50,9 @@ export function FightHistory({
         {fights.map((fight) => (
           <TableRow key={fight.fightId} onClick={() => fightId(fight.fightId)}>
             <TableCell>{gameNameMap[fight.game]}</TableCell>
-            <TableCell>{fight.youWon ? "Win" : "Loose"}</TableCell>
+            <TableCell>
+              {fight.abandoned ? "Abandoned" : fight.youWon ? "Win" : "Loose"}
+            </TableCell>
             <TableCell className="text-right">
               {fight.scoreEntry
                 ? `${fight.scoreEntry.scoreChange}/${fight.scoreEntry.score}`
