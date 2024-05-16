@@ -30,10 +30,16 @@ export function WoundedTable() {
   useEffect(() => {
     const countdowns = woundedPlayers
       .filter((x) => Boolean(x.initialTimeoutInSeconds))
+      .filter((x) =>
+        x.reviveCoolDownEnd === undefined
+          ? false
+          : Date.now() < x.reviveCoolDownEnd.getTime() - 1000,
+      )
       .map((x) => ({
         id: x.userId,
         initialSeconds: x.initialTimeoutInSeconds,
       }));
+    // console.log(countdowns);
 
     registerOnlyNewCountdown(countdowns);
   }, [woundedPlayers, registerOnlyNewCountdown]);

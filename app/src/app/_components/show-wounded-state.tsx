@@ -28,6 +28,7 @@ export function ShowWoundedState() {
 
 function DataGateKeep({ params }: { params: { userId: string } }) {
   const [data, setData] = useState<WoundedPlayer>();
+  const { isDone } = useCountdown(data?.userId ?? "");
   api.medic.onWoundedUpdate.useSubscription(
     {
       playerId: params.userId,
@@ -42,8 +43,11 @@ function DataGateKeep({ params }: { params: { userId: string } }) {
 
   useEffect(() => {
     if (!data) return;
+    if (isDone) return;
+    if (data.reviveCoolDownEnd === undefined) return;
+    if (Date.now() < data.reviveCoolDownEnd.getTime() - 1000) return;
     registerCountdown(data.userId, data.initialTimeoutInSeconds);
-  }, [data, registerCountdown]);
+  }, [data, registerCountdown, isDone]);
 
   if (!data) return <></>;
 
