@@ -37,13 +37,9 @@ export type GeneralGameEvents = EventTemplate<
       disconnected: string[];
     };
     "game-resume": undefined;
-    canceled: {
-      reason: "start-timeout" | "disconnect-timeout" | "force-stop";
-    };
     destroy: undefined;
   },
   BasePlayer["view"],
-  | "canceled"
   | "all-player-ready"
   | "game-in-progress"
   | "game-ended"
@@ -56,7 +52,6 @@ export type GeneralGameEvents = EventTemplate<
   | "game-ended"
   | "game-halted"
   | "game-resume"
-  | "canceled"
 >;
 
 export type BaseGamePlayerEvents = OnlyPlayerEvents<GeneralGameEvents>;
@@ -112,11 +107,9 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
         "game-ended",
         "game-halted",
         "game-resume",
-        "canceled",
       ],
       serverSpecificEvents: [
         "destroy",
-        "canceled",
         "all-player-ready",
         "game-in-progress",
         "game-ended",
@@ -144,10 +137,7 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
         name: "force-game-end",
         time: this.config.forceStopInSeconds,
         timeoutEvent: () => {
-          this.emitEvent({
-            event: "canceled",
-            data: { reason: "force-stop" },
-          });
+          this.abortGame();
         },
         normal: true,
       },

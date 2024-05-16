@@ -203,16 +203,15 @@ export const lobbyTests = () =>
             await createGame();
             const lobby = getLobby();
             const listener = vi.fn();
-            lobby.on("canceled", listener);
+            lobby.on("game-aborted", listener);
 
             timer.getFirstByName("force-game-end").emitTimeout();
 
             expect(listener).toHaveBeenCalledWith({
-              data: {
-                reason: "force-stop",
-              },
+              data: undefined,
               fightId: lobby.fightId,
             });
+            expect(lobby.isAborted).toBeTruthy();
           }));
 
         it("should mark the game as aborted if no player joins the game", () =>
@@ -354,8 +353,8 @@ export const lobbyTests = () =>
             }) => {
               await startGame();
               const lobby = getLobby();
-              const cancelListener = vi.fn();
-              lobby.on("canceled", cancelListener);
+              const listener = vi.fn();
+              lobby.on("game-aborted", listener);
 
               disconnect("test_user_2");
               disconnect("test_user_1");
@@ -363,6 +362,10 @@ export const lobbyTests = () =>
 
               expect(getLobby().isAborted).toBeTruthy();
               expectNotEvenEmitted(firstListener, "game-ended");
+              expect(listener).toHaveBeenCalledWith({
+                data: undefined,
+                fightId: lobby.fightId,
+              });
             },
           ));
 
