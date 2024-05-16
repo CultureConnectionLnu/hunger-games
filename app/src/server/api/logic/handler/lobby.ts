@@ -143,35 +143,50 @@ class LobbyHandler {
     try {
       const result = await new Promise<
         | {
-            winnerId: string;
-            looserId: string;
+            type: "ended";
+            data: {
+              winnerId: string;
+              looserId: string;
+            };
           }
-        | undefined
-      >((resolve, reject) => {
+        | {
+            type: "aborted";
+          }
+        | {
+            type: "destroyed";
+          }
+      >((resolve) => {
         game.once("game-ended", (event) => {
-          resolve(event.data);
+          resolve({ type: "ended", data: event.data });
         });
-        game.once("game-aborted", () => resolve(undefined));
+        game.once("game-aborted", () => resolve({ type: "aborted" }));
         game.once("destroy", () => {
-          reject(new Error("Game destroyed before it ended"));
+          resolve({ type: "destroyed" });
         });
       });
-      const dbUpdate =
-        result === undefined
-          ? { outcome: "aborted" }
-          : { winner: result.winnerId, outcome: "completed" };
 
-      await db
-        .update(fight)
-        .set(dbUpdate)
-        .where(eq(fight.id, game.fightId))
-        .catch((error) => {
-          throw new Error("Failed to update fight", { cause: error });
-        });
-
-      if (result === undefined) {
+      if (result.type === "destroyed") {
+        // future logic that allows admins to destroy a fight, so this becomes intended behavior
+        console.log(`Fight ${game.fightId} ended before it completed`);
+        console.log(`Deleting fight`);
+        await db.delete(fight).where(eq(fight.id, game.fightId));
+      } else if (result.type === "aborted") {
+        await db
+          .update(fight)
+          .set({ outcome: "aborted" })
+          .where(eq(fight.id, game.fightId))
+          .catch((error) => {
+            throw new Error("Failed to update fight", { cause: error });
+          });
       } else {
-        const { winnerId, looserId } = result;
+        const { winnerId, looserId } = result.data;
+        await db
+          .update(fight)
+          .set({ outcome: "completed", winner: winnerId })
+          .where(eq(fight.id, game.fightId))
+          .catch((error) => {
+            throw new Error("Failed to update fight", { cause: error });
+          });
         await scoreHandler.updateScoreForFight(
           winnerId,
           looserId,
