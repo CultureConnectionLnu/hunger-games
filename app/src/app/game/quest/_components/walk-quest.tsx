@@ -40,7 +40,7 @@ export function WalkQuest({
   );
 }
 
-function kindToText(kind: Quest["kind"]) {
+export function kindToText(kind: Quest["kind"]) {
   switch (kind) {
     case "walk-1":
       return "one stop";
