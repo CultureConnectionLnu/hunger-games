@@ -178,6 +178,9 @@ class LobbyHandler {
           .catch((error) => {
             throw new Error("Failed to update fight", { cause: error });
           });
+        for (const playerId of game.playerTuple.map((x) => x.id)) {
+          await questHandler.markQuestAsLost(playerId);
+        }
       } else {
         const { winnerId, looserId } = result.data;
         await db
