@@ -153,7 +153,7 @@ class LobbyHandler {
       });
       await db
         .update(fight)
-        .set({ winner: winnerId })
+        .set({ winner: winnerId, outcome: "completed" })
         .where(eq(fight.id, game.fightId))
         .catch((error) => {
           throw new Error("Failed to update fight", { cause: error });
