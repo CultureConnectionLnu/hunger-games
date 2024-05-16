@@ -45,7 +45,7 @@ class LobbyHandler {
       .select()
       .from(fight)
       .leftJoin(usersToFight, eq(fight.id, usersToFight.fightId))
-      .where(and(isNull(fight.winner), eq(usersToFight.userId, userId)))
+      .where(and(isNull(fight.outcome), eq(usersToFight.userId, userId)))
       .execute();
 
     if (existingFight.length === 0) {

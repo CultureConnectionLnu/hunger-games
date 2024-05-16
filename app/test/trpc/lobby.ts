@@ -42,7 +42,18 @@ export const lobbyTests = () =>
           expect(result).toHaveProperty("success", true);
         }));
 
-      it("should not consider aborted matches");
+      it("should not consider aborted matches", () =>
+        testFight(async ({ callers, createGame, getLobby, timer }) => {
+          await createGame();
+
+          timer.getFirstByName("start-timer").emitTimeout();
+          await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+          const result =
+            await callers.test_user_1.lobby.currentFight(undefined);
+
+          expect(result).toEqual({ success: false });
+        }));
     });
 
     describe("onFightUpdate", () => {
