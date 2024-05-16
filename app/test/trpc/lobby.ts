@@ -386,7 +386,7 @@ export const lobbyTests = () =>
     });
 
     describe("Data", () => {
-      it("should write to database the winner", () =>
+      it("should write to database the winner and completed state", () =>
         testFight(async ({ startGame, getLobby }) => {
           await startGame();
           getLobby().endGame("test_user_1", "test_user_2");
@@ -400,6 +400,24 @@ export const lobbyTests = () =>
           expect(dbEntry).toMatchObject({
             outcome: "completed",
             winner: "test_user_1",
+          });
+        }));
+
+      it("should wirte to db that game was aborted", () =>
+        testFight(async ({ createGame, getLobby, timer }) => {
+          await createGame();
+
+          timer.getFirstByName("start-timer").emitTimeout();
+          const fightId = getLobby().fightId;
+          await new Promise((resolve) => getLobby().on("destroy", resolve));
+
+          const dbEntry = await db.query.fight.findFirst({
+            where: ({ id }, { eq }) => eq(id, fightId),
+          });
+
+          expect(dbEntry).toMatchObject({
+            outcome: "aborted",
+            winner: null,
           });
         }));
     });

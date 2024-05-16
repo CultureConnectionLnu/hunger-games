@@ -9,6 +9,7 @@ import { scoreHandler } from "./score";
 import { getHandler } from "./base";
 import { gameStateHandler } from "./game-state";
 import { OMGame } from "../games/om";
+import { resolve } from "path";
 
 /**
  * insert a new entry for each game added
@@ -140,28 +141,45 @@ class LobbyHandler {
 
   private async registerEndListener(game: BaseGame) {
     try {
-      const { winnerId, looserId } = await new Promise<{
-        winnerId: string;
-        looserId: string;
-      }>((resolve, reject) => {
+      const result = await new Promise<
+        | {
+            winnerId: string;
+            looserId: string;
+          }
+        | undefined
+      >((resolve, reject) => {
         game.once("game-ended", (event) => {
           resolve(event.data);
         });
+        game.once("game-aborted", () => resolve(undefined));
         game.once("destroy", () => {
           reject(new Error("Game destroyed before it ended"));
         });
       });
+      const dbUpdate =
+        result === undefined
+          ? { outcome: "aborted" }
+          : { winner: result.winnerId, outcome: "completed" };
+
       await db
         .update(fight)
-        .set({ winner: winnerId, outcome: "completed" })
+        .set(dbUpdate)
         .where(eq(fight.id, game.fightId))
         .catch((error) => {
           throw new Error("Failed to update fight", { cause: error });
         });
 
-      await scoreHandler.updateScoreForFight(winnerId, looserId, game.fightId);
-      await questHandler.markQuestAsLost(looserId);
-      await gameStateHandler.markPlayerAsWounded(looserId);
+      if (result === undefined) {
+      } else {
+        const { winnerId, looserId } = result;
+        await scoreHandler.updateScoreForFight(
+          winnerId,
+          looserId,
+          game.fightId,
+        );
+        await questHandler.markQuestAsLost(looserId);
+        await gameStateHandler.markPlayerAsWounded(looserId);
+      }
     } catch (error) {
       console.log("Game completed with an error", error);
     }
