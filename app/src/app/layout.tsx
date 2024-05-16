@@ -5,13 +5,13 @@ import { Inter } from "next/font/google";
 
 import { Toaster } from "~/components/ui/toaster";
 import { TRPCReactProvider } from "~/trpc/react";
-import ClientHeader from "./_components/client-header";
 import FightProvider from "./_feature/auto-join-game/fight-provider";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import { RolesProvider } from "./_feature/auth/role-check";
 import { CountdownProvider } from "./_feature/timer/countdown-provider";
 import JoinRunningGame from "./_components/join-running-fight";
 import { ShowWoundedState } from "./_components/show-wounded-state";
+import Header from "./_components/header";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -38,7 +38,7 @@ export default function RootLayout({
               <CountdownProvider>
                 <FightProvider>
                   <TooltipProvider>
-                    <ClientHeader />
+                    <Header />
                     <JoinRunningGame />
                     <ShowWoundedState />
                     <div
