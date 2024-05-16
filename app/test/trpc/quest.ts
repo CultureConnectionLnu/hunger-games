@@ -93,7 +93,7 @@ export const questTests = () =>
       }));
 
     describe("player", () => {
-      it("should loose a quest upon loosing a fight", () =>
+      it("should lose a quest upon loosing a fight", () =>
         testQuest(async ({ player, moderator, playGame }) => {
           await moderator.assignQuest(
             "test_moderator_1",
@@ -106,7 +106,7 @@ export const questTests = () =>
           expect(quest).toBeUndefined();
         }));
 
-      it("should loose a quest upon aborting a fight", () =>
+      it("should lose a quest upon aborting a fight", () =>
         testQuest(async ({ player, moderator, abortGame }) => {
           await moderator.assignQuest(
             "test_moderator_1",
@@ -397,9 +397,9 @@ async function setupTest() {
 
   const playGame = async (winner: `test_user_${1 | 2}`) => {
     const id = await startGame();
-    const looser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
+    const loser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
     const fight = lobbyHandler.getFight(id)!;
-    fight.lobby.endGame(winner, looser);
+    fight.lobby.endGame(winner, loser);
     await fight.gameDone;
   };
 

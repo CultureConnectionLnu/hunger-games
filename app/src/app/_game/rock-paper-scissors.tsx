@@ -84,7 +84,7 @@ function ViewContainer({
       const titleMap = {
         win: "You won",
         draw: "Draw",
-        loose: "You lost",
+        lose: "You lost",
       } as const;
       return (
         <ShowResult
@@ -104,7 +104,7 @@ function ShowResult({
     title: string;
     anotherRound: boolean;
     wins: number;
-    looses: number;
+    loses: number;
     yourName: string;
     opponentName: string;
   };
@@ -121,7 +121,7 @@ function ShowResult({
       <div className="flex w-full justify-between">
         <div>{params.yourName}</div>
         <div>
-          {params.wins} - {params.looses}
+          {params.wins} - {params.loses}
         </div>
         <div>{params.opponentName}</div>
       </div>

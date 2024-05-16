@@ -39,10 +39,10 @@ export type RockPaperScissorsEvents = EventTemplate<
       doneChoosing: string[];
     };
     "show-result": {
-      outcome: "draw" | "win" | "loose";
+      outcome: "draw" | "win" | "lose";
       anotherRound: boolean;
       wins: number;
-      looses: number;
+      loses: number;
       yourName: string;
       opponentName: string;
     };
@@ -117,7 +117,7 @@ export class RpsGame
   private readonly players = new Map<string, RpsPlayer>();
   private timerHandler;
   private winners: string[] = [];
-  private endGame?: (winnerId: string, looserId: string) => void;
+  private endGame?: (winnerId: string, loserId: string) => void;
   private readonly config: RockPaperScissorsConfig = rockPaperScissorsConfig;
 
   private get hasStarted() {
@@ -185,7 +185,7 @@ export class RpsGame
     this.removeAllListeners();
   }
 
-  startGame(endGame: (winnerId: string, looserId: string) => void): void {
+  startGame(endGame: (winnerId: string, loserId: string) => void): void {
     this.endGame = endGame;
     this.startChoose();
   }
@@ -253,10 +253,10 @@ export class RpsGame
     }
   }
 
-  private getWinLooseRate(playerId: string) {
+  private getWinLoseRate(playerId: string) {
     const wins = this.winners.filter((winner) => winner === playerId).length;
-    const looses = this.winners.length - wins;
-    return { wins, looses };
+    const loses = this.winners.length - wins;
+    return { wins, loses };
   }
 
   private evaluateState() {
@@ -285,7 +285,7 @@ export class RpsGame
               anotherRound: true,
               yourName: name,
               opponentName: opponent,
-              ...this.getWinLooseRate(id),
+              ...this.getWinLoseRate(id),
             },
           },
           id,
@@ -302,11 +302,11 @@ export class RpsGame
         {
           event: "show-result",
           data: {
-            outcome: id === result.winner ? "win" : "loose",
+            outcome: id === result.winner ? "win" : "lose",
             anotherRound: !overAllWinner,
             yourName: name,
             opponentName: opponent,
-            ...this.getWinLooseRate(id),
+            ...this.getWinLoseRate(id),
           },
         },
         id,
@@ -347,14 +347,14 @@ export class RpsGame
     ) {
       return {
         winner: undefined,
-        looser: undefined,
+        loser: undefined,
         draw: true,
       } as const;
     }
     if (firstPlayer.selectedItem === undefined) {
       return {
         winner: secondPlayer.id,
-        looser: firstPlayer.id,
+        loser: firstPlayer.id,
         draw: false,
       } as const;
     }
@@ -362,7 +362,7 @@ export class RpsGame
     if (secondPlayer.selectedItem === undefined) {
       return {
         winner: firstPlayer.id,
-        looser: secondPlayer.id,
+        loser: secondPlayer.id,
         draw: false,
       } as const;
     }
@@ -370,7 +370,7 @@ export class RpsGame
     if (firstPlayer.selectedItem === secondPlayer.selectedItem) {
       return {
         winner: null,
-        looser: null,
+        loser: null,
         draw: true,
       } as const;
     }
@@ -382,7 +382,7 @@ export class RpsGame
     if (firstPlayerBeats.includes(secondPlayer.selectedItem)) {
       return {
         winner: firstPlayer.id,
-        looser: secondPlayer.id,
+        loser: secondPlayer.id,
         draw: false,
       } as const;
     }
@@ -394,14 +394,14 @@ export class RpsGame
     if (secondPlayerBeats.includes(firstPlayer.selectedItem)) {
       return {
         winner: secondPlayer.id,
-        looser: firstPlayer.id,
+        loser: firstPlayer.id,
         draw: false,
       } as const;
     }
 
     return {
       winner: null,
-      looser: null,
+      loser: null,
       draw: true,
     } as const;
   }

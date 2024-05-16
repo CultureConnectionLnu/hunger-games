@@ -30,7 +30,7 @@ export type GeneralGameEvents = EventTemplate<
     "game-in-progress": undefined;
     "game-ended": {
       winnerId: string;
-      looserId: string;
+      loserId: string;
     };
     "game-aborted": undefined;
     "game-halted": {
@@ -61,7 +61,7 @@ type GameState = "none" | "initialized" | "running" | "ended" | "aborted";
 export type SpecificGame = {
   pauseGame: () => void;
   resumeGame: () => void;
-  startGame: (endGame: (winnerId: string, looserId: string) => void) => void;
+  startGame: (endGame: (winnerId: string, loserId: string) => void) => void;
   cleanup: () => void;
 };
 
@@ -182,17 +182,17 @@ export class BaseGame extends GenericEventEmitter<GeneralGameEvents> {
     return this.players.get(id);
   }
 
-  endGame(winnerId: string, looserId: string) {
+  endGame(winnerId: string, loserId: string) {
     this.state = "ended";
     this.assertPlayer(winnerId);
-    this.assertPlayer(looserId);
+    this.assertPlayer(loserId);
 
     this.players.forEach((x) => x.gameEnd());
     this.emitEvent({
       event: "game-ended",
       data: {
         winnerId,
-        looserId,
+        loserId: loserId,
       },
     });
   }

@@ -219,7 +219,7 @@ export const lobbyRouter = createTRPCRouter({
         id: z.string(),
       }),
     )
-    .subscription(({ ctx, input }) => {
+    .subscription(({ input }) => {
       type Messages = JoinMessage | EndMessage;
       return observable<Messages>((emit) => {
         function onMessage(data: Messages) {

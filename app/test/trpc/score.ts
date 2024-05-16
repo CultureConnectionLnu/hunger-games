@@ -33,7 +33,7 @@ export const scoreTests = () =>
           expect(board).toEqual([]);
         }));
 
-      it("winner should be ahead of looser in the dashboard", () =>
+      it("winner should be ahead of loser in the dashboard", () =>
         testFight(async ({ playGame, getUserFromDashboard }) => {
           await playGame("test_user_1");
           const user1 = await getUserFromDashboard("test_user_1");
@@ -82,7 +82,7 @@ export const scoreTests = () =>
             );
           }));
 
-        it(`should score the very first looser with 0 points`, () =>
+        it(`should score the very first loser with 0 points`, () =>
           testFight(async ({ playGame, getHistory }) => {
             await playGame("test_user_1");
             const [firstGame] = await getHistory("test_user_2");
@@ -146,11 +146,11 @@ export const scoreTests = () =>
 
           expect(entry).toEqual({
             winnerScore: 100,
-            looserScore: 0,
+            loserScore: 0,
             youWon: true,
             game: "rock-paper-scissors",
             winnerName: "Test User 1",
-            looserName: "Test User 2",
+            loserName: "Test User 2",
           });
         }));
     });
@@ -193,9 +193,9 @@ async function setupTest() {
     const { id } = await callers.test_user_1.lobby.create({
       opponent: `test_user_2`,
     });
-    const looser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
+    const loser = winner === "test_user_1" ? "test_user_2" : "test_user_1";
     const fight = lobbyHandler.getFight(id)!;
-    fight.lobby.endGame(winner, looser);
+    fight.lobby.endGame(winner, loser);
     await fight.gameDone;
     state.allFightIds.push(id);
     await resetWoundedPlayers();

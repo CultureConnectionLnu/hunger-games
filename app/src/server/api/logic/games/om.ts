@@ -136,7 +136,7 @@ export class OMGame
   private currentPattern: PatternEntry[] = [];
   public disableRandom = false;
   public shouldNotIncrease = false;
-  private endGame?: (winnerId: string, looserId: string) => void;
+  private endGame?: (winnerId: string, loserId: string) => void;
   private readonly config: OrderedMemoryConfig = orderedMemoryConfig;
 
   private get hasStarted() {
@@ -212,7 +212,7 @@ export class OMGame
     this.removeAllListeners();
   }
 
-  startGame(endGame: (winnerId: string, looserId: string) => void): void {
+  startGame(endGame: (winnerId: string, loserId: string) => void): void {
     this.endGame = endGame;
     this.showPattern();
   }
@@ -401,7 +401,7 @@ export class OMGame
       this.shouldNotIncrease = true;
       return {
         winner: undefined,
-        looser: undefined,
+        loser: undefined,
         draw: true,
       } as const;
     }
@@ -409,7 +409,7 @@ export class OMGame
     if (!firstPlayerDone) {
       return {
         winner: firstPlayer.id,
-        looser: secondPlayer.id,
+        loser: secondPlayer.id,
         draw: false,
       } as const;
     }
@@ -417,7 +417,7 @@ export class OMGame
     if (!secondPlayerDone) {
       return {
         winner: secondPlayer.id,
-        looser: firstPlayer.id,
+        loser: firstPlayer.id,
         draw: false,
       } as const;
     }
@@ -441,7 +441,7 @@ export class OMGame
     ) {
       return {
         winner: undefined,
-        looser: undefined,
+        loser: undefined,
         draw: true,
       } as const;
     }
@@ -449,14 +449,14 @@ export class OMGame
     if (firstPlayerMadeMistake) {
       return {
         winner: secondPlayer.id,
-        looser: firstPlayer.id,
+        loser: firstPlayer.id,
         draw: false,
       } as const;
     }
 
     return {
       winner: firstPlayer.id,
-      looser: secondPlayer.id,
+      loser: secondPlayer.id,
       draw: false,
     } as const;
   }

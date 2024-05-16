@@ -51,7 +51,7 @@ export function FightHistory({
           <TableRow key={fight.fightId} onClick={() => fightId(fight.fightId)}>
             <TableCell>{gameNameMap[fight.game]}</TableCell>
             <TableCell>
-              {fight.abandoned ? "Abandoned" : fight.youWon ? "Win" : "Loose"}
+              {fight.abandoned ? "Abandoned" : fight.youWon ? "Win" : "Lose"}
             </TableCell>
             <TableCell className="text-right">
               {fight.scoreEntry
