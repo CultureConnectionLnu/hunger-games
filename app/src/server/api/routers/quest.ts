@@ -89,25 +89,7 @@ export const questRouter = createTRPCRouter({
       const quests = await questHandler.getAllQuestsFromPlayer(
         ctx.user.clerkId,
       );
-      return quests
-        .filter(questHandler.isWalkQuest.bind({}))
-        .map(
-          ({
-            id,
-            userId,
-            outcome,
-            kind,
-            createdAt,
-            additionalInformation,
-          }) => ({
-            id,
-            userId,
-            outcome,
-            kind,
-            createdAt,
-            additionalInformation,
-          }),
-        );
+      return quests;
     }),
   ),
 
