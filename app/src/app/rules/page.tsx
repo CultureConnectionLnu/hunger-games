@@ -29,17 +29,13 @@ export default function RulesPage() {
       <h1 className="text-center text-2xl font-semibold leading-none tracking-tight">
         Rules
       </h1>
+      <Image src={imageSizeConfig === "small" ? smallMap : bigMap} alt="Map" />
       <Listing
         params={{
           times: {
             title: "Times",
             description: <TimesDetail />,
           },
-        }}
-      />
-      <Image src={imageSizeConfig === "small" ? smallMap : bigMap} alt="Map" />
-      <Listing
-        params={{
           "map-details": {
             title: "Map Details",
             description: <MapDetails />,
@@ -111,9 +107,17 @@ export default function RulesPage() {
 function TimesDetail() {
   return (
     <div>
+      <p className="pb-4">
+        The game is played by
+        <span className="font-bold"> Swedish time (GMT+2).</span>
+      </p>
+      <p className="pb-4">All events start at 12:00 and end at 17:00.</p>
+      <p className="pb-4">
+        The event will contain 2 rounds of the game, possibly 3.
+      </p>
       <p>
-        The game is played in real-time. The game starts at 12:00 and ends at
-        16:00.
+        One round will take <span className="font-bold">1 hour</span> from its
+        start.
       </p>
     </div>
   );
@@ -122,12 +126,12 @@ function TimesDetail() {
 function MapDetails() {
   return (
     <div>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Map Distribution: </span>
         Provide each player with a digital map showing the boundaries and key
         locations through the app.
       </p>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Boundaries: </span>
         Players must hide within the defined boundaries but can temporarily
         enter outside boundaries if being chased. Returning to the game area
@@ -140,12 +144,12 @@ function MapDetails() {
 function HubDetails() {
   return (
     <div>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Map Distribution: </span>
         Provide each player with a digital map showing the boundaries and key
         locations through the app.
       </p>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Boundaries: </span>
         Players must hide within the defined boundaries but can temporarily
         enter outside boundaries if being chased. Returning to the game area
@@ -158,7 +162,7 @@ function HubDetails() {
 function CatchPlayerDetails() {
   return (
     <div>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Caught Players: </span>Tagged players are
         considered active in the game by scanning a unique QR code and being
         directed to a mini-game. The loser of the mini-game is considered
@@ -171,16 +175,16 @@ function CatchPlayerDetails() {
 function PhysicalQuestDetails() {
   return (
     <div>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Quests: </span>Quests are available to all
         players and involve reaching certain locations on the map (hubs).
       </p>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Quest Points: </span>Assign points to each
         quest. Players earn points for completing quests. If a player is tagged
         during a quest and loses the mini-game, the quest gets canceled.
       </p>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Quest Locations (Hubs): </span>Mark key
         locations on the map where quests can be given and completed. These hubs
         are not safe zones.
@@ -192,7 +196,7 @@ function PhysicalQuestDetails() {
 function RockPaperScissorsDetails() {
   return (
     <div>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Rock-Paper-Scissors: </span>Classic game
         where rock beats scissors, scissors beat paper, and paper beats rock.
       </p>
@@ -204,7 +208,7 @@ function RockPaperScissorsDetails() {
 function OrderedMemoryDetails() {
   return (
     <div>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Memory Game: </span>Players need to press
         lighted boxes in a numbered sequence.
       </p>
@@ -216,7 +220,7 @@ function OrderedMemoryDetails() {
 function TypingDetails() {
   return (
     <div>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Fast Typer: </span>Players must type a given
         text as fast as possible. Each mistake removes one-second to their time.
       </p>
@@ -228,7 +232,7 @@ function TypingDetails() {
 function AppQuestDetails() {
   return (
     <div>
-      <p>
+      <p className="pb-4">
         This quest can be assigned in one of the hubs, and the moderator of the
         hub can give you a choice of how many hubs you need to visit.
       </p>
@@ -249,12 +253,12 @@ function AppQuestDetails() {
 function ScoringDetails() {
   return (
     <div>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Score Tracking: </span>The app tracks
         scores. Points are awarded for completing quests and by winning
         (injuring) against other players.
       </p>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Bonus Points: </span>Extra points are
         awarded to players who never (died) in the game or had the most quest
         completions and mini-game wins.
@@ -271,12 +275,12 @@ function ScoringDetails() {
 function WoundedDetails() {
   return (
     <div>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Injury and Hospital: </span>If a player is
         tagged and loses the mini-game, they are considered injured and must go
         to the main hospital to revive.
       </p>
-      <p>
+      <p className="pb-4">
         <span className="font-bold">Revival/Healing: </span>At the main
         hospital, injured players can revive by a doctor (moderator) by scanning
         the player unique QR code. The player must wait 2 minutes and then
