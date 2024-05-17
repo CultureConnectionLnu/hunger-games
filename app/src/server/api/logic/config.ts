@@ -27,7 +27,7 @@ export const fightScoringConfig = {
 export const questScoringConfig = {
   "walk-1": 100,
   "walk-2": 300,
-  "walk-3": 900,
+  "walk-3": 600,
 } satisfies Record<QuestKind, number>;
 
 export const playerStateConfig = {
