@@ -138,7 +138,12 @@ export const hubUserRelation = relations(hub, ({ one }) => ({
   }),
 }));
 
-export const questKind = pgEnum("quest_kind", ["walk-1", "walk-2", "walk-3", "assign"]);
+export const questKind = pgEnum("quest_kind", [
+  "walk-1",
+  "walk-2",
+  "walk-3",
+  "assign",
+]);
 export const questOutcome = pgEnum("quest_outcome", [
   "completed",
   "lost-in-battle",
@@ -185,3 +190,9 @@ export const questPlayerStateRelations = relations(
     }),
   }),
 );
+
+export const gameConfig = createTable("game_config", {
+  name: varchar("name", { length: 255 }).primaryKey().notNull(),
+  enabled: boolean("enabled").default(false).notNull(),
+  ...metadata,
+});

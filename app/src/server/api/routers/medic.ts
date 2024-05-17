@@ -8,6 +8,7 @@ import {
   medicProcedure,
   publicProcedure,
 } from "../trpc";
+import { gameConfigHandler } from "../logic/handler/game-config";
 
 type WoundedPlayer = Awaited<
   ReturnType<(typeof gameStateHandler)["getWoundedPlayer"]>
@@ -43,6 +44,7 @@ export const medicRouter = createTRPCRouter({
     )
     .mutation(({ input }) =>
       errorBoundary(async () => {
+        await gameConfigHandler.assertGameEnabled();
         const { success, error } = await gameStateHandler.startRevivingPlayer(
           input.playerId,
         );
@@ -67,6 +69,7 @@ export const medicRouter = createTRPCRouter({
     )
     .mutation(({ input }) =>
       errorBoundary(async () => {
+        await gameConfigHandler.assertGameEnabled();
         const { success, error } = await gameStateHandler.finishRevivingPlayer(
           input.playerId,
         );
