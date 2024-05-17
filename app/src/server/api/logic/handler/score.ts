@@ -4,7 +4,7 @@ import { fight, score, usersToFight } from "~/server/db/schema";
 import { fightScoringConfig, questScoringConfig } from "../config";
 import { getHandler } from "./base";
 import { type KnownGames } from "./lobby";
-import { type QuestKind } from "./quest";
+import { type WalkQuestKind, type QuestKind } from "./quest";
 
 type FightEntry =
   | {
@@ -69,16 +69,29 @@ class ScoreHandler {
     }
   }
 
-  public async updateScoreForQuest(
+  public async updateScoreForWalkQuest(
     tx: DB,
     userId: string,
     questId: string,
-    questKind: QuestKind,
+    questKind: WalkQuestKind,
   ) {
     const questScore = questScoringConfig[questKind];
     return tx.insert(score).values({
       questId,
       score: questScore,
+      userId,
+    });
+  }
+
+  public async updateScoreForAssignQuest(
+    tx: DB,
+    userId: string,
+    questId: string,
+    points: number,
+  ) {
+    return tx.insert(score).values({
+      questId,
+      score: points,
       userId,
     });
   }

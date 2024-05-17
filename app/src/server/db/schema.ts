@@ -138,7 +138,7 @@ export const hubUserRelation = relations(hub, ({ one }) => ({
   }),
 }));
 
-export const questKind = pgEnum("quest_kind", ["walk-1", "walk-2", "walk-3"]);
+export const questKind = pgEnum("quest_kind", ["walk-1", "walk-2", "walk-3", "assign"]);
 export const questOutcome = pgEnum("quest_outcome", [
   "completed",
   "lost-in-battle",

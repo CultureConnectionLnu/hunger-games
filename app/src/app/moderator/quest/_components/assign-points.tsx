@@ -1,3 +1,4 @@
+import { on } from "events";
 import { useRef, useState } from "react";
 import {
   AlertDialog,
@@ -19,6 +20,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { toast } from "~/components/ui/use-toast";
 import { api } from "~/trpc/react";
 
 const buttonValues = [100, 200, 300];
@@ -34,6 +36,19 @@ export function AssignPoints({
     id: params.userId,
   });
   const [value, setValue] = useState<number>(0);
+
+  const assignPoints = api.quest.assignPoints.useMutation({
+    onSuccess: () =>
+      toast({
+        title: "Successfully assigned points to player",
+      }),
+    onError: (error) =>
+      toast({
+        title: "Failed to assign points to player",
+        description: error.message,
+        variant: "destructive",
+      }),
+  });
 
   const closeButton = (
     <Button variant="outline" onClick={onClose}>
@@ -84,7 +99,9 @@ export function AssignPoints({
       <DialogFooter className="flex flex-row justify-between">
         <AssignConformation
           params={{ value }}
-          onClick={(x) => console.log(x)}
+          onClick={(x) =>
+            assignPoints.mutate({ playerId: params.userId, points: x })
+          }
         />
         {closeButton}
       </DialogFooter>

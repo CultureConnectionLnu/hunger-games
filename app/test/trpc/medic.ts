@@ -4,7 +4,7 @@ import { playerStateConfig } from "~/server/api/logic/config";
 import {
   lobbyHandler,
   questHandler,
-  type QuestKind,
+  type WalkQuestKind
 } from "~/server/api/logic/handler";
 import { gameStateHandler } from "~/server/api/logic/handler/game-state";
 import {
@@ -280,7 +280,7 @@ async function setupTest() {
 
   const startQuest = async (
     userId: `test_user_${1 | 2}`,
-    questKind: QuestKind,
+    questKind: WalkQuestKind,
   ) => {
     questHandler.defineNextHubsUsedForWalkQuest(
       getHubData()

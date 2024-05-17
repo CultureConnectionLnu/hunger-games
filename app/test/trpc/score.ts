@@ -5,6 +5,7 @@ import {
   questScoringConfig,
 } from "~/server/api/logic/config";
 import {
+  type WalkQuestKind,
   lobbyHandler,
   questHandler,
   type QuestKind,
@@ -103,7 +104,7 @@ export const scoreTests = () =>
 
       describe("quests", () => {
         Object.keys(questScoringConfig).forEach((kind) => {
-          const questKind = kind as QuestKind;
+          const questKind = kind as WalkQuestKind;
           it(`should score ${questScoringConfig[questKind]} points for completing a ${questKind} quest`, () =>
             testFight(async ({ completeQuest, getHistory }) => {
               await completeQuest("test_user_1", questKind);
@@ -204,7 +205,7 @@ async function setupTest() {
 
   const startQuest = async (
     userId: `test_user_${1 | 2}`,
-    questKind: QuestKind,
+    questKind: WalkQuestKind,
   ) => {
     questHandler.defineNextHubsUsedForWalkQuest(
       getHubData()
@@ -222,7 +223,7 @@ async function setupTest() {
 
   const completeQuest = async (
     userId: `test_user_${1 | 2}`,
-    questKind: QuestKind,
+    questKind: WalkQuestKind,
   ) => {
     await startQuest(userId, questKind);
     await callers.test_moderator_2.quest.markHubAsVisited({
