@@ -22,7 +22,7 @@ import { Label } from "~/components/ui/label";
 import { toast } from "~/components/ui/use-toast";
 import { api } from "~/trpc/react";
 
-const buttonValues = [100, 200, 300];
+const buttonValues = [50, 100, 200];
 
 export function AssignPoints({
   params,
