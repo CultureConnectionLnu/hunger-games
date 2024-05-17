@@ -38,24 +38,14 @@ const typingProcedure = inFightProcedure.use(({ ctx, next }) => {
 });
 
 export const typingRouter = createTRPCRouter({
-  //   choose: typingProcedure // we will get back to
-  //     .input(rockPaperScissorsItemsSchema)
-  //     .mutation(({ ctx, input }) => {
-  //       catchMatchError(() => {
-  //         ctx.currentGame.playerChoose(ctx.user.clerkId, input);
-  //       });
-  //       return true;
-  //     }),
-
-  typingCharacterInput: typingProcedure
+  reportStatus: typingProcedure
     .input(
       z.object({
-        char: z.string().min(1),
+        text: z.string(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      //   await new Promise((resolve) => setTimeout(resolve, 500));
-      ctx.currentGame.typeCharacter(input.char, ctx.user.clerkId);
+      ctx.currentGame.playerReportStats(ctx.user.clerkId, input.text);
       return true;
     }),
 

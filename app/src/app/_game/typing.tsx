@@ -7,43 +7,101 @@ import {
   useCountdown,
   useCountdownConfig,
 } from "../_feature/timer/countdown-provider";
-import { GameCard } from "./base";
+import { GameCard, GameContentLoading } from "./base";
+import { useTimers } from "../_feature/timer/timer-provider";
+import { api } from "~/trpc/react";
 
 type ServerEvent =
   RouterOutputs["typing"]["onAction"] extends Observable<infer R, never>
     ? R
     : never;
+type View = ServerEvent["view"];
+
+type GetSpecificEvent<T, Event extends ServerEvent["event"]> = T extends {
+  event: Event;
+}
+  ? T
+  : never;
+type ResultEvent = GetSpecificEvent<ServerEvent, "show-result">;
 
 export default function TypingGame({
   params,
 }: {
   params: { fightId: string; userId: string };
 }) {
-  // api.typing.onAction.useSubscription(params, {
-  //   onData: (data) => {
-  //     setLastEvent(data);
-  //   },
-  // });
-  const text = "The quick brown fox jumps over the lazy dog";
+  const { handleEvent } = useTimers();
+  const [view, setView] = useState<View>("none");
+  const [lastEvent, setLastEvent] = useState<ServerEvent>();
+
+  api.typing.onAction.useSubscription(params, {
+    onData: (data) => {
+      switch (data.event) {
+        case "typing-timer":
+          return handleEvent(data.event, data.data, "Typing timeout");
+        case "next-round-timer":
+          return handleEvent(data.event, data.data, "Next round timeout");
+        default:
+          setLastEvent(data);
+          setView(data.view);
+      }
+    },
+  });
+  if (!lastEvent) return <GameContentLoading />;
 
   return (
-    <GameCard header={<CardTitle>Type as fast as you can</CardTitle>}>
-      <TypingSpeedTestGame text={text} availableTime={60} />
-    </GameCard>
+    <ViewContainer
+      params={{
+        view,
+        lastEvent,
+      }}
+    />
   );
 }
 
-function TypingSpeedTestGame({
-  text,
-  availableTime,
+function ViewContainer({
+  params,
 }: {
-  text: string;
-  availableTime: number;
+  params: {
+    view: View;
+    lastEvent: ServerEvent;
+  };
 }) {
+  const [text, setText] = useState("");
+  switch (params.view) {
+    case "none":
+      return <></>;
+    case "enable-typing":
+    case "typing":
+      if (params.lastEvent.event === "provide-text") {
+        setText(params.lastEvent.data.text);
+      }
+      return <TypingSpeedTestGame text={text} />;
+    case "waiting-for-opponent":
+      return <WaitForOpponentToFinish />;
+    case "show-result":
+      if (params.lastEvent.event === "show-result") {
+        <ShowResult
+          params={{
+            ...params.lastEvent.data,
+          }}
+        />;
+      }
+      console.error("Invalid data for view. Expected 'show-result'", params);
+      return (
+        <ShowResult
+          params={{
+            yourName: "You",
+            opponentName: "Opponent",
+          }}
+        />
+      );
+  }
+}
+
+function TypingSpeedTestGame({ text }: { text: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [metrics, setMetrics] = useState({
     timerStarted: false,
-    availableTime,
     mistakes: 0,
     wordsPerMinute: 0,
     charactersPerMinute: 0,
@@ -57,8 +115,8 @@ function TypingSpeedTestGame({
     })),
   );
   const [textState, setTextState] = useState(emptyState);
-  const { isDone, seconds } = useCountdown("typing-game");
-  const { registerCountdown } = useCountdownConfig();
+  const reportStatus = api.typing.reportStatus.useMutation();
+
   useEffect(() => {
     const handleKeyDown = () => {
       inputRef.current && inputRef.current.focus();
@@ -72,12 +130,16 @@ function TypingSpeedTestGame({
   }, []);
 
   function initTyping() {
-    if (!inputRef.current || isDone) return;
+    if (!inputRef.current) return;
     const currentText = inputRef.current.value;
     if (currentText.length > emptyState.length) {
       inputRef.current.value = currentText.slice(0, emptyState.length);
       return;
     }
+
+    reportStatus.mutate({
+      text: currentText,
+    });
 
     const newMetrics = {
       ...metrics,
@@ -85,10 +147,6 @@ function TypingSpeedTestGame({
       wordsPerMinute: 0,
       charactersPerMinute: 0,
     };
-    if (!metrics.timerStarted) {
-      registerCountdown("typing-game", availableTime);
-      newMetrics.timerStarted = true;
-    }
 
     const newState: typeof emptyState = [];
     for (let index = 0; index < currentText.length; index++) {
@@ -130,11 +188,6 @@ function initTimer() {
     if (newState.length === emptyState.length) {
       setTextState(newState);
       // todo: send this information to the server
-      console.log("done typing", {
-        mistakes: newMetrics.mistakes,
-        secondsLeft: seconds ?? availableTime,
-        secondsPassed: availableTime - (seconds ?? availableTime),
-      });
       return;
     }
 
@@ -152,7 +205,7 @@ function initTimer() {
   }
 
   return (
-    <div>
+    <GameCard header={<CardTitle>Type as fast as you can</CardTitle>}>
       <input
         max={emptyState.length}
         ref={inputRef}
@@ -166,10 +219,7 @@ function initTimer() {
         </div>
         <div className="grid grid-cols-2 grid-rows-2 py-4">
           <div className="relative flex h-6 list-none items-center">
-            <Entry
-              text="Time Left:"
-              number={String(seconds ?? availableTime)}
-            />
+            <Entry text="Time Left:" number={"0"} />
           </div>
           <div className="relative flex h-6 list-none items-center justify-end">
             <Entry text="Mistakes:" number={String(metrics.mistakes)} />
@@ -182,7 +232,7 @@ function initTimer() {
           </div>
         </div>
       </div>
-    </div>
+    </GameCard>
   );
 }
 
@@ -225,5 +275,34 @@ function TextArea({
         </span>
       ))}
     </p>
+  );
+}
+
+function WaitForOpponentToFinish() {
+  return <GameCard header={<CardTitle>Waiting for opponent</CardTitle>} />;
+}
+
+function ShowResult({
+  params,
+}: {
+  params: {
+    yourName: string;
+    opponentName: string;
+  };
+}) {
+  return (
+    <GameCard
+      header={
+        <>
+          <CardTitle>Draw</CardTitle>
+        </>
+      }
+      footer="Next round coming up"
+    >
+      <div className="space-between flex w-full">
+        <div>{params.yourName}</div>
+        <div>{params.opponentName}</div>
+      </div>
+    </GameCard>
   );
 }

@@ -9,9 +9,12 @@ import type {
   UnspecificPlayerEventData,
 } from "../core/types";
 import { typingConfig } from "../config";
+import { typingTexts } from "./typing-texts";
 
 export type TypingConfig = {
   writingTimeInSeconds: number;
+  nextRoundTimeInSeconds: number;
+  timePenaltyPerMistakeInSeconds: number;
 };
 
 export type TypingEvents = EventTemplate<
@@ -19,29 +22,40 @@ export type TypingEvents = EventTemplate<
     "provide-text": {
       text: string;
     };
-    "end-typing": undefined;
+    "show-waiting": undefined;
     "show-result": {
-      outcome: "win" | "loose" | "draw";
+      outcome: "draw";
       yourName: string;
       opponentName: string;
     };
     "typing-timer": TimerEvent;
+    "next-round-timer": TimerEvent;
     destroy: undefined;
   },
   TypingPlayer["view"],
   "destroy",
-  "provide-text" | "end-typing" | "show-result" | "typing-timer"
+  | "provide-text"
+  | "show-result"
+  | "typing-timer"
+  | "show-waiting"
+  | "next-round-timer"
 >;
 
 class TypingPlayer extends GenericEventEmitter<{
-  reportStates: { mistakes: number; time: number };
+  "finish-typing": { id: string };
 }> {
-  private _view: "none" | "typing" | "waiting-for-opponent" | "show-result" =
-    "none"; // Currently displayed screen for the player
+  private _view:
+    | "none"
+    | "enable-typing"
+    | "typing"
+    | "waiting-for-opponent"
+    | "show-result" = "none"; // Currently displayed screen for the player
 
   private _states?: {
+    startTime: number;
     mistakes: number;
-    time: number;
+    progress: number;
+    totalTime?: number;
   };
 
   get view() {
@@ -55,14 +69,40 @@ class TypingPlayer extends GenericEventEmitter<{
   constructor(
     public readonly id: string,
     public readonly name: string,
+    private readonly getCurrentTime: () => number,
+    private readonly evalText: (text: string) => {
+      mistakes: number;
+      progress: number;
+      done: boolean;
+    },
   ) {
     super();
   }
 
-  reportStates(mistakes: number, time: number) {
-    this._view = "waiting-for-opponent";
-    this._states = { mistakes, time };
-    this.emit("reportStates", this._states);
+  reportText(text: string) {
+    this._view = "typing";
+    if (!this._states) {
+      this._states = {
+        startTime: this.getCurrentTime(),
+        mistakes: 0,
+        progress: 0,
+      };
+    }
+    const result = this.evalText(text);
+    if (result.done) {
+      this._view = "waiting-for-opponent";
+      this.emit("finish-typing", { id: this.id });
+      return;
+    }
+    this._states.mistakes = result.mistakes;
+    this._states.progress = result.progress;
+  }
+
+  endTyping() {
+    if (!this._states) return;
+    if (this._states.totalTime) return;
+    // don't change the time if already set
+    this._states.totalTime = this.getCurrentTime() - this._states.startTime;
   }
 
   showResult() {
@@ -70,7 +110,7 @@ class TypingPlayer extends GenericEventEmitter<{
   }
 
   enableWrite() {
-    this._view = "typing";
+    this._view = "enable-typing";
     this._states = undefined;
   }
 
@@ -87,6 +127,7 @@ export class TypingGame
   private timerHandler;
   private endGame?: (winnerId: string, looserId: string) => void;
   private readonly config: TypingConfig = typingConfig;
+  private textToType?: string;
 
   private get hasStarted() {
     return this.endGame !== undefined;
@@ -112,8 +153,8 @@ export class TypingGame
       getView: (playerId) => this.players.get(playerId)!.view,
       playerSpecificEvents: [
         "provide-text",
-        "end-typing",
         "show-result",
+        "show-waiting",
         "typing-timer",
       ],
       serverSpecificEvents: ["destroy"],
@@ -125,7 +166,12 @@ export class TypingGame
       {
         name: "typing-timer",
         time: this.config.writingTimeInSeconds,
-        timeoutEvent: () => console.log("disable typing and show result"),
+        timeoutEvent: () => this.evaluateState(),
+      },
+      {
+        name: "next-round-timer",
+        time: this.config.nextRoundTimeInSeconds,
+        timeoutEvent: () => this.provideText(),
       },
     ]);
   }
@@ -144,15 +190,15 @@ export class TypingGame
     this.removeAllListeners();
   }
 
-  playerReportStats(playerId: string, mistakes: number, time: number) {
+  playerReportStats(playerId: string, text: string) {
     this.assertGameHasStarted();
     const player = this.assertPlayer(playerId);
-    player.reportStates(mistakes, time);
+    player.reportText(text);
   }
 
   startGame(endGame: (winnerId: string, looserId: string) => void): void {
     this.endGame = endGame;
-    //TODO implement startChoose function from rps, but for typing game.
+    this.provideText();
   }
 
   pauseGame() {
@@ -163,19 +209,69 @@ export class TypingGame
     this.timerHandler.resumeAllTimers();
   }
 
-  // Starts the game for both
-  private startWritingPart() {
+  private provideText() {
     this.players.forEach((player) => player.enableWrite());
+    this.textToType = this.getText();
     this.emitEvent({
-      event: "start-typing",
-      data: undefined,
+      event: "provide-text",
+      data: { text: this.textToType },
     });
+    this.timerHandler.startTimer("typing-timer");
+  }
+
+  private getText() {
+    const pick = Math.random() * typingTexts.texts.length;
+    const text = typingTexts.texts[pick];
+    if (text === undefined) {
+      console.error(
+        `No text found. Available texts '${typingTexts.texts.length}' and picked index '${pick}`,
+      );
+      return "This is a backup text for the typing game. Please contact the admin to fix this issue.";
+    }
+    return text;
   }
 
   private setupPlayers(playerTuple: { id: string; name: string }[]) {
     playerTuple.forEach(({ id, name }) => {
-      const player = new TypingPlayer(id, name);
+      const player = new TypingPlayer(
+        id,
+        name,
+        () => Date.now(),
+        (text) => {
+          const progress = text.length / this.textToType!.length;
+          const done = text.length === this.textToType!.length;
+          let mistakes = 0;
+          for (let index = 0; index < text.length; index++) {
+            const char = text[index];
+            const expectedChar = this.textToType![index];
+            if (char !== expectedChar) mistakes++;
+          }
+          return { mistakes, progress, done };
+        },
+      );
       this.players.set(id, player);
+      this.handleDoneTyping(player);
+    });
+  }
+
+  private handleDoneTyping(player: TypingPlayer) {
+    player.on("finish-typing", (e) => {
+      const doneTyping = [...this.players.values()]
+        .filter((x) => x.view === "waiting-for-opponent")
+        .map((x) => x.id);
+      this.emitEvent(
+        {
+          event: "show-waiting",
+          data: undefined,
+        },
+        e.id,
+      );
+      const player = this.assertPlayer(e.id);
+      player.endTyping();
+      if (doneTyping.length !== this.players.size) return;
+
+      this.timerHandler.cancelTimer("typing-timer");
+      this.evaluateState();
     });
   }
 
@@ -193,7 +289,12 @@ export class TypingGame
     }
   }
 
+  private endTyping() {
+    this.players.forEach((player) => player.endTyping());
+  }
+
   private evaluateState() {
+    this.endTyping();
     const [player1, player2] = [...this.players.values()] as [
       TypingPlayer,
       TypingPlayer,
@@ -211,51 +312,84 @@ export class TypingGame
 
     if (result.draw) {
       playerStats.forEach(({ id, name, opponent }) => {
-        // this.emitEvent(
-        //   {
-        //     event: "show-result",
-        //     data: {
-        //       outcome: "draw",
-        //       anotherRound: true,
-        //       yourName: name,
-        //       opponentName: opponent,
-        //       ...this.getWinLooseRate(id),
-        //     },
-        //   },
-        //   id,
-        // );
+        this.emitEvent(
+          {
+            event: "show-result",
+            data: {
+              outcome: "draw",
+              yourName: name,
+              opponentName: opponent,
+            },
+          },
+          id,
+        );
       });
+      this.timerHandler.startTimer("next-round-timer");
       return;
     }
 
-    playerStats.forEach(({ id, name, opponent }) => {
-      // this.emitEvent(
-      //   {
-      //     event: "show-result",
-      //     data: {
-      //       outcome: id === result.winner ? "win" : "loose",
-      //       anotherRound: !overAllWinner,
-      //       yourName: name,
-      //       opponentName: opponent,
-      //       ...this.getWinLooseRate(id),
-      //     },
-      //   },
-      //   id,
-      // );
-    });
-
     this.endGame!(
       result.winner,
-      player1.id === result.winner ? player2.id : player1.id,
+      result.loser
     );
   }
 
   private findWinner(firstPlayer: TypingPlayer, secondPlayer: TypingPlayer) {
-    // TODO implement evaluation who wins
+    const firstPlayerStartedWriting =
+      firstPlayer.states?.totalTime !== undefined;
+    const secondPlayerStartedWriting =
+      secondPlayer.states?.totalTime !== undefined;
+
+    if (!firstPlayerStartedWriting && !secondPlayerStartedWriting) {
+      return {
+        winner: undefined,
+        loser: undefined,
+        draw: true,
+      } as const;
+    }
+    if (!firstPlayerStartedWriting) {
+      return {
+        winner: secondPlayer.id,
+        loser: firstPlayer.id,
+        draw: false,
+      } as const;
+    }
+    if (!secondPlayerStartedWriting) {
+      return {
+        winner: firstPlayer.id,
+        loser: secondPlayer.id,
+        draw: false,
+      } as const;
+    }
+
+    const scoreFirstPlayer = this.getTypingScore(firstPlayer);
+    const scoreSecondPlayer = this.getTypingScore(secondPlayer);
+
+    if (scoreFirstPlayer === scoreSecondPlayer) {
+      return {
+        winner: undefined,
+        loser: undefined,
+        draw: true,
+      } as const;
+    }
+    if (scoreFirstPlayer < scoreSecondPlayer) {
+      return {
+        winner: firstPlayer.id,
+        loser: secondPlayer.id,
+        draw: false,
+      } as const;
+    }
     return {
-      winner: firstPlayer.id,
-      looser: secondPlayer.id,
+      winner: secondPlayer.id,
+      loser: firstPlayer.id,
       draw: false,
     } as const;
+  }
+
+  private getTypingScore(player: TypingPlayer) {
+    const { mistakes, totalTime } = player.states!;
+    return (
+      totalTime! + mistakes * 1000 * this.config.timePenaltyPerMistakeInSeconds
+    );
   }
 }
