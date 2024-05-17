@@ -1,4 +1,15 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import {
   DialogDescription,
@@ -7,6 +18,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 import { api } from "~/trpc/react";
 
 const buttonValues = [100, 200, 300];
@@ -21,7 +33,7 @@ export function AssignPoints({
   const { data, isLoading } = api.user.nameOfPlayer.useQuery({
     id: params.userId,
   });
-  const inputRef = useRef<HTMLInputElement>();
+  const [value, setValue] = useState<number>(0);
 
   const closeButton = (
     <Button variant="outline" onClick={onClose}>
@@ -53,8 +65,7 @@ export function AssignPoints({
             <Button
               key={value}
               onClick={() => {
-                if (!inputRef.current) return;
-                inputRef.current.value = String(value);
+                setValue(value);
               }}
             >
               {value}
@@ -62,13 +73,55 @@ export function AssignPoints({
           ))}
         </div>
         <div className="px-10">
-          <Input ref={inputRef} placeholder="Custom points" type="number" />
+          <Input
+            placeholder="Custom points"
+            type="number"
+            value={value}
+            onChange={(e) => setValue(Number(e.target.value))}
+          />
         </div>
       </div>
       <DialogFooter className="flex flex-row justify-between">
-        <Button>Assign</Button>
+        <AssignConformation
+          params={{ value }}
+          onClick={(x) => console.log(x)}
+        />
         {closeButton}
       </DialogFooter>
     </>
+  );
+}
+
+function AssignConformation({
+  params,
+  onClick,
+}: {
+  params: { value: number };
+  onClick: (value: number) => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button disabled={params.value === 0}>Assign</Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Did you select the correct score?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently assign the
+            points!
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="text-center">
+          <Label className="text-2xl font-extrabold">{params.value}</Label>
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => onClick(Number(params.value))}>
+            Assign
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
