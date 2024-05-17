@@ -161,7 +161,7 @@ export class TypingGame
         "show-result",
         "show-waiting",
         "typing-timer",
-        "next-round-timer"
+        "next-round-timer",
       ],
       serverSpecificEvents: ["destroy"],
     });
@@ -230,7 +230,7 @@ export class TypingGame
   }
 
   private getText() {
-    const pick = Math.random() * typingTexts.texts.length;
+    const pick = Math.trunc(Math.random() * typingTexts.texts.length);
     const text = typingTexts.texts[pick];
     if (text === undefined) {
       console.error(

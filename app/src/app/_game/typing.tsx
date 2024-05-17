@@ -18,7 +18,6 @@ type GetSpecificEvent<T, Event extends ServerEvent["event"]> = T extends {
 }
   ? T
   : never;
-type ResultEvent = GetSpecificEvent<ServerEvent, "show-result">;
 
 export default function TypingGame({
   params,
@@ -103,8 +102,6 @@ function TypingSpeedTestGame({ text }: { text: string }) {
   const [metrics, setMetrics] = useState({
     timerStarted: false,
     mistakes: 0,
-    wordsPerMinute: 0,
-    charactersPerMinute: 0,
   });
   const [emptyState, setEmptyState] = useState(textToState(text));
   const [textState, setTextState] = useState(emptyState);
@@ -143,8 +140,6 @@ function TypingSpeedTestGame({ text }: { text: string }) {
     const newMetrics = {
       ...metrics,
       mistakes: 0,
-      wordsPerMinute: 0,
-      charactersPerMinute: 0,
     };
 
     const newState: typeof emptyState = [];
@@ -162,26 +157,6 @@ function TypingSpeedTestGame({ text }: { text: string }) {
         newMetrics.mistakes++;
       }
     }
-
-    // todo: implement wordsPerMinute and charactersPerMinute
-    // run `initTimer` function every second
-    /**
-     *  let wpm = Math.round(((charIndex - mistakes)  / 5) / (maxTime - timeLeft) * 60);
-        wpm = wpm < 0 || !wpm || wpm === Infinity ? 0 : wpm;
-
-function initTimer() {
-    if(timeLeft > 0) {
-        timeLeft--;
-        timeTag.innerText = timeLeft;
-        let wpm = Math.round(((charIndex - mistakes)  / 5) / (maxTime - timeLeft) * 60);
-        wpmTag.innerText = wpm;
-    } else {
-        clearInterval(timer);
-    }
-}
-
-     */
-
     setMetrics(newMetrics);
 
     if (newState.length === emptyState.length) {
@@ -231,12 +206,6 @@ function initTimer() {
           </div>
           <div className="relative flex h-6 list-none items-center justify-end">
             <Entry text="Mistakes:" number={String(metrics.mistakes)} />
-          </div>
-          <div className="relative flex h-6 list-none items-center">
-            <Entry text="WPM:" number={String(metrics.wordsPerMinute)} />
-          </div>
-          <div className="relative flex h-6 list-none items-center justify-end">
-            <Entry text="CPM:" number={String(metrics.charactersPerMinute)} />
           </div>
         </div>
       </div>
