@@ -8,9 +8,12 @@ import {
 import Image from "next/image";
 import bigMap from "./_assets/big-map.jpg";
 import smallMap from "./_assets/small-map.jpg";
+import rockPaperScissors from "./_assets/rock-paper-scissors.png";
+import orderedMemory from "./_assets/ordered-memory.png";
+import typing from "./_assets/typing.png";
+
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { Card } from "~/components/ui/card";
 
 type ListingParams = Record<
   string,
@@ -175,6 +178,7 @@ function RockPaperScissorsDetails() {
         Players can play rock paper scissors to decide the outcome of a
         challenge.
       </p>
+      <Image src={rockPaperScissors} alt="Rock Paper Scissors Game" />
     </div>
   );
 }
@@ -186,6 +190,7 @@ function OrderedMemoryDetails() {
         Players must remember a sequence of numbers and repeat it back in the
         correct order.
       </p>
+      <Image src={orderedMemory} alt="Ordered Memory Game" />
     </div>
   );
 }
@@ -194,6 +199,7 @@ function TypingDetails() {
   return (
     <div>
       <p>Players must type a given word within a time limit.</p>
+      <Image src={typing} alt="Typing Game" />
     </div>
   );
 }
