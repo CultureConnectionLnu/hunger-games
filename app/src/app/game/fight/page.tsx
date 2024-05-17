@@ -9,6 +9,7 @@ import { FaGamepad, FaSpinner } from "react-icons/fa";
 import { RxCross2 } from "react-icons/rx";
 import OrderedMemoryGame from "~/app/_game/ordered-memory";
 import { RockPaperScissorsGame } from "~/app/_game/rock-paper-scissors";
+import TypingGame from "~/app/_game/typing";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -164,6 +165,9 @@ function GameLobby({
       break;
     case "ordered-memory":
       game = <OrderedMemoryGame params={params} />;
+      break;
+    case "typing":
+      game = <TypingGame params={params} />;
       break;
   }
 

@@ -5,7 +5,7 @@ import { type GetTimerEvents } from "~/server/api/logic/core/types";
 import { type OrderedMemoryEvents } from "~/server/api/logic/games/om";
 import {
   lobbyHandler,
-  type OrderedMemoryGame,
+  type OrderedMemoryGameInstance,
 } from "~/server/api/logic/handler";
 import { type OrderedMemoryPlayerEvents } from "~/server/api/routers/games/ordered-memory";
 import {
@@ -463,7 +463,7 @@ async function setupTest() {
 
   const state = {
     fightId,
-    fight: lobbyHandler.getFight(fightId) as OrderedMemoryGame,
+    fight: lobbyHandler.getFight(fightId) as OrderedMemoryGameInstance,
     test_user_1: {
       base: (
         await callers.test_user_1.lobby.onGameAction({

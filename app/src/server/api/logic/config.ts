@@ -3,6 +3,7 @@ import type { BaseGameConfig } from "./core/base-game";
 import type { RockPaperScissorsConfig } from "./games/rps";
 import { type QuestKind } from "./handler";
 import { type OrderedMemoryConfig } from "./games/om";
+import { type TypingConfig } from "./games/typing";
 
 const longAssTime = 1_000_000;
 
@@ -63,4 +64,10 @@ export const orderedMemoryConfig: OrderedMemoryConfig = {
   showPatternTimeoutInSeconds: 2,
   inputPatternTimeoutInSeconds: 10,
   nextRoundTimeoutInSeconds: 5,
+};
+
+export const typingConfig: TypingConfig = {
+  writingTimeInSeconds: 45,
+  timePenaltyPerMistakeInSeconds: 1,
+  nextRoundTimeInSeconds: 5,
 };

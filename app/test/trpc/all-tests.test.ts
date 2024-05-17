@@ -4,6 +4,7 @@ import { omTests } from "./om";
 import { questTests } from "./quest";
 import { rpsTests } from "./rps";
 import { scoreTests } from "./score";
+import { typingTests } from "./typing";
 import { provideTestUsers } from "./utils";
 
 // this file is needed as otherwise all test files would be run in parallel
@@ -16,3 +17,4 @@ omTests();
 scoreTests();
 questTests();
 medicTests();
+typingTests();

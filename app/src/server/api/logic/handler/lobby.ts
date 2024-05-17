@@ -9,6 +9,7 @@ import { scoreHandler } from "./score";
 import { getHandler } from "./base";
 import { gameStateHandler } from "./game-state";
 import { OMGame } from "../games/om";
+import { TypingGame } from "../games/typing";
 
 /**
  * insert a new entry for each game added
@@ -16,6 +17,7 @@ import { OMGame } from "../games/om";
 const knownGames = {
   "rock-paper-scissors": RpsGame,
   "ordered-memory": OMGame,
+  typing: TypingGame,
 };
 export type KnownGames = keyof typeof knownGames;
 
@@ -210,18 +212,19 @@ type GetSpecificGame<T extends KnownGames, Map> = Map extends { type: T }
   ? Map
   : never;
 
-export type RockPaperScissorsGame = GetSpecificGame<
+export type RockPaperScissorsGameInstance = GetSpecificGame<
   "rock-paper-scissors",
   KnownGamesMap
 >;
-export type OrderedMemoryGame = GetSpecificGame<
+export type OrderedMemoryGameInstance = GetSpecificGame<
   "ordered-memory",
   KnownGamesMap
 >;
+export type TypingGameInstance = GetSpecificGame<"typing", KnownGamesMap>;
 
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();
-  private nextGameType?: keyof typeof knownGames;
+  private nextGameType?: keyof typeof knownGames = "typing";
 
   public getGame(fightId: string) {
     return this.runningGames.get(fightId);

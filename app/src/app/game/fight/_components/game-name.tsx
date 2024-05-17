@@ -10,6 +10,8 @@ function getReadableGameName(gameName?: KnownGames) {
       return "Rock Paper Scissors";
     case "ordered-memory":
       return "Ordered Memory";
+    case "typing":
+      return "Typing";
     default:
       return "No Game";
   }
