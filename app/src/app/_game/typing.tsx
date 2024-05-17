@@ -2,14 +2,10 @@ import { type Observable } from "@trpc/server/observable";
 import { useEffect, useRef, useState } from "react";
 import { CardTitle } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
-import { type RouterOutputs } from "~/trpc/shared";
-import {
-  useCountdown,
-  useCountdownConfig,
-} from "../_feature/timer/countdown-provider";
-import { GameCard, GameContentLoading } from "./base";
-import { useTimers } from "../_feature/timer/timer-provider";
 import { api } from "~/trpc/react";
+import { type RouterOutputs } from "~/trpc/shared";
+import { useTimers } from "../_feature/timer/timer-provider";
+import { GameCard, GameContentLoading } from "./base";
 
 type ServerEvent =
   RouterOutputs["typing"]["onAction"] extends Observable<infer R, never>
@@ -67,14 +63,18 @@ function ViewContainer({
   };
 }) {
   const [text, setText] = useState("");
+
+  useEffect(() => {
+    if (params.lastEvent.event === "provide-text") {
+      setText(params.lastEvent.data.text);
+    }
+  }, [setText, params.lastEvent.data, params.lastEvent.event]);
+
   switch (params.view) {
     case "none":
       return <></>;
     case "enable-typing":
     case "typing":
-      if (params.lastEvent.event === "provide-text") {
-        setText(params.lastEvent.data.text);
-      }
       return <TypingSpeedTestGame text={text} />;
     case "waiting-for-opponent":
       return <WaitForOpponentToFinish />;
@@ -106,16 +106,15 @@ function TypingSpeedTestGame({ text }: { text: string }) {
     wordsPerMinute: 0,
     charactersPerMinute: 0,
   });
-  const [emptyState] = useState(
-    text.split("").map((char, index) => ({
-      char,
-      active: index === 0,
-      correct: false,
-      incorrect: false,
-    })),
-  );
+  const [emptyState, setEmptyState] = useState(textToState(text));
   const [textState, setTextState] = useState(emptyState);
   const reportStatus = api.typing.reportStatus.useMutation();
+
+  useEffect(() => {
+    const newState = textToState(text);
+    setEmptyState(newState);
+    setTextState(newState);
+  }, [text]);
 
   useEffect(() => {
     const handleKeyDown = () => {
@@ -204,6 +203,15 @@ function initTimer() {
     ]);
   }
 
+  function textToState(text: string) {
+    return text.split("").map((char, index) => ({
+      char,
+      active: index === 0,
+      correct: false,
+      incorrect: false,
+    }));
+  }
+
   return (
     <GameCard header={<CardTitle>Type as fast as you can</CardTitle>}>
       <input
@@ -214,7 +222,7 @@ function initTimer() {
         onInput={() => initTyping()}
       />
       <div className="rounded-sm border p-4">
-        <div className="max-h-16 overflow-hidden">
+        <div className="overflow-hidden">
           <TextArea text={textState} />
         </div>
         <div className="grid grid-cols-2 grid-rows-2 py-4">

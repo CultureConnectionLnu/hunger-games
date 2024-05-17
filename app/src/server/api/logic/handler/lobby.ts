@@ -15,8 +15,8 @@ import { TypingGame } from "../games/typing";
  * insert a new entry for each game added
  */
 const knownGames = {
-  "rock-paper-scissors": RpsGame,
-  "ordered-memory": OMGame,
+  // "rock-paper-scissors": RpsGame,
+  // "ordered-memory": OMGame,
   typing: TypingGame,
 };
 export type KnownGames = keyof typeof knownGames;
@@ -224,7 +224,7 @@ export type TypingGameInstance = GetSpecificGame<"typing", KnownGamesMap>;
 
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();
-  private nextGameType?: keyof typeof knownGames;
+  private nextGameType?: keyof typeof knownGames = "typing";
 
   public getGame(fightId: string) {
     return this.runningGames.get(fightId);
