@@ -1,5 +1,7 @@
 import Image from "next/image";
 import logo from "./_assets/logo.png";
+declare module "*.png";
+
 export default async function Home() {
   return (
     <main className="flex min-h-screen flex-col  bg-gradient-to-t from-black to-orange-900">
