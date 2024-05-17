@@ -1,6 +1,5 @@
 import Image from "next/image";
 import logo from "./_assets/logo.png";
-import { Fire } from "./_components/fire";
 export default async function Home() {
   return (
     <main className="flex min-h-screen flex-col  bg-gradient-to-t from-black to-orange-900">
@@ -16,9 +15,15 @@ export default async function Home() {
         <h1 className="mb-4 text-center text-2xl font-bold text-white">
           Culture Connection Hunger Games
         </h1>
-        <p className="text-center text-white">Become a player if you are not one yet!</p>
-        <p className="text-center text-white">Get in touch with one of the organizers or DM us on Instagram!</p>
-        <p className="text-center text-white font-bold">@CultureConnectionLnu</p>
+        <p className="text-center text-white">
+          Become a player if you are not one yet!
+        </p>
+        <p className="text-center text-white">
+          Get in touch with one of the organizers or DM us on Instagram!
+        </p>
+        <p className="text-center font-bold text-white">
+          @CultureConnectionLnu
+        </p>
       </div>
     </main>
   );
