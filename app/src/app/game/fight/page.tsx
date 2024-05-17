@@ -49,8 +49,6 @@ export default function CurrentGame() {
   const { user, isLoaded: userLoaded } = useUser();
   const { currentFight } = useFight();
 
-  return <TypingGame params={{ fightId: "1", userId: "1" }} />;
-
   if (!userLoaded) {
     return <GameLoadingScreen />;
   }

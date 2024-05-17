@@ -212,15 +212,15 @@ type GetSpecificGame<T extends KnownGames, Map> = Map extends { type: T }
   ? Map
   : never;
 
-export type RockPaperScissorsGame = GetSpecificGame<
+export type RockPaperScissorsGameInstance = GetSpecificGame<
   "rock-paper-scissors",
   KnownGamesMap
 >;
-export type OrderedMemoryGame = GetSpecificGame<
+export type OrderedMemoryGameInstance = GetSpecificGame<
   "ordered-memory",
   KnownGamesMap
 >;
-export type TypingGame = GetSpecificGame<"typing", KnownGamesMap>;
+export type TypingGameInstance = GetSpecificGame<"typing", KnownGamesMap>;
 
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();

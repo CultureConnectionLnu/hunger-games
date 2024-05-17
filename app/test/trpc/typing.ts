@@ -6,7 +6,10 @@ import {
   type TypingPlayerState,
   type TypingEvents,
 } from "~/server/api/logic/games/typing";
-import { lobbyHandler, type TypingGame } from "~/server/api/logic/handler";
+import {
+  lobbyHandler,
+  type TypingGameInstance,
+} from "~/server/api/logic/handler";
 import { type TypingPlayerEvents } from "~/server/api/routers/games/typing";
 import {
   cleanupLeftovers,
@@ -295,7 +298,7 @@ async function setupTest() {
 
   const state = {
     fightId,
-    fight: lobbyHandler.getFight(fightId) as TypingGame,
+    fight: lobbyHandler.getFight(fightId) as TypingGameInstance,
     test_user_1: {
       base: (
         await callers.test_user_1.lobby.onGameAction({

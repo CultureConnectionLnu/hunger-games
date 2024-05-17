@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { BaseGamePlayerEvents } from "~/server/api/logic/core/base-game";
 import {
-  type RockPaperScissorsGame,
+  type RockPaperScissorsGameInstance,
   lobbyHandler,
 } from "~/server/api/logic/handler";
 import type { RockPaperScissorsPlayerEvents } from "~/server/api/routers/games/rock-paper-scissors";
@@ -378,7 +378,7 @@ async function setupTest() {
 
   const state = {
     fightId,
-    fight: lobbyHandler.getFight(fightId) as RockPaperScissorsGame,
+    fight: lobbyHandler.getFight(fightId) as RockPaperScissorsGameInstance,
     test_user_1: {
       base: (
         await callers.test_user_1.lobby.onGameAction({
