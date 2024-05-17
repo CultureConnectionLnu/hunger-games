@@ -1,6 +1,6 @@
 import Image from "next/image";
+// @ts-expect-error ci is complaining
 import logo from "./_assets/logo.png";
-declare module "*.png";
 
 export default async function Home() {
   return (
