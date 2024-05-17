@@ -1,6 +1,4 @@
-import { object, z } from "zod";
 import { GenericEventEmitter } from "~/lib/event-emitter";
-import { rockPaperScissorsConfig } from "../config";
 import type { SpecificGame } from "../core/base-game";
 import { GameEventingHandler } from "../core/game-parts/eventing";
 import { GameTimerHandler } from "../core/game-parts/timer";
@@ -10,36 +8,48 @@ import type {
   ToEventData,
   UnspecificPlayerEventData,
 } from "../core/types";
+import { typingConfig } from "../config";
+
+export type TypingConfig = {
+  writingTimeInSeconds: number;
+};
 
 export type TypingEvents = EventTemplate<
   {
-    //TODO insert game events
-    //for all players at once
-    "type-character": {
-      character: string;
+    "provide-text": {
+      text: string;
     };
-    "start-typing": undefined;
+    "end-typing": undefined;
     "show-result": {
-      outcome: "win" | "loose";
+      outcome: "win" | "loose" | "draw";
       yourName: string;
       opponentName: string;
     };
+    "typing-timer": TimerEvent;
     destroy: undefined;
   },
   TypingPlayer["view"],
   "destroy",
-  "start-typing" | "type-character"
+  "provide-text" | "end-typing" | "show-result" | "typing-timer"
 >;
 
-class TypingPlayer extends GenericEventEmitter<{}> {
-  private _view:
-    | "none"
-    | "start-typing"
-    | "waiting-for-opponent"
-    | "show-result" = "none"; // Currently displayed screen for the player
+class TypingPlayer extends GenericEventEmitter<{
+  reportStates: { mistakes: number; time: number };
+}> {
+  private _view: "none" | "typing" | "waiting-for-opponent" | "show-result" =
+    "none"; // Currently displayed screen for the player
+
+  private _states?: {
+    mistakes: number;
+    time: number;
+  };
 
   get view() {
     return this._view;
+  }
+
+  get states() {
+    return this._states;
   }
 
   constructor(
@@ -49,12 +59,19 @@ class TypingPlayer extends GenericEventEmitter<{}> {
     super();
   }
 
+  reportStates(mistakes: number, time: number) {
+    this._view = "waiting-for-opponent";
+    this._states = { mistakes, time };
+    this.emit("reportStates", this._states);
+  }
+
   showResult() {
     this._view = "show-result";
   }
 
   enableWrite() {
-    this._view = "start-typing";
+    this._view = "typing";
+    this._states = undefined;
   }
 
   cleanup() {
@@ -68,8 +85,8 @@ export class TypingGame
 {
   private readonly players = new Map<string, TypingPlayer>();
   private timerHandler;
-  private winners: string[] = [];
   private endGame?: (winnerId: string, looserId: string) => void;
+  private readonly config: TypingConfig = typingConfig;
 
   private get hasStarted() {
     return this.endGame !== undefined;
@@ -93,23 +110,24 @@ export class TypingGame
       fightId,
       playerIds: playerTuple.map((x) => x.id),
       getView: (playerId) => this.players.get(playerId)!.view,
-      playerSpecificEvents: ["type-character"],
+      playerSpecificEvents: [
+        "provide-text",
+        "end-typing",
+        "show-result",
+        "typing-timer",
+      ],
       serverSpecificEvents: ["destroy"],
     });
     this.emitEvent = eventing.emitEvent.bind(eventing);
     this.getEventHistory = eventing.getPlayerEvents.bind(eventing);
 
-    this.timerHandler = new GameTimerHandler<TypingEvents>(this.emitEvent, []);
-  }
-
-  typeCharacter(char: string, playerid: string) {
-    this.emitEvent(
+    this.timerHandler = new GameTimerHandler<TypingEvents>(this.emitEvent, [
       {
-        event: "type-character",
-        data: { character: char },
+        name: "typing-timer",
+        time: this.config.writingTimeInSeconds,
+        timeoutEvent: () => console.log("disable typing and show result"),
       },
-      playerid,
-    );
+    ]);
   }
 
   getPlayer(id: string) {
@@ -124,6 +142,12 @@ export class TypingGame
     this.timerHandler.cleanup();
     this.players.forEach((player) => player.cleanup());
     this.removeAllListeners();
+  }
+
+  playerReportStats(playerId: string, mistakes: number, time: number) {
+    this.assertGameHasStarted();
+    const player = this.assertPlayer(playerId);
+    player.reportStates(mistakes, time);
   }
 
   startGame(endGame: (winnerId: string, looserId: string) => void): void {

@@ -1,16 +1,13 @@
 import { type Observable } from "@trpc/server/observable";
 import { useEffect, useRef, useState } from "react";
-import { Input } from "~/components/ui/input";
-import { api } from "~/trpc/react";
-import { type RouterOutputs } from "~/trpc/shared";
-import { GameCard } from "./base";
 import { CardTitle } from "~/components/ui/card";
 import { cn } from "~/lib/utils";
+import { type RouterOutputs } from "~/trpc/shared";
 import {
   useCountdown,
   useCountdownConfig,
 } from "../_feature/timer/countdown-provider";
-import { char } from "drizzle-orm/mysql-core";
+import { GameCard } from "./base";
 
 type ServerEvent =
   RouterOutputs["typing"]["onAction"] extends Observable<infer R, never>
@@ -222,7 +219,7 @@ function TextArea({
           )}
         >
           {active && (
-            <span className="animate-blink absolute bottom-0 left-0 h-0.5 w-full rounded-md bg-teal-600 opacity-0"></span>
+            <span className="absolute bottom-0 left-0 h-0.5 w-full animate-blink rounded-md bg-teal-600 opacity-0"></span>
           )}
           {char}
         </span>
