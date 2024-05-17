@@ -220,6 +220,7 @@ export type OrderedMemoryGame = GetSpecificGame<
   "ordered-memory",
   KnownGamesMap
 >;
+export type TypingGame = GetSpecificGame<"typing", KnownGamesMap>;
 
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();

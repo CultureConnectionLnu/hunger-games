@@ -10,12 +10,15 @@ import type {
 } from "../core/types";
 import { typingConfig } from "../config";
 import { typingTexts } from "./typing-texts";
+import { Temporal } from "@js-temporal/polyfill";
 
 export type TypingConfig = {
   writingTimeInSeconds: number;
   nextRoundTimeInSeconds: number;
   timePenaltyPerMistakeInSeconds: number;
 };
+
+export type TypingPlayerState = NonNullable<TypingPlayer["states"]>;
 
 export type TypingEvents = EventTemplate<
   {
@@ -128,6 +131,7 @@ export class TypingGame
   private endGame?: (winnerId: string, looserId: string) => void;
   private readonly config: TypingConfig = typingConfig;
   private textToType?: string;
+  private fixedText?: string;
 
   private get hasStarted() {
     return this.endGame !== undefined;
@@ -176,6 +180,10 @@ export class TypingGame
     ]);
   }
 
+  useFixedText(text: string) {
+    this.fixedText = text;
+  }
+
   getPlayer(id: string) {
     return this.players.get(id);
   }
@@ -211,7 +219,7 @@ export class TypingGame
 
   private provideText() {
     this.players.forEach((player) => player.enableWrite());
-    this.textToType = this.getText();
+    this.textToType = this.fixedText ?? this.getText();
     this.emitEvent({
       event: "provide-text",
       data: { text: this.textToType },
@@ -328,10 +336,7 @@ export class TypingGame
       return;
     }
 
-    this.endGame!(
-      result.winner,
-      result.loser
-    );
+    this.endGame!(result.winner, result.loser);
   }
 
   private findWinner(firstPlayer: TypingPlayer, secondPlayer: TypingPlayer) {
@@ -388,8 +393,13 @@ export class TypingGame
 
   private getTypingScore(player: TypingPlayer) {
     const { mistakes, totalTime } = player.states!;
-    return (
-      totalTime! + mistakes * 1000 * this.config.timePenaltyPerMistakeInSeconds
-    );
+    const totalTimeDate = new Date(totalTime!);
+    const time = Temporal.PlainTime.from({
+      second: totalTimeDate.getSeconds(),
+      minute: totalTimeDate.getMinutes(),
+      hour: totalTimeDate.getHours(),
+    });
+    const seconds = time.second + time.minute * 60 + time.hour * 60 * 60;
+    return seconds + mistakes * this.config.timePenaltyPerMistakeInSeconds;
   }
 }
