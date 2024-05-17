@@ -67,7 +67,7 @@ export const orderedMemoryConfig: OrderedMemoryConfig = {
 };
 
 export const typingConfig: TypingConfig = {
-  writingTimeInSeconds: 60,
+  writingTimeInSeconds: 45,
   timePenaltyPerMistakeInSeconds: 1,
   nextRoundTimeInSeconds: 5,
 };
