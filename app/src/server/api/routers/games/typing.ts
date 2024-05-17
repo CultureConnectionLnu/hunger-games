@@ -2,14 +2,10 @@ import { TRPCError } from "@trpc/server";
 import { observable } from "@trpc/server/observable";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
-import { FightHandler } from "../../logic/fight";
-import { catchMatchError, inFightProcedure } from "../fight";
-import {
-  type RockPaperScissorsEvents,
-  rockPaperScissorsItemsSchema,
-} from "../../logic/games/rps";
 import type { OnlyPlayerEvents } from "../../logic/core/types";
 import { type TypingEvents } from "../../logic/games/typing";
+import { lobbyHandler } from "../../logic/handler";
+import { inFightProcedure } from "../lobby";
 
 export type TypingPlayerEvents = OnlyPlayerEvents<TypingEvents>;
 
@@ -72,8 +68,20 @@ export const typingRouter = createTRPCRouter({
     )
     .subscription(({ input }) => {
       return observable<TypingPlayerEvents>((emit) => {
-        const match = FightHandler.instance.getFight(input.fightId)?.game;
-        if (match?.getPlayer(input.userId) === undefined) {
+        const lobby = lobbyHandler.getFight(input.fightId);
+        if (!lobby) {
+          throw new TRPCError({
+            code: "NOT_FOUND",
+            message: "Match not found",
+          });
+        }
+        if (lobby.type !== "typing") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Invalid game type",
+          });
+        }
+        if (lobby.game.getPlayer(input.userId) === undefined) {
           throw new TRPCError({
             code: "NOT_FOUND",
             message: "Match not found",
@@ -83,17 +91,17 @@ export const typingRouter = createTRPCRouter({
         const onMessage = (data: TypingPlayerEvents) => {
           emit.next(data);
         };
-        match.on(`player-${input.userId}`, onMessage);
-        (match.getEventHistory(input.userId) as TypingPlayerEvents[]).forEach(
-          onMessage,
-        );
+        lobby.game.on(`player-${input.userId}`, onMessage);
+        (
+          lobby.game.getEventHistory(input.userId) as TypingPlayerEvents[]
+        ).forEach(onMessage);
 
-        match.once("destroy", () => {
+        lobby.game.once("destroy", () => {
           emit.complete();
         });
 
         return () => {
-          match.off(`player-${input.userId}`, onMessage);
+          lobby.game.off(`player-${input.userId}`, onMessage);
         };
       });
     }),
