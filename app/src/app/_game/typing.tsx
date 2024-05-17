@@ -13,12 +13,6 @@ type ServerEvent =
     : never;
 type View = ServerEvent["view"];
 
-type GetSpecificEvent<T, Event extends ServerEvent["event"]> = T extends {
-  event: Event;
-}
-  ? T
-  : never;
-
 export default function TypingGame({
   params,
 }: {

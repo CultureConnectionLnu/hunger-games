@@ -4,7 +4,7 @@ import { fight, score, usersToFight } from "~/server/db/schema";
 import { fightScoringConfig, questScoringConfig } from "../config";
 import { getHandler } from "./base";
 import { type KnownGames } from "./lobby";
-import { type WalkQuestKind, type QuestKind } from "./quest";
+import { type WalkQuestKind } from "./quest";
 
 type FightEntry =
   | {
