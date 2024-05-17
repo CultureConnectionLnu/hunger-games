@@ -119,6 +119,11 @@ const headerConfig: HeaderConfig = {
           icon: "MdList",
           href: "/admin/quest",
         },
+        {
+          title: "Game Config",
+          icon: "MdSettings",
+          href: "/admin/config",
+        },
       ],
     },
   ],

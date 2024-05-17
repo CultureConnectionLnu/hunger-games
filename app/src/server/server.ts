@@ -5,9 +5,10 @@ import { parse } from "node:url";
 import { eq, isNull } from "drizzle-orm";
 import { env } from "~/env";
 import { db } from "./db";
-import { fight, roles, users } from "./db/schema";
+import { fight, gameConfig, roles, users } from "./db/schema";
 import { bootstrapWS } from "./wssServer";
 import { clerkHandler, userHandler } from "./api/logic/handler";
+import { gameConfigHandler } from "./api/logic/handler/game-config";
 
 const port = parseInt(env.PORT);
 const dev = env.NEXT_PUBLIC_NODE_ENV !== "production";
@@ -46,6 +47,12 @@ void app.prepare().then(() => {
   });
   void syncRoles().then(() => {
     console.log("Role sync complete");
+  });
+  void gameConfigHandler.ensureConfigsExist().then((x) => {
+    console.log("Game config sync complete");
+    if (x) {
+      console.log("Added default game config");
+    }
   });
 });
 

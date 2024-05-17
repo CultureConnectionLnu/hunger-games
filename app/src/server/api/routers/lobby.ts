@@ -16,6 +16,8 @@ import {
   userHandler,
 } from "../logic/handler";
 import { gameStateHandler } from "../logic/handler/game-state";
+import { gameConfig } from "~/server/db/schema";
+import { gameConfigHandler } from "../logic/handler/game-config";
 
 type JoinMessage = {
   type: "join";
@@ -93,6 +95,8 @@ export const lobbyRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await gameConfigHandler.assertGameEnabled();
+
       const opponent = await lobbyHandler.getOpponent(input.opponent);
 
       if (!opponent || opponent.isDeleted) {

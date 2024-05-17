@@ -16,6 +16,7 @@ import {
   playerProcedure,
 } from "../trpc";
 import { gameStateHandler } from "../logic/handler/game-state";
+import { gameConfigHandler } from "../logic/handler/game-config";
 
 export const questRouter = createTRPCRouter({
   getAllOngoingQuests: adminProcedure.query(() =>
@@ -164,6 +165,7 @@ export const questRouter = createTRPCRouter({
     .input(z.object({ playerId: z.string() }))
     .mutation(({ ctx, input }) =>
       errorBoundary(async () => {
+        await gameConfigHandler.assertGameEnabled();
         const hub = await assertHub(ctx.user.clerkId);
 
         const currentFight = await lobbyHandler.getCurrentFight(input.playerId);
@@ -195,6 +197,7 @@ export const questRouter = createTRPCRouter({
     .input(z.object({ playerId: z.string(), questKind }))
     .mutation(({ ctx, input }) =>
       errorBoundary(async () => {
+        await gameConfigHandler.assertGameEnabled();
         const hub = await assertHub(ctx.user.clerkId);
 
         await userHandler.assertUserIsPlayer(
@@ -246,6 +249,7 @@ export const questRouter = createTRPCRouter({
     )
     .mutation(({ ctx, input }) =>
       errorBoundary(async () => {
+        await gameConfigHandler.assertGameEnabled();
         const hub = await assertHub(ctx.user.clerkId);
         await userHandler.assertUserIsPlayer(
           input.playerId,
