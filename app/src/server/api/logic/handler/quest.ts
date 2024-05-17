@@ -14,6 +14,10 @@ const walkQuestInformationSchema = z.object({
   ),
 });
 
+const assignQuestInformationSchema = z.object({
+  hubId: z.string(),
+});
+
 export const questKind = z.union([
   z.literal("walk-1"),
   z.literal("walk-2"),
@@ -21,7 +25,20 @@ export const questKind = z.union([
 ]);
 
 export type WalkQuestInformation = z.infer<typeof walkQuestInformationSchema>;
-export type QuestKind = z.infer<typeof questKind>;
+export type AssignQuestInformation = z.infer<
+  typeof assignQuestInformationSchema
+>;
+export type WalkQuestKind = z.infer<typeof questKind>;
+export type QuestKind = WalkQuestKind | "assign";
+
+type FilterByQuestKind<T, Kind extends QuestKind> = T extends { kind: Kind }
+  ? T
+  : never;
+
+type Quest = ReturnType<QuestHandler["parseQuest"]>;
+type AssignQuest = FilterByQuestKind<Quest, "assign">;
+
+type WalkQuest = FilterByQuestKind<Quest, WalkQuestKind>;
 
 type UnwrapArray<T> = T extends Array<infer U> ? U : T;
 
@@ -41,11 +58,13 @@ class QuestHandler {
   public async getOngoingQuestsForModerator(hubId: string) {
     const rawQuests = await this.queryAllOngoingQuests();
     const allQuests = this.parseQuests(rawQuests);
-    return allQuests.filter((quest) =>
-      quest.additionalInformation.hubs.some(
+    return allQuests.filter((quest) => {
+      if (quest.kind === "assign") return false;
+
+      return quest.additionalInformation.hubs.some(
         (hub) => hub.id === hubId && !hub.visited,
-      ),
-    );
+      );
+    });
   }
 
   public async getAllQuestsFromPlayer(playerId: string) {
@@ -60,7 +79,11 @@ class QuestHandler {
       where: ({ userId, outcome }, { eq, isNull, and }) =>
         and(eq(userId, playerId), isNull(outcome)),
     });
-    return quest ? this.parseQuest(quest) : undefined;
+    if (!quest) return undefined;
+    const parsedQuest = this.parseQuest(quest);
+
+    if (!this.isWalkQuest(parsedQuest)) return undefined;
+    return parsedQuest;
   }
 
   public async markHubAsVisited(playerId: string, hubId: string) {
@@ -119,7 +142,7 @@ class QuestHandler {
         .where(eq(quest.id, currentQuest.id));
 
       if (!questCompleted) return;
-      await scoreHandler.updateScoreForQuest(
+      await scoreHandler.updateScoreForWalkQuest(
         tx,
         playerId,
         currentQuest.id,
@@ -132,10 +155,10 @@ class QuestHandler {
     };
   }
 
-  public async assignQuestToPlayer(
+  public async assignWalkQuestToPlayer(
     playerId: string,
     allHubIds: string[],
-    questKind: QuestKind,
+    questKind: WalkQuestKind,
   ) {
     const count = this.getNumberOfHubsForQuestKind(questKind);
     const hubs = this.selectRandomHubs(
@@ -173,6 +196,48 @@ class QuestHandler {
     return { success: true, newQuestId: newQuest[0]!.id } as const;
   }
 
+  public async assignPointsToPlayer(
+    playerId: string,
+    hubId: string,
+    points: number,
+  ) {
+    const additionalInformation = {
+      hubId,
+    };
+    const parseResult = assignQuestInformationSchema.safeParse(
+      additionalInformation,
+    );
+    if (!parseResult.success) {
+      return { success: false, error: parseResult.error.message } as const;
+    }
+
+    const questId = await db.transaction(async (tx) => {
+      const newQuest = await db
+        .insert(quest)
+        .values({
+          userId: playerId,
+          kind: "assign",
+          additionalInformation,
+          outcome: "completed",
+        })
+        .returning({
+          id: quest.id,
+        });
+      const questId = newQuest[0]!.id;
+
+      await scoreHandler.updateScoreForAssignQuest(
+        tx,
+        playerId,
+        questId,
+        points,
+      );
+
+      return questId;
+    });
+
+    return { success: true, questId } as const;
+  }
+
   public async markQuestAsLost(playerId: string) {
     const currentQuest = await this.getCurrentQuestForPlayer(playerId);
     if (!currentQuest) return;
@@ -187,6 +252,14 @@ class QuestHandler {
 
   public defineNextHubsUsedForWalkQuest(hubIds: string[]) {
     this.nextHubsUsedForWalkQuest = hubIds;
+  }
+
+  public isWalkQuest(quest: Quest): quest is WalkQuest {
+    return quest.kind !== "assign";
+  }
+
+  public isAssignQuest(quest: Quest): quest is AssignQuest {
+    return quest.kind === "assign";
   }
 
   private queryAllOngoingQuests() {
@@ -206,14 +279,24 @@ class QuestHandler {
       Awaited<ReturnType<QuestHandler["queryAllOngoingQuests"]>>
     >,
   ) {
+    if (quest.kind === "assign") {
+      return {
+        ...quest,
+        kind: "assign" as const,
+        additionalInformation:
+          quest.additionalInformation as AssignQuestInformation,
+      };
+    }
+    // walk quests
     return {
       ...quest,
+      kind: quest.kind as WalkQuestKind,
       additionalInformation:
         quest.additionalInformation as WalkQuestInformation,
     };
   }
 
-  private getNumberOfHubsForQuestKind(kind: QuestKind) {
+  private getNumberOfHubsForQuestKind(kind: WalkQuestKind) {
     switch (kind) {
       case "walk-1":
         return 1;

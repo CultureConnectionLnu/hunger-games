@@ -1,4 +1,3 @@
-import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { clerkHandler, userHandler } from "../logic/handler";
 import {
@@ -8,6 +7,7 @@ import {
   moderatorProcedure,
   userProcedure,
 } from "../trpc";
+import { TRPCError } from "@trpc/server";
 
 export const userRouter = createTRPCRouter({
   allUsers: adminProcedure.query(() =>
@@ -20,6 +20,18 @@ export const userRouter = createTRPCRouter({
       return allUsers.filter((x) => x.isPlayer);
     }),
   ),
+
+  nameOfPlayer: moderatorProcedure
+    .input(
+      z.object({
+        id: z.string(),
+      }),
+    )
+    .query(({ input }) =>
+      errorBoundary(async () => {
+        return clerkHandler.getUserName(input.id);
+      }),
+    ),
 
   getYourRoles: userProcedure.query(({ ctx }) =>
     errorBoundary(async () => userHandler.getUserRoles(ctx.user.clerkId)),

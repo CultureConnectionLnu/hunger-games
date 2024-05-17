@@ -1,9 +1,9 @@
 import { env } from "~/env";
 import type { BaseGameConfig } from "./core/base-game";
-import type { RockPaperScissorsConfig } from "./games/rps";
-import { type QuestKind } from "./handler";
 import { type OrderedMemoryConfig } from "./games/om";
+import type { RockPaperScissorsConfig } from "./games/rps";
 import { type TypingConfig } from "./games/typing";
+import { type WalkQuestKind } from "./handler";
 
 const longAssTime = 1_000_000;
 
@@ -29,7 +29,7 @@ export const questScoringConfig = {
   "walk-1": 100,
   "walk-2": 300,
   "walk-3": 600,
-} satisfies Record<QuestKind, number>;
+} satisfies Record<WalkQuestKind, number>;
 
 export const playerStateConfig = {
   reviveTimeInSeconds: env.NEXT_PUBLIC_NODE_ENV === "development" ? 10 : 120,

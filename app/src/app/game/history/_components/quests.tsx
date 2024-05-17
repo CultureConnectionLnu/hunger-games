@@ -62,9 +62,13 @@ function getProgress(quest: QuestEntry) {
   if (quest.outcome === "completed") {
     return "Completed";
   }
+  if (quest.kind === "assign") {
+    return "Completed";
+  }
   if (quest.outcome === "lost-in-battle") {
     return "Lost in Battle";
   }
+
   const visitedHubs = quest.additionalInformation.hubs.filter(
     (x) => x.visited,
   ).length;

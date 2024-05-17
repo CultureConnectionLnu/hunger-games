@@ -1,22 +1,20 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { describe, expect, it } from "vitest";
-import { lobbyHandler, questHandler } from "~/server/api/logic/handler";
-import { type RouterOutputs } from "~/trpc/shared";
+import {
+  lobbyHandler,
+  questHandler,
+  type WalkQuestKind,
+} from "~/server/api/logic/handler";
 import {
   cleanupLeftovers,
   getManualTimer,
   getTestUserCallers,
   makeHubs,
   makePlayer,
-  runAllMacroTasks,
   useAutomaticTimer,
   useManualTimer,
   type ModeratorIds,
 } from "./utils";
-
-type QuestData = NonNullable<RouterOutputs["quest"]["getCurrentQuestOfPlayer"]>;
-type GetQuestKind<T> = T extends { quest: { kind: infer U } } ? U : never;
-type QuestKind = GetQuestKind<QuestData>;
 
 const { registerHubHooks, getHubData } = makeHubs();
 
@@ -421,7 +419,7 @@ async function setupTest() {
   const assignQuest = async (
     moderatorId: ModeratorIds,
     playerId: `test_user_${1 | 2}`,
-    questKind: QuestKind,
+    questKind: WalkQuestKind,
   ) => {
     questHandler.defineNextHubsUsedForWalkQuest(
       getHubData()
