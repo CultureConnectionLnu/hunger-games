@@ -221,6 +221,7 @@ export const typingTests = () =>
         testFight(async ({ startGame, timeoutTimer, expectRunningTimer }) => {
           await startGame();
           await timeoutTimer("typing-timer");
+
           expectRunningTimer("next-round-timer");
         }));
 

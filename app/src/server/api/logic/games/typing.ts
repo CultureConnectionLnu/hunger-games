@@ -92,13 +92,14 @@ class TypingPlayer extends GenericEventEmitter<{
       };
     }
     const result = this.evalText(text);
+    this._states.mistakes = result.mistakes;
+    this._states.progress = result.progress;
+
     if (result.done) {
       this._view = "waiting-for-opponent";
       this.emit("finish-typing", { id: this.id });
       return;
     }
-    this._states.mistakes = result.mistakes;
-    this._states.progress = result.progress;
   }
 
   endTyping() {
@@ -160,6 +161,7 @@ export class TypingGame
         "show-result",
         "show-waiting",
         "typing-timer",
+        "next-round-timer"
       ],
       serverSpecificEvents: ["destroy"],
     });
