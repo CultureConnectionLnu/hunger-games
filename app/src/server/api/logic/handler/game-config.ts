@@ -3,10 +3,13 @@ import { getHandler } from "./base";
 import { gameConfig } from "~/server/db/schema";
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { z } from "zod";
 
 const defaultConfig = {
   enableGame: false,
 };
+
+export const configNameSchema = z.enum(["enableGame"]);
 
 class GameConfigHandler {
   public async ensureConfigsExist() {

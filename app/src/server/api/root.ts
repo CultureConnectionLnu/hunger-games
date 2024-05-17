@@ -8,6 +8,7 @@ import { questRouter } from "./routers/quest";
 import { medicRouter } from "./routers/medic";
 import { orderedMemoryRouter } from "./routers/games/ordered-memory";
 import { typingRouter } from "./routers/games/typing";
+import { gameConfigRouter } from "./routers/game-config";
 
 /**
  * This is the primary router for your server.
@@ -24,6 +25,7 @@ export const appRouter = createTRPCRouter({
   hub: hubRouter,
   quest: questRouter,
   medic: medicRouter,
+  gameConfig: gameConfigRouter,
 });
 
 // export type definition of API
