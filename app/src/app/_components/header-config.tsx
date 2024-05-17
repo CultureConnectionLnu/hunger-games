@@ -12,8 +12,8 @@ const headerConfig: HeaderConfig = {
           icon: "MdHome",
         },
         {
-          title: "Rules 🏗️",
-          href: "#",
+          title: "Rules",
+          href: "/rules",
           icon: "MdMenuBook",
         },
       ],
