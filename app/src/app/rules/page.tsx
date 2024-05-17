@@ -112,7 +112,7 @@ function TimesDetail() {
   return (
     <div>
       <p>
-        The game is played in real-time. The game starts at 10:00 and ends at
+        The game is played in real-time. The game starts at 12:00 and ends at
         16:00.
       </p>
     </div>
@@ -122,14 +122,13 @@ function TimesDetail() {
 function MapDetails() {
   return (
     <div>
-      <p>
-        The map is divided into 5 areas: the hub, the forest, the mountains, the
-        river, and the village.
+      
+      <ul>
+        <li className="text-bold ">Map Distribution:</li><p>Provide each player with a digital map showing the boundaries and key locations through the app.
       </p>
-      <p>
-        Each area has its own unique challenges and quests. The hub is the
-        starting point of the game.
+      <li className="text-bold ">Boundaries:</li><p> Players must hide within the defined boundaries but can temporarily enter outside boundaries if being chased. Returning to the game area promptly is required.
       </p>
+      </ul>
     </div>
   );
 }
@@ -138,13 +137,9 @@ function HubDetails() {
   return (
     <div>
       <p>
-        The hub is the starting point of the game. Players can find quests and
-        challenges here.
+        Go to the hub, and the moderator will assign the player what task they need to do to get points.
       </p>
-      <p>
-        The hub is also the place where players can meet and interact with each
-        other.
-      </p>
+      <p>Different hubs have different quests to complete.</p>
     </div>
   );
 }
@@ -153,8 +148,7 @@ function CatchPlayerDetails() {
   return (
     <div>
       <p>
-        Players can catch other players by tagging them. When a player is
-        caught, they must go to the hub to be released.
+        Caught Players: Tagged players are considered active in the game by scanning a unique QR code and being directed to a mini-game. The loser of the mini-game is considered injured.
       </p>
     </div>
   );
@@ -164,9 +158,16 @@ function PhysicalQuestDetails() {
   return (
     <div>
       <p>
-        Physical quests are quests that require players to complete physical
-        challenges.
+        Quests: Quests are available to all players and involve reaching certain locations on the map (hubs).
       </p>
+      <p>
+        Quest Points: Assign points to each quest.
+        Players earn points for completing quests. If a player is tagged during a quest and loses the mini-game, the quest gets canceled.
+      </p>
+      <p>
+        Quest Locations (Hubs): Mark key locations on the map where quests can be given and completed. These hubs are not safe zones.
+      </p>
+
     </div>
   );
 }
@@ -175,8 +176,7 @@ function RockPaperScissorsDetails() {
   return (
     <div>
       <p>
-        Players can play rock paper scissors to decide the outcome of a
-        challenge.
+        Rock-Paper-Scissors: Classic game where rock beats scissors, scissors beat paper, and paper beats rock.
       </p>
       <Image src={rockPaperScissors} alt="Rock Paper Scissors Game" />
     </div>
@@ -187,8 +187,7 @@ function OrderedMemoryDetails() {
   return (
     <div>
       <p>
-        Players must remember a sequence of numbers and repeat it back in the
-        correct order.
+        Memory Game: Players need to press lighted boxes in a numbered sequence.
       </p>
       <Image src={orderedMemory} alt="Ordered Memory Game" />
     </div>
@@ -198,7 +197,7 @@ function OrderedMemoryDetails() {
 function TypingDetails() {
   return (
     <div>
-      <p>Players must type a given word within a time limit.</p>
+      <p>Fast Typer: Players must type a given text as fast as possible. Each mistake removes one-second to their time.</p>
       <Image src={typing} alt="Typing Game" />
     </div>
   );
@@ -207,7 +206,11 @@ function TypingDetails() {
 function AppQuestDetails() {
   return (
     <div>
-      <p>Quests that require the use of the app.</p>
+      <p>This quest can be assigned in one of the hubs, and the moderator of the hub can give you a choice of how many hubs you need to visit.</p>
+      <p>Levels:</p>
+      <p>Easy: visit only one hub.</p>
+      <p>Medium: visit two hubs.</p>
+      <p>Hard: rush to three different hubs.</p>
     </div>
   );
 }
@@ -216,8 +219,13 @@ function ScoringDetails() {
   return (
     <div>
       <p>
-        Players earn points by completing quests and challenges. The player with
-        the most points at the end of the game wins.
+        Score Tracking: The app tracks scores. Points are awarded for completing quests and by winning (injuring) against other players.
+      </p>
+      <p>
+        Bonus Points: Extra points are awarded to players who never "died" in the game or had the most quest completions and mini-game wins.
+      </p>
+      <p>
+        Point Transfer: When a player loses a mini-game against another player, the loser loses 50% of their points, and the winner gains those points.
       </p>
     </div>
   );
@@ -226,7 +234,8 @@ function ScoringDetails() {
 function WoundedDetails() {
   return (
     <div>
-      <p>Players can revive other players by tagging them.</p>
+      <p>Injury and Hospital: If a player is tagged and loses the mini-game, they are considered injured and must go to the main hospital to revive.</p>
+      <p>Revival: At the main hospital, injured players can revive by a doctor (moderator) by scanning the player's unique QR code. The player must wait 2 minutes and then return to the doctor to sign out.</p>
     </div>
   );
 }
