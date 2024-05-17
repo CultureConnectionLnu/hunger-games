@@ -224,7 +224,7 @@ export type TypingGameInstance = GetSpecificGame<"typing", KnownGamesMap>;
 
 class GameHandler {
   private readonly runningGames = new Map<string, KnownGamesMap>();
-  private nextGameType?: keyof typeof knownGames = "typing";
+  private nextGameType?: keyof typeof knownGames;
 
   public getGame(fightId: string) {
     return this.runningGames.get(fightId);
