@@ -16,6 +16,8 @@ import rockPaperScissors from "./_assets/rock-paper-scissors.png";
 import orderedMemory from "./_assets/ordered-memory.png";
 // @ts-expect-error ci is complaining
 import typing from "./_assets/typing.png";
+// @ts-expect-error ci is complaining
+import gameDisabled from "./_assets/game-disabled.png";
 
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
@@ -124,9 +126,14 @@ function TimesDetail() {
       <p className="pb-4">
         The event will contain 2 rounds of the game, possibly 3.
       </p>
-      <p>
-        One round will take <span className="font-bold">1 hour</span> from its
-        start.
+      <p className="pb-4">
+        One round will take <span className="font-bold">45 minutes</span> from
+        its start.
+      </p>
+      <p className="pb-4">
+        Before the game starts and once the time runs out, you will see the
+        following error when starting a fight or trying to get a quest:
+        <Image src={gameDisabled} alt="Game Disabled" />
       </p>
     </div>
   );
