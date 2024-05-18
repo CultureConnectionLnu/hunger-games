@@ -41,7 +41,7 @@ export const rockPaperScissorsConfig: RockPaperScissorsConfig = {
   },
   get nextRoundTimeoutInSeconds() {
     // should not be affected by the feature flag
-    return 5;
+    return 3;
   },
   bestOf: 3,
   evaluation: [
@@ -63,11 +63,11 @@ export const rockPaperScissorsConfig: RockPaperScissorsConfig = {
 export const orderedMemoryConfig: OrderedMemoryConfig = {
   showPatternTimeoutInSeconds: 2,
   inputPatternTimeoutInSeconds: 10,
-  nextRoundTimeoutInSeconds: 5,
+  nextRoundTimeoutInSeconds: 3,
 };
 
 export const typingConfig: TypingConfig = {
   writingTimeInSeconds: 45,
   timePenaltyPerMistakeInSeconds: 1,
-  nextRoundTimeInSeconds: 5,
+  nextRoundTimeInSeconds: 3,
 };
