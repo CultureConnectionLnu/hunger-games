@@ -107,13 +107,10 @@ class TypingPlayer extends GenericEventEmitter<{
     if (this._states.totalTimeInSeconds) return;
     // don't change the time if already set
     const now = this.getCurrentTime();
-    const difference = this._states.startTime.subtract({
-      seconds: now.second,
-      minutes: now.minute,
-      hours: now.hour,
+    const difference = now.since(this._states.startTime, {
+      largestUnit: "seconds",
     });
-    this._states.totalTimeInSeconds =
-      difference.second + difference.minute * 60 + difference.hour * 60 * 60;
+    this._states.totalTimeInSeconds = difference.seconds;
   }
 
   showResult() {
