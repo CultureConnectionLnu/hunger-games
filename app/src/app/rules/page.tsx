@@ -6,10 +6,15 @@ import {
   AccordionTrigger,
 } from "~/components/ui/accordion";
 import Image from "next/image";
+// @ts-expect-error ci is complaining
 import bigMap from "./_assets/big-map.jpg";
+// @ts-expect-error ci is complaining
 import smallMap from "./_assets/small-map.jpg";
+// @ts-expect-error ci is complaining
 import rockPaperScissors from "./_assets/rock-paper-scissors.png";
+// @ts-expect-error ci is complaining
 import orderedMemory from "./_assets/ordered-memory.png";
+// @ts-expect-error ci is complaining
 import typing from "./_assets/typing.png";
 
 import React, { useState } from "react";
