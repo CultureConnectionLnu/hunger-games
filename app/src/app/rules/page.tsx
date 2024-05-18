@@ -19,6 +19,7 @@ import typing from "./_assets/typing.png";
 
 import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
+import { api } from "~/trpc/react";
 
 type ListingParams = Record<
   string,
@@ -30,8 +31,8 @@ const imageSizeConfig: "small" | "big" = "small";
 export default function RulesPage() {
   const [tab, setTab] = useState("physical");
   return (
-    <main className="p-4">
-      <h1 className="text-center text-2xl font-semibold leading-none tracking-tight">
+    <main className="px-4 pb-4">
+      <h1 className="pb-4 text-center text-2xl font-semibold leading-none tracking-tight">
         Rules
       </h1>
       <Image src={imageSizeConfig === "small" ? smallMap : bigMap} alt="Map" />
@@ -51,6 +52,9 @@ export default function RulesPage() {
           },
         }}
       />
+      <h1 className="p-4 text-center text-xl font-semibold leading-none tracking-tight">
+        Game Play
+      </h1>
       <Tabs value={tab} onValueChange={setTab} className="h-full pt-2">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="physical">Physical</TabsTrigger>
@@ -150,15 +154,21 @@ function HubDetails() {
   return (
     <div>
       <p className="pb-4">
-        <span className="font-bold">Map Distribution: </span>
-        Provide each player with a digital map showing the boundaries and key
-        locations through the app.
+        <span className="font-bold">Locations: </span>
+        The hubs are distributed over the campus. There are 4 hubs and you have
+        to find them yourself. When you do walking quest, then you will get a
+        description of the destination hub locations.
       </p>
       <p className="pb-4">
-        <span className="font-bold">Boundaries: </span>
-        Players must hide within the defined boundaries but can temporarily
-        enter outside boundaries if being chased. Returning to the game area
-        promptly is required.
+        <span className="font-bold">Safe zone: </span>
+        {
+          "If a player is with a hub moderator or in line, then you can't attack them"
+        }
+        .
+        {
+          "The hub moderator can in this case tell other players that they can't attack you"
+        }
+        .
       </p>
     </div>
   );
@@ -181,18 +191,17 @@ function PhysicalQuestDetails() {
   return (
     <div>
       <p className="pb-4">
-        <span className="font-bold">Quests: </span>Quests are available to all
-        players and involve reaching certain locations on the map (hubs).
+        <span className="font-bold">Quests: </span>
+        The physical quests are games that you need to complete at the hub.
+        <p className="text-muted">
+          To see app quests, look in the app section.
+        </p>
       </p>
       <p className="pb-4">
-        <span className="font-bold">Quest Points: </span>Assign points to each
-        quest. Players earn points for completing quests. If a player is tagged
-        during a quest and loses the mini-game, the quest gets canceled.
-      </p>
-      <p className="pb-4">
-        <span className="font-bold">Quest Locations (Hubs): </span>Mark key
-        locations on the map where quests can be given and completed. These hubs
-        are not safe zones.
+        <span className="font-bold">Quest Points: </span>
+        You get points for completing the quest. How many points depends on the
+        game you are playing at the hub. Ask the hub moderator for more
+        information.
       </p>
     </div>
   );
@@ -238,18 +247,25 @@ function AppQuestDetails() {
   return (
     <div>
       <p className="pb-4">
-        This quest can be assigned in one of the hubs, and the moderator of the
-        hub can give you a choice of how many hubs you need to visit.
+        <span className="font-bold">Quests: </span>
+        The app quests are walk and survive tasks where you need to visit other
+        hubs. You need to visit a hub and request to do a walking quest. The
+        moderator will scan your QR code and assign you a quest. Then you need
+        to walk to the quest locations and show the other hubs your QR code to
+        complete it.
       </p>
       <p className="font-bold">Levels:</p>
       <p>
-        <span className="font-bold">Easy: </span>visit only one hub.
+        <span className="font-bold">Easy: </span>
+        visit only one hub. Point:<span className="font-bold"> 100</span>
       </p>
       <p>
-        <span className="font-bold">Medium: </span>visit two hubs.
+        <span className="font-bold">Medium: </span>
+        visit two hubs. Point:<span className="font-bold"> 300</span>
       </p>
       <p>
-        <span className="font-bold">Hard: </span>rush to three different hubs.
+        <span className="font-bold">Hard: </span>
+        visit three hubs. Point:<span className="font-bold"> 600</span>
       </p>
     </div>
   );
