@@ -108,6 +108,10 @@ function TypingSpeedTestGame({ text }: { text: string }) {
   }, [text]);
 
   useEffect(() => {
+    inputRef.current && inputRef.current.focus();
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = () => {
       inputRef.current && inputRef.current.focus();
     };
@@ -187,7 +191,7 @@ function TypingSpeedTestGame({ text }: { text: string }) {
         max={emptyState.length}
         ref={inputRef}
         type="text"
-        className="absolute -z-10 opacity-0"
+        className="absolute h-full w-full opacity-0"
         onInput={() => initTyping()}
       />
       <div className="rounded-sm border p-4">
