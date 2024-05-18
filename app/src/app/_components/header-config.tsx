@@ -50,6 +50,7 @@ const headerConfig: HeaderConfig = {
           title: "Dashboard",
           href: "/dashboard",
           icon: "MdBarChart",
+          require: "sign-in",
         },
       ],
     },
