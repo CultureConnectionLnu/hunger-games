@@ -55,10 +55,10 @@ class TypingPlayer extends GenericEventEmitter<{
     | "show-result" = "none"; // Currently displayed screen for the player
 
   private _states?: {
-    startTime: number;
+    startTime: Temporal.PlainTime;
     mistakes: number;
     progress: number;
-    totalTime?: number;
+    totalTimeInSeconds?: number;
   };
 
   get view() {
@@ -72,7 +72,7 @@ class TypingPlayer extends GenericEventEmitter<{
   constructor(
     public readonly id: string,
     public readonly name: string,
-    private readonly getCurrentTime: () => number,
+    private readonly getCurrentTime: () => Temporal.PlainTime,
     private readonly evalText: (text: string) => {
       mistakes: number;
       progress: number;
@@ -104,9 +104,13 @@ class TypingPlayer extends GenericEventEmitter<{
 
   endTyping() {
     if (!this._states) return;
-    if (this._states.totalTime) return;
+    if (this._states.totalTimeInSeconds) return;
     // don't change the time if already set
-    this._states.totalTime = this.getCurrentTime() - this._states.startTime;
+    const now = this.getCurrentTime();
+    const difference = now.since(this._states.startTime, {
+      largestUnit: "seconds",
+    });
+    this._states.totalTimeInSeconds = difference.seconds;
   }
 
   showResult() {
@@ -246,7 +250,14 @@ export class TypingGame
       const player = new TypingPlayer(
         id,
         name,
-        () => Date.now(),
+        () => {
+          const now = Temporal.Now.plainTimeISO();
+          return Temporal.PlainTime.from({
+            second: now.second,
+            minute: now.minute,
+            hour: now.hour,
+          });
+        },
         (text) => {
           const progress = text.length / this.textToType!.length;
           const done = text.length === this.textToType!.length;
@@ -343,9 +354,9 @@ export class TypingGame
 
   private findWinner(firstPlayer: TypingPlayer, secondPlayer: TypingPlayer) {
     const firstPlayerStartedWriting =
-      firstPlayer.states?.totalTime !== undefined;
+      firstPlayer.states?.totalTimeInSeconds !== undefined;
     const secondPlayerStartedWriting =
-      secondPlayer.states?.totalTime !== undefined;
+      secondPlayer.states?.totalTimeInSeconds !== undefined;
 
     if (!firstPlayerStartedWriting && !secondPlayerStartedWriting) {
       return {
@@ -394,14 +405,10 @@ export class TypingGame
   }
 
   private getTypingScore(player: TypingPlayer) {
-    const { mistakes, totalTime } = player.states!;
-    const totalTimeDate = new Date(totalTime!);
-    const time = Temporal.PlainTime.from({
-      second: totalTimeDate.getSeconds(),
-      minute: totalTimeDate.getMinutes(),
-      hour: totalTimeDate.getHours(),
-    });
-    const seconds = time.second + time.minute * 60 + time.hour * 60 * 60;
-    return seconds + mistakes * this.config.timePenaltyPerMistakeInSeconds;
+    const { mistakes, totalTimeInSeconds } = player.states!;
+    return (
+      totalTimeInSeconds! +
+      mistakes * this.config.timePenaltyPerMistakeInSeconds
+    );
   }
 }
