@@ -83,6 +83,7 @@
     "postcss": "^8.4.31",
     "prettier": "^3.1.0",
     "prettier-plugin-tailwindcss": "^0.5.7",
+    "sharp": "^0.33.4",
     "tailwindcss": "^3.3.5",
     "typescript": "^5.1.6",
     "vitest": "^1.4.0"
