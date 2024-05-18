@@ -52,7 +52,7 @@ class ScoreHandler {
       const currentLoserScore = await this.currentScore(loserId);
       const { loserSubtraction, winnerAddition } =
         this.calculateScoreEntries(currentLoserScore);
-      await db.insert(score).values([
+      const scoreUpdates = [
         {
           fightId,
           score: loserSubtraction,
@@ -63,7 +63,9 @@ class ScoreHandler {
           score: winnerAddition,
           userId: winnerId,
         },
-      ]);
+      ];
+      console.log("after fight score updates", scoreUpdates);
+      await db.insert(score).values(scoreUpdates);
     } catch (error) {
       console.error(`Could not update score for fight ${fightId}`, error);
     }
@@ -196,8 +198,9 @@ class ScoreHandler {
   }
 
   private calculateScoreEntries(loserCurrentScore: number) {
-    const reducePointsBy =
-      (loserCurrentScore * fightScoringConfig.winnerGetsPercent) / 100;
+    const reducePointsBy = Math.trunc(
+      (loserCurrentScore * fightScoringConfig.winnerGetsPercent) / 100,
+    );
     const winnerAddition = Math.max(
       fightScoringConfig.winnerMinimumPointsBonus,
       reducePointsBy,

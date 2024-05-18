@@ -69,9 +69,9 @@ export default function RulesPage() {
                 title: "Catch Players",
                 description: <CatchPlayerDetails />,
               },
-              "physical-quests": {
+              "special-quests": {
                 title: "Quests",
-                description: <PhysicalQuestDetails />,
+                description: <SpecialQuestDetails />,
               },
             }}
           />
@@ -91,9 +91,9 @@ export default function RulesPage() {
                 title: "Typing",
                 description: <TypingDetails />,
               },
-              "app-quests": {
+              "walking-quests": {
                 title: "Quests",
-                description: <AppQuestDetails />,
+                description: <WalkingQuestDetails />,
               },
             }}
           />
@@ -194,12 +194,12 @@ function CatchPlayerDetails() {
   );
 }
 
-function PhysicalQuestDetails() {
+function SpecialQuestDetails() {
   return (
     <div>
       <p className="pb-4">
         <span className="font-bold">Quests: </span>
-        The physical quests are games that you need to complete at the hub.
+        The special quests are games that you need to complete at the hub.
         <p className="text-muted">
           To see app quests, look in the app section.
         </p>
@@ -250,16 +250,17 @@ function TypingDetails() {
   );
 }
 
-function AppQuestDetails() {
+function WalkingQuestDetails() {
   return (
     <div>
       <p className="pb-4">
         <span className="font-bold">Quests: </span>
-        The app quests are walk and survive tasks where you need to visit other
-        hubs. You need to visit a hub and request to do a walking quest. The
-        moderator will scan your QR code and assign you a quest. Then you need
-        to walk to the quest locations and show the other hubs your QR code to
-        complete it.
+        The walking quests are about walking to other hubs and surviving. To
+        start it, you need to visit a hub and request to do a walking quest. The
+        moderator will scan your QR code and assign you one of three walking
+        quests. Then you need to walk to the quest locations which are assigned
+        randomly and show the other hub moderators your QR code to
+        visit/complete it.
       </p>
       <p className="font-bold">Levels:</p>
       <p>
