@@ -1,0 +1,25 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres@sha256:44e345d9eb8bf0c62187df6dd4082f2cf4ab3cabe9957004dedc91e05e6d02c7 # postgres:16.2-bullseye
+    container_name: hunger-games-db
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mysecretpassword}
+      POSTGRES_DB: ${POSTGRES_DB:-mydatabase}
+      POSTGRES_USER: ${POSTGRES_USER:-myuser}
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  db-setup:
+    build:
+      context: .
+      dockerfile: db-setup/Dockerfile
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://myuser:mysecretpassword@db:5432/mydatabase}
+
+volumes:
+  pgdata:

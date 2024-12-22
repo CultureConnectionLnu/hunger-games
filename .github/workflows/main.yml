@@ -1,0 +1,172 @@
+# This workflow runs lint, build and test of the mono repo
+name: Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  typescript:
+    name: Type Check 🔍
+    runs-on: ubuntu-latest
+    container:
+      image: node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 # node:20-alpine
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm ⚙️
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: cache .pnpm-store 📦
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashfiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install 📦
+        run: |
+          pnpm install
+        working-directory: ./app
+
+      - name: Lint 🔍
+        run: |
+          pnpm ts
+        working-directory: ./app
+
+  lint:
+    name: Lint 📝
+    runs-on: ubuntu-latest
+    container:
+      image: node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 # node:20-alpine
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm ⚙️
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: cache .pnpm-store 📦
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashfiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install 📦
+        run: |
+          pnpm install
+        working-directory: ./app
+
+      - name: Lint 📝
+        run: |
+          SKIP_ENV_VALIDATION=1 pnpm run lint
+        working-directory: ./app
+
+      - name: Lint 📝
+        run: |
+          pnpm run lint-non-code-files
+        working-directory: ./app
+
+  build:
+    name: Build 🏗️
+    runs-on: ubuntu-latest
+    container:
+      image: node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 # node:20-alpine
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm ⚙️
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Cache .pnpm-store 📦
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install 📦
+        run: |
+          pnpm install
+        working-directory: ./app
+
+      - name: Build 🏗️
+        run: |
+          SKIP_ENV_VALIDATION=1 pnpm run build
+        working-directory: ./app
+
+  test:
+    name: Test 🧪
+    runs-on: ubuntu-latest
+    container:
+      image: node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 # node:20-alpine
+    services:
+      postgres:
+        image: postgres@sha256:44e345d9eb8bf0c62187df6dd4082f2cf4ab3cabe9957004dedc91e05e6d02c7 # postgres:16.2-bullseye
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/test
+      SKIP_ENV_VALIDATION: 1 # as we are not actually building the app
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Setup pnpm ⚙️
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: cache .pnpm-store 📦
+        uses: actions/cache@v3
+        with:
+          path: ~/.pnpm-store
+          key: ${{ runner.os }}-pnpm-${{ hashfiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+
+      - name: Install PostgreSQL client
+        run: apk add --no-cache postgresql-client
+
+      - name: Install 📦
+        run: |
+          pnpm install
+        working-directory: ./app
+
+      - name: Push to DB 📥
+        run: pnpm db:push
+        working-directory: ./app
+
+      - name: Run tests 🔬
+        run: pnpm test
+        working-directory: ./app
