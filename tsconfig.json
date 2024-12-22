@@ -32,6 +32,7 @@
   "include": [
     ".eslintrc.cjs",
     "next-env.d.ts",
+    "vitest.config.mts",
     "**/*.ts",
     "**/*.tsx",
     "**/*.cjs",
