@@ -20,6 +20,9 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache"
   },
   "dependencies": {
+    "@clerk/backend": "^1.21.4",
+    "@clerk/clerk-js": "^5.43.4",
+    "@clerk/nextjs": "^6.9.6",
     "@t3-oss/env-nextjs": "^0.10.1",
     "drizzle-orm": "^0.33.0",
     "geist": "^1.3.0",
@@ -27,6 +30,7 @@
     "postgres": "^3.4.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "ws": "^8.18.0",
     "zod": "^3.23.3"
   },
   "devDependencies": {
@@ -36,6 +40,7 @@
     "@types/node": "^20.14.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@types/ws": "^8.5.13",
     "@typescript-eslint/eslint-plugin": "^8.1.0",
     "@typescript-eslint/parser": "^8.1.0",
     "@vitejs/plugin-react": "^4.3.4",
