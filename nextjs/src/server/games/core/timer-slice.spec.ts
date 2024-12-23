@@ -243,9 +243,9 @@ function testSetup({
   duration?: Temporal.Duration;
   options?: Parameters<typeof createTimerSlice>[2];
 } = {}) {
-  const store = createStore<TimerSlice<"testingOnly">>((...a) => ({
+  const store = createStore<TimerSlice<"__testingOnly">>((...a) => ({
     ...createTimerSlice(
-      "testingOnly",
+      "__testingOnly",
       duration ?? Temporal.Duration.from({ seconds: 10 }),
       options ?? {
         shouldUpdateStateEverySecond: false,
@@ -254,7 +254,7 @@ function testSetup({
   }));
 
   const getState = () => {
-    return store.getState().testingOnly;
+    return store.getState().__testingOnly;
   };
 
   return { getState };

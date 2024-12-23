@@ -2,14 +2,8 @@ import { StateCreator } from "zustand";
 import { Temporal } from "temporal-polyfill";
 
 declare global {
-  interface KnownTimerNames {
-    // todo: move these timers to player connection state slice
-    startTimeout: string;
-    player1DisconnectedLoose: string;
-    player2DisconnectedLoose: string;
-    forceStopGame: string;
-    // todo: keep this one here
-    testingOnly: string;
+  interface KnownTimerNamesMap {
+    __testingOnly: string;
   }
 }
 
@@ -53,7 +47,8 @@ interface TimerState {
   reset: () => void;
 }
 
-export type TimerSlice<Property extends keyof KnownTimerNames> = {
+export type KnownTimerNames = keyof KnownTimerNamesMap;
+export type TimerSlice<Property extends KnownTimerNames> = {
   [K in Property]: TimerState;
 };
 
@@ -64,7 +59,7 @@ export type TimerSlice<Property extends keyof KnownTimerNames> = {
  * @param options
  * @returns
  */
-export function createTimerSlice<TimerName extends keyof KnownTimerNames>(
+export function createTimerSlice<TimerName extends KnownTimerNames>(
   timerName: TimerName,
   duration: Temporal.Duration,
   options: TimerState["options"],

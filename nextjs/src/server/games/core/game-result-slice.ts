@@ -16,7 +16,7 @@ type GameResult =
     };
 
 export type GameResultSlice = {
-  result: {
+  gameResult: {
     outcome: GameResult;
     neverStarted: () => void;
     forceStopGame: () => void;
@@ -31,16 +31,16 @@ export type GameResultSlice = {
  */
 export function createGameResultSlice(): StateCreator<GameResultSlice> {
   return (set, get) => ({
-    result: {
+    gameResult: {
       outcome: {
         result: "ongoing",
       },
       neverStarted: () => {
-        if (get().result.outcome.result !== "ongoing") return;
+        if (get().gameResult.outcome.result !== "ongoing") return;
 
         set((state) => ({
-          result: {
-            ...state.result,
+          gameResult: {
+            ...state.gameResult,
             outcome: {
               result: "tie",
               reason: "never-started",
@@ -49,11 +49,11 @@ export function createGameResultSlice(): StateCreator<GameResultSlice> {
         }));
       },
       forceStopGame: () => {
-        if (get().result.outcome.result !== "ongoing") return;
+        if (get().gameResult.outcome.result !== "ongoing") return;
 
         set((state) => ({
-          result: {
-            ...state.result,
+          gameResult: {
+            ...state.gameResult,
             outcome: {
               result: "tie",
               reason: "force-stop-game",
@@ -62,11 +62,11 @@ export function createGameResultSlice(): StateCreator<GameResultSlice> {
         }));
       },
       otherPlayerDisconnected: (winnerId, looserId) => {
-        if (get().result.outcome.result !== "ongoing") return;
+        if (get().gameResult.outcome.result !== "ongoing") return;
 
         set((state) => ({
-          result: {
-            ...state.result,
+          gameResult: {
+            ...state.gameResult,
             outcome: {
               result: "winner",
               winnerId,
@@ -77,11 +77,11 @@ export function createGameResultSlice(): StateCreator<GameResultSlice> {
         }));
       },
       gameTied: () => {
-        if (get().result.outcome.result !== "ongoing") return;
+        if (get().gameResult.outcome.result !== "ongoing") return;
 
         set((state) => ({
-          result: {
-            ...state.result,
+          gameResult: {
+            ...state.gameResult,
             outcome: {
               result: "tie",
               reason: "game-result",
@@ -90,11 +90,11 @@ export function createGameResultSlice(): StateCreator<GameResultSlice> {
         }));
       },
       gameWon: (winnerId, looserId) => {
-        if (get().result.outcome.result !== "ongoing") return;
+        if (get().gameResult.outcome.result !== "ongoing") return;
 
         set((state) => ({
-          result: {
-            ...state.result,
+          gameResult: {
+            ...state.gameResult,
             outcome: {
               result: "winner",
               winnerId,
