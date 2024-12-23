@@ -1,6 +1,7 @@
 import { type StateCreator } from "zustand";
 import { type PlayerConnectionSliceRequirements } from "./player-connection-state-slice";
 import { type DeepPartial, type SubscribeStore } from "./zustand-helper";
+import { type GameResultSlice } from "./game-result-slice";
 
 type VisibleTimers = "startTimeout" | "otherPlayerDisconnect";
 
@@ -17,7 +18,7 @@ interface PlayerView {
     | "game"
     | "game-paused"
     // after the game
-    | "game-completed";
+    | "game-ended";
   timer: Record<
     VisibleTimers,
     {
@@ -39,6 +40,10 @@ export interface ConnectionViewSlice {
     playerDisconnected: (playerId: string) => void;
     playerConnected: (playerId: string) => void;
     showGameView: () => void;
+    showPausedView: () => void;
+    showGameEndedView: (
+      outcome: GameResultSlice["gameResult"]["outcome"],
+    ) => void;
   };
 }
 
@@ -275,6 +280,17 @@ export function createConnectionViewSlice(
             },
           });
         },
+
+        showGameEndedView: (outcome) => {
+          set({
+            player1: {
+              showView: "game-ended",
+            },
+            player2: {
+              showView: "game-ended",
+            },
+          });
+        },
       },
     };
   };
@@ -287,6 +303,7 @@ export function registerConnectionViewSubscribers(
   handlePlayerReadyEvent(store);
   handleDisconnectPlayerEvent(store);
   handleGameRunningEvent(store);
+  handleGameEnded(store);
 }
 
 function handlePlayerJoinEvent(
@@ -395,6 +412,16 @@ function handleGameRunningEvent(
       if (gameIsRunning) {
         store.getState().connectedView.showGameView();
       }
+    },
+  );
+}
+
+function handleGameEnded(store: SubscribeStore<ConnectedViewRequirements>) {
+  store.subscribe(
+    (state) => state.gameResult.outcome,
+    (outcome) => {
+      if (outcome.result === "ongoing") return;
+      store.getState().connectedView.showGameEndedView(outcome);
     },
   );
 }
