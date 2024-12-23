@@ -1,4 +1,4 @@
-import { create, StoreApi } from "zustand";
+import { create, StoreApi, StateCreator } from "zustand";
 import { AnyGame } from "./known-games";
 import { Temporal } from "temporal-polyfill";
 import { Timer } from "./timer";
@@ -8,6 +8,13 @@ interface PlayerState {
   ready: boolean;
   disconnected: boolean;
   id: string;
+}
+
+interface ConnectionView {
+  showView: "ready-button" | "game" | "game-paused" | "game-completed";
+  playerId: string;
+  visibleTimer: ("start-timeout" | "other-player-disconnected")[];
+  actions: "ready"[];
 }
 
 interface ConnectionState {
@@ -45,6 +52,9 @@ interface ConnectionState {
 }
 
 type GameResult =
+  | {
+      result: "ongoing";
+    }
   | {
       result: "tie";
       reason: "game-result" | "never-started" | "force-stop-game";
@@ -105,7 +115,7 @@ export function createGameConnectionStoreWrapper(
     },
     connectPlayer: (playerId) => {
       if (get().internal.gameCompleted) return "game already completed";
-      if (get().gameIsRunning) return "player already connected";
+      if (get().gameIsRunning) return "game already running";
 
       // manage timers
       get().internal.timers.startTimeout.startOrResume();
@@ -162,9 +172,11 @@ export function createGameConnectionStoreWrapper(
     markReady: (playerId) => {
       if (get().internal.gameCompleted) return "game already completed";
       if (get().gameIsRunning) return "player already ready";
+      const playerKey = get().player1.id === playerId ? "player1" : "player2";
+
+      if (get()[playerKey].ready) return "player already ready";
 
       set((state) => {
-        const playerKey = state.player1.id === playerId ? "player1" : "player2";
         const newState = {
           ...state,
           [playerKey]: {
