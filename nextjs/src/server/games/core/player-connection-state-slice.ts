@@ -1,7 +1,7 @@
 import { StateCreator, Mutate, UseBoundStore, StoreApi } from "zustand";
 import { GameResultSlice } from "./game-result-slice";
 import { KnownTimerNames, TimerSlice } from "./timer-slice";
-import { SubscribeStore } from "./zustand-helper";
+import { DeepPartial, SubscribeStore } from "./zustand-helper";
 
 declare global {
   interface KnownTimerNamesMap {
@@ -19,9 +19,6 @@ interface PlayerState {
   id: string;
 }
 
-type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P];
-} & {};
 
 export interface PlayerConnectionSlice {
   playerConnection: {

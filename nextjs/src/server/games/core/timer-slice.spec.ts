@@ -1,7 +1,7 @@
 import { Temporal } from "temporal-polyfill";
 import { describe, expect, test, beforeEach, afterEach, vi } from "vitest";
 import { createStore } from "zustand";
-import { createTimerSlice, TimerSlice } from "./timer-slice";
+import { createTimerSlice, type TimerSlice } from "./timer-slice";
 
 describe("timer slice", () => {
   beforeEach(() => {

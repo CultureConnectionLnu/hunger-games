@@ -4,12 +4,12 @@ import { createStore } from "zustand";
 import { createGameResultSlice } from "./game-result-slice";
 import {
   createPlayerConnectionSlice,
-  PlayerConnectionSliceRequirements,
+  type PlayerConnectionSliceRequirements,
   registerPlayerConnectionSubscribers,
 } from "./player-connection-state-slice";
 import { createTimerSlice } from "./timer-slice";
 import { subscribeWithSelector } from "zustand/middleware";
-import { SubscribeStore } from "./zustand-helper";
+import { type SubscribeStore } from "./zustand-helper";
 
 describe("player connection slice", () => {
   beforeEach(() => {
@@ -357,7 +357,7 @@ describe("player connection slice", () => {
   });
 });
 
-function testSetup({}: {} = {}) {
+function testSetup() {
   const player1Id = "player1";
   const player2Id = "player2";
   const durations = {
