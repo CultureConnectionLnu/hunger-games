@@ -366,6 +366,72 @@ describe("connection view slice", () => {
       ).toBe(false);
     });
   });
+
+  describe("outcome", () => {
+    test("by default, should not show any outcome", async () => {
+      const { getState } = testSetup();
+
+      expect(getState().connectedView.mutable.player1.outcome).toBe(undefined);
+      expect(getState().connectedView.mutable.player2.outcome).toBe(undefined);
+    });
+
+    test("should show outcome 'tie' when both players are in the same state", async () => {
+      const { getState, player1Id, player2Id, connectPlayer, durations } =
+        testSetup();
+
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+
+      await vi.advanceTimersByTimeAsync(
+        durations.startTimeout.total({ unit: "milliseconds" }),
+      );
+
+      expect(getState().connectedView.mutable.player1.outcome).toEqual({
+        result: "tie",
+        yourId: player1Id,
+        opponentId: player2Id,
+        reason: "never-started",
+      });
+      expect(getState().connectedView.mutable.player2.outcome).toEqual({
+        result: "tie",
+        yourId: player2Id,
+        opponentId: player1Id,
+        reason: "never-started",
+      });
+    });
+
+    test("should show outcome 'win' when the player who is not in the same state wins", async () => {
+      const {
+        getState,
+        player1Id,
+        player2Id,
+        connectPlayer,
+        markReady,
+        durations,
+      } = testSetup();
+
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      markReady(player1Id);
+
+      await vi.advanceTimersByTimeAsync(
+        durations.startTimeout.total({ unit: "milliseconds" }),
+      );
+
+      expect(getState().connectedView.mutable.player1.outcome).toEqual({
+        result: "win",
+        yourId: player1Id,
+        opponentId: player2Id,
+        reason: "never-started",
+      });
+      expect(getState().connectedView.mutable.player2.outcome).toEqual({
+        result: "loose",
+        yourId: player2Id,
+        opponentId: player1Id,
+        reason: "never-started",
+      });
+    });
+  });
 });
 
 function testSetup() {

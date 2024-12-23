@@ -27,6 +27,12 @@ interface PlayerView {
     }
   >;
   id: string;
+  outcome?: {
+    result: "tie" | "win" | "loose";
+    yourId: string;
+    opponentId: string;
+    reason: NonNullable<GameResultSlice["gameResult"]["outcome"]["reason"]>;
+  };
 }
 
 export interface ConnectionViewSlice {
@@ -282,12 +288,29 @@ export function createConnectionViewSlice(
         },
 
         showGameEndedView: (outcome) => {
+          if (outcome.result === "ongoing") return;
+
+          const toPlayerOutcome = (yourId: string, opponentId: string) =>
+            ({
+              result:
+                outcome.result === "tie"
+                  ? "tie"
+                  : outcome.winnerId === yourId
+                    ? "win"
+                    : "loose",
+              yourId,
+              opponentId,
+              reason: outcome.reason,
+            }) satisfies PlayerView["outcome"];
+
           set({
             player1: {
               showView: "game-ended",
+              outcome: toPlayerOutcome(player1Id, player2Id),
             },
             player2: {
               showView: "game-ended",
+              outcome: toPlayerOutcome(player2Id, player1Id),
             },
           });
         },
@@ -420,7 +443,6 @@ function handleGameEnded(store: SubscribeStore<ConnectedViewRequirements>) {
   store.subscribe(
     (state) => state.gameResult.outcome,
     (outcome) => {
-      if (outcome.result === "ongoing") return;
       store.getState().connectedView.showGameEndedView(outcome);
     },
   );
