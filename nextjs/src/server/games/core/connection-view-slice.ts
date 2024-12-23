@@ -30,11 +30,9 @@ export interface ConnectionViewSlice {
       player1: PlayerView;
       player2: PlayerView;
     };
-    showReadyButton: (playerId: string) => void;
-    showWaitingForOtherPlayerJoining: (
-      playerId: string,
-      selectOpponent?: boolean,
-    ) => void;
+    playerJoined: (playerId: string) => void;
+    playerIsReady: (playerId: string) => void;
+    showGameView: () => void;
   };
 }
 
@@ -105,16 +103,20 @@ export function createConnectionViewSlice(
         (selectOpponent && playerId === player2Id)
       )
         return {
-          playerKey:
+          currentPlayer:
             "player1" satisfies keyof ConnectedViewRequirements["connectedView"]["mutable"],
+          opponent:
+            "player2" satisfies keyof ConnectedViewRequirements["connectedView"]["mutable"],
         } as const;
       if (
         (selectOpponent === false && playerId === player2Id) ||
         (selectOpponent && playerId === player1Id)
       )
         return {
-          playerKey:
+          currentPlayer:
             "player2" satisfies keyof ConnectedViewRequirements["connectedView"]["mutable"],
+          opponent:
+            "player1" satisfies keyof ConnectedViewRequirements["connectedView"]["mutable"],
         } as const;
       console.error(
         `Should be impossible, player id '${playerId}' not found. Existing player ids: '${[player1Id, player2Id].map((x) => `'${x}'`).join(", ")}'`,
@@ -157,17 +159,18 @@ export function createConnectionViewSlice(
             },
           },
         },
-        showReadyButton: (playerId) => {
+        playerJoined: (playerId) => {
           const keys = getPlayerSpecificKeys(playerId, false);
           if (keys === undefined) return;
 
           if (
-            get().connectedView.mutable[keys.playerKey].showView !== "joining"
+            get().connectedView.mutable[keys.currentPlayer].showView !==
+            "joining"
           )
             return;
 
           set({
-            [keys.playerKey]: {
+            [keys.currentPlayer]: {
               showView: "ready-button",
               nextActions: ["ready"],
               timer: {
@@ -177,23 +180,51 @@ export function createConnectionViewSlice(
               },
             } satisfies DeepPartial<PlayerView>,
           });
+
+          const opponentView =
+            get().connectedView.mutable[keys.opponent].showView;
+          if (opponentView === "waiting-for-other-player-joining") {
+            set({
+              [keys.opponent]: {
+                showView: "waiting-for-other-player-ready",
+              },
+            });
+          }
         },
-        showWaitingForOtherPlayerJoining: (
-          playerId,
-          selectOpponent = false,
-        ) => {
-          const keys = getPlayerSpecificKeys(playerId, selectOpponent);
+
+        playerIsReady: (playerId) => {
+          const mutable = get().playerConnection.mutable;
+          if (mutable.gameIsRunning) {
+            get().connectedView.showGameView();
+            return;
+          }
+
+          const keys = getPlayerSpecificKeys(playerId, false);
           if (keys === undefined) return;
 
-          const currentView =
-            get().connectedView.mutable[keys.playerKey].showView;
-          if (currentView === "waiting-for-other-player-joining") return;
+          const opponentView =
+            get().connectedView.mutable[keys.opponent].showView;
 
           set({
-            [keys.playerKey]: {
-              showView: "waiting-for-other-player-joining",
+            [keys.currentPlayer]: {
+              showView:
+                opponentView === "joining"
+                  ? "waiting-for-other-player-joining"
+                  : "waiting-for-other-player-ready",
               nextActions: [],
             } satisfies DeepPartial<PlayerView>,
+          });
+        },
+
+        showGameView: () => {
+          // todo: are restrictions needed?
+          set({
+            player1: {
+              showView: "game",
+            },
+            player2: {
+              showView: "game",
+            },
           });
         },
       },
@@ -220,10 +251,7 @@ function handlePlayerJoinEvent(
     ([player1Joined, player1Id], [prevPlayer1Joined]) => {
       if (prevPlayer1Joined) return;
       if (player1Joined) {
-        store.getState().connectedView.showReadyButton(player1Id);
-        // store
-        //   .getState()
-        //   .connectedView.showWaitingForOtherPlayerJoining(player1Id, true);
+        store.getState().connectedView.playerJoined(player1Id);
       }
     },
   );
@@ -236,10 +264,7 @@ function handlePlayerJoinEvent(
     ([player2Joined, player2Id], [prevPlayer2Joined]) => {
       if (prevPlayer2Joined) return;
       if (player2Joined) {
-        store.getState().connectedView.showReadyButton(player2Id);
-        // store
-        //   .getState()
-        //   .connectedView.showWaitingForOtherPlayerJoining(player2Id, true);
+        store.getState().connectedView.playerJoined(player2Id);
       }
     },
   );
@@ -257,9 +282,7 @@ function handlePlayerReadyEvent(
     ([player1Ready, player1Id], [prevPlayer1Ready]) => {
       if (prevPlayer1Ready) return;
       if (player1Ready) {
-        store
-          .getState()
-          .connectedView.showWaitingForOtherPlayerJoining(player1Id);
+        store.getState().connectedView.playerIsReady(player1Id);
       }
     },
   );
@@ -272,9 +295,7 @@ function handlePlayerReadyEvent(
     ([player2Ready, player2Id], [prevPlayer2Ready]) => {
       if (prevPlayer2Ready) return;
       if (player2Ready) {
-        store
-          .getState()
-          .connectedView.showWaitingForOtherPlayerJoining(player2Id);
+        store.getState().connectedView.playerIsReady(player2Id);
       }
     },
   );

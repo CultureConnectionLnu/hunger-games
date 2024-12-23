@@ -61,7 +61,6 @@ describe("connection view slice", () => {
 
       connectPlayer(player1Id);
       markReady(player1Id);
-
       connectPlayer(player2Id);
 
       expect(getState().connectedView.mutable.player1.showView).toBe(
@@ -70,6 +69,35 @@ describe("connection view slice", () => {
       expect(getState().connectedView.mutable.player2.showView).toBe(
         "ready-button",
       );
+    });
+
+    test('should switch the view to "waiting-for-other-player-ready" once the opponent joins (alternative order)', async () => {
+      const { getState, player1Id, player2Id, connectPlayer, markReady } =
+        testSetup();
+
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      markReady(player1Id);
+
+      expect(getState().connectedView.mutable.player1.showView).toBe(
+        "waiting-for-other-player-ready",
+      );
+      expect(getState().connectedView.mutable.player2.showView).toBe(
+        "ready-button",
+      );
+    });
+
+    test('should switch the view to "game" once both players are ready', async () => {
+      const { getState, player1Id, player2Id, connectPlayer, markReady } =
+        testSetup();
+
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      markReady(player1Id);
+      markReady(player2Id);
+
+      expect(getState().connectedView.mutable.player1.showView).toBe("game");
+      expect(getState().connectedView.mutable.player2.showView).toBe("game");
     });
   });
 
