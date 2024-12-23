@@ -6,13 +6,17 @@ type VisibleTimers = "startTimeout" | "otherPlayerDisconnect";
 
 interface PlayerView {
   nextActions: "ready"[];
-  showView:
-    | "joining"
+  showView: // before the game starts
+  | "joining"
     | "ready-button"
     | "waiting-for-other-player-joining"
     | "waiting-for-other-player-ready"
+    // if a user disconnects before the game starts
+    | "waiting-for-other-player-reconnect"
+    // during the game
     | "game"
     | "game-paused"
+    // after the game
     | "game-completed";
   timer: Record<
     VisibleTimers,
@@ -193,12 +197,6 @@ export function createConnectionViewSlice(
         },
 
         playerIsReady: (playerId) => {
-          const mutable = get().playerConnection.mutable;
-          if (mutable.gameIsRunning) {
-            get().connectedView.showGameView();
-            return;
-          }
-
           const keys = getPlayerSpecificKeys(playerId, false);
           if (keys === undefined) return;
 
@@ -237,6 +235,7 @@ export function registerConnectionViewSubscribers(
 ) {
   handlePlayerJoinEvent(store);
   handlePlayerReadyEvent(store);
+  handleGameRunningEvent(store);
 }
 
 function handlePlayerJoinEvent(
@@ -296,6 +295,19 @@ function handlePlayerReadyEvent(
       if (prevPlayer2Ready) return;
       if (player2Ready) {
         store.getState().connectedView.playerIsReady(player2Id);
+      }
+    },
+  );
+}
+
+function handleGameRunningEvent(
+  store: SubscribeStore<ConnectedViewRequirements>,
+) {
+  store.subscribe(
+    (state) => state.playerConnection.mutable.gameIsRunning,
+    (gameIsRunning) => {
+      if (gameIsRunning) {
+        store.getState().connectedView.showGameView();
       }
     },
   );
