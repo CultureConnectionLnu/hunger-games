@@ -25,11 +25,16 @@ describe("connection view slice", () => {
   });
 
   describe("view", () => {
+    describe("before game starts", () => {
     test("by default, it shows 'joining' as the view", async () => {
       const { getState } = testSetup();
 
-      expect(getState().connectedView.mutable.player1.showView).toBe("joining");
-      expect(getState().connectedView.mutable.player2.showView).toBe("joining");
+        expect(getState().connectedView.mutable.player1.showView).toBe(
+          "joining",
+        );
+        expect(getState().connectedView.mutable.player2.showView).toBe(
+          "joining",
+        );
     });
 
     test("should switch the view to 'ready-button' when the player joins", async () => {
@@ -40,7 +45,9 @@ describe("connection view slice", () => {
       expect(getState().connectedView.mutable.player1.showView).toBe(
         "ready-button",
       );
-      expect(getState().connectedView.mutable.player2.showView).toBe("joining");
+        expect(getState().connectedView.mutable.player2.showView).toBe(
+          "joining",
+        );
     });
 
     test("should switch the view to 'waiting-for-other-player-joining' when the player is ready", async () => {
@@ -52,7 +59,9 @@ describe("connection view slice", () => {
       expect(getState().connectedView.mutable.player1.showView).toBe(
         "waiting-for-other-player-joining",
       );
-      expect(getState().connectedView.mutable.player2.showView).toBe("joining");
+        expect(getState().connectedView.mutable.player2.showView).toBe(
+          "joining",
+        );
     });
 
     test('should switch the view to "waiting-for-other-player-ready" once the opponent joins', async () => {
@@ -155,8 +164,10 @@ describe("connection view slice", () => {
       expect(getState().connectedView.mutable.player2.showView).toBe(
         "ready-button",
       );
+      });
     });
 
+    describe("while game is running", () => {
     test('should switch the view to "game" once both players are ready', async () => {
       const { getState, player1Id, player2Id, connectPlayer, markReady } =
         testSetup();
@@ -168,6 +179,113 @@ describe("connection view slice", () => {
 
       expect(getState().connectedView.mutable.player1.showView).toBe("game");
       expect(getState().connectedView.mutable.player2.showView).toBe("game");
+      });
+
+      test("should switch the view to 'game-paused' when a player disconnects", async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          disconnectPlayer,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+
+        disconnectPlayer(player2Id);
+
+        expect(getState().connectedView.mutable.player1.showView).toBe(
+          "game-paused",
+        );
+        expect(getState().connectedView.mutable.player2.showView).toBe(
+          "game-paused",
+        );
+      });
+
+      test("should continue to show 'game-paused' both players are disconnected", async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          disconnectPlayer,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+
+        disconnectPlayer(player1Id);
+        disconnectPlayer(player2Id);
+
+        expect(getState().connectedView.mutable.player1.showView).toBe(
+          "game-paused",
+        );
+        expect(getState().connectedView.mutable.player2.showView).toBe(
+          "game-paused",
+        );
+      });
+
+      test("should stay paused when only one player reconnects", async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          disconnectPlayer,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+
+        disconnectPlayer(player1Id);
+        disconnectPlayer(player2Id);
+
+        connectPlayer(player1Id);
+
+        expect(getState().connectedView.mutable.player1.showView).toBe(
+          "game-paused",
+        );
+        expect(getState().connectedView.mutable.player2.showView).toBe(
+          "game-paused",
+        );
+      });
+
+      test("should switch back to 'game' when both players reconnect", async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          disconnectPlayer,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+
+        disconnectPlayer(player1Id);
+        disconnectPlayer(player2Id);
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+
+        expect(getState().connectedView.mutable.player1.showView).toBe("game");
+        expect(getState().connectedView.mutable.player2.showView).toBe("game");
+      });
+    });
+
     });
   });
 

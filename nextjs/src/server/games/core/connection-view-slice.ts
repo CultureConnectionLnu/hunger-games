@@ -211,6 +211,17 @@ export function createConnectionViewSlice(
         },
 
         playerDisconnected: (playerId) => {
+          const currentView = get().connectedView.mutable.player1.showView;
+          // always both players are in the game.
+          // so checking any player if the current view is `game` is sufficient
+          if (currentView === "game") {
+            get().connectedView.showPausedView();
+            return;
+          }
+          if (currentView === "game-paused") {
+            return;
+          }
+
           const keys = getPlayerSpecificKeys(playerId);
           if (keys === undefined) return;
 
@@ -223,6 +234,13 @@ export function createConnectionViewSlice(
         },
 
         playerConnected: (playerId) => {
+          const currentView = get().connectedView.mutable.player1.showView;
+          // always both players are in the game.
+          // so checking any player if the current view is `game` is sufficient
+          if (currentView === "game-paused") {
+            return;
+          }
+
           const keys = getPlayerSpecificKeys(playerId);
           if (keys === undefined) return;
 
@@ -242,6 +260,18 @@ export function createConnectionViewSlice(
             },
             player2: {
               showView: "game",
+            },
+          });
+        },
+
+        showPausedView: () => {
+          // todo: are restrictions needed?
+          set({
+            player1: {
+              showView: "game-paused",
+            },
+            player2: {
+              showView: "game-paused",
             },
           });
         },
