@@ -50,6 +50,14 @@ export interface ConnectionViewSlice {
     showGameEndedView: (
       outcome: GameResultSlice["gameResult"]["outcome"],
     ) => void;
+    updateStartTimeoutValue: (formattedTime: string) => void;
+    /**
+     * for this function to work properly, the player id assignment must be aligned between all zustand slices
+     */
+    updateDisconnectedLooseValue: (
+      formattedTime: string,
+      playerKey: "player1" | "player2",
+    ) => void;
   };
 }
 
@@ -95,12 +103,12 @@ export function createConnectionViewSlice(
                   ? state.connectedView.mutable.player2.timer
                   : {
                       otherPlayerDisconnect: {
-                        ...state.connectedView.mutable.player1.timer
+                        ...state.connectedView.mutable.player2.timer
                           .otherPlayerDisconnect,
                         ...mutation.player2.timer.otherPlayerDisconnect,
                       },
                       startTimeout: {
-                        ...state.connectedView.mutable.player1.timer
+                        ...state.connectedView.mutable.player2.timer
                           .startTimeout,
                         ...mutation.player2.timer.startTimeout,
                       },
@@ -346,6 +354,37 @@ export function createConnectionViewSlice(
             },
           });
         },
+
+        updateStartTimeoutValue: (formattedTime) => {
+          set({
+            player1: {
+              timer: {
+                startTimeout: {
+                  formattedTime,
+                },
+              },
+            },
+            player2: {
+              timer: {
+                startTimeout: {
+                  formattedTime,
+                },
+              },
+            },
+          });
+        },
+
+        updateDisconnectedLooseValue: (formattedTime, playerKey) => {
+          set({
+            [playerKey]: {
+              timer: {
+                otherPlayerDisconnect: {
+                  formattedTime,
+                },
+              },
+            },
+          });
+        },
       },
     };
   };
@@ -358,7 +397,10 @@ export function registerConnectionViewSubscribers(
   handlePlayerReadyEvent(store);
   handleDisconnectPlayerEvent(store);
   handleGameRunningEvent(store);
-  handleGameEnded(store);
+  handleGameEndedEvent(store);
+
+  handleStartTimeoutUpdate(store);
+  handleDisconnectedLooseUpdate(store);
 }
 
 function handlePlayerJoinEvent(
@@ -471,11 +513,53 @@ function handleGameRunningEvent(
   );
 }
 
-function handleGameEnded(store: SubscribeStore<ConnectedViewRequirements>) {
+function handleGameEndedEvent(
+  store: SubscribeStore<ConnectedViewRequirements>,
+) {
   store.subscribe(
     (state) => state.gameResult.outcome,
     (outcome) => {
       store.getState().connectedView.showGameEndedView(outcome);
+    },
+  );
+}
+
+function handleStartTimeoutUpdate(
+  store: SubscribeStore<ConnectedViewRequirements>,
+) {
+  store.subscribe(
+    (state) => state.timerStartTimeout.mutable.formattedTime,
+    (formattedTime, prevFormattedTime) => {
+      if (formattedTime === prevFormattedTime) return;
+
+      store.getState().connectedView.updateStartTimeoutValue(formattedTime);
+    },
+  );
+}
+
+function handleDisconnectedLooseUpdate(
+  store: SubscribeStore<ConnectedViewRequirements>,
+) {
+  store.subscribe(
+    (state) => state.timerPlayer1DisconnectedLoose.mutable.formattedTime,
+    (formattedTime, prevFormattedTime) => {
+      if (formattedTime === prevFormattedTime) return;
+
+      // the opponent is interested in the loose timer
+      store
+        .getState()
+        .connectedView.updateDisconnectedLooseValue(formattedTime, "player2");
+    },
+  );
+  store.subscribe(
+    (state) => state.timerPlayer2DisconnectedLoose.mutable.formattedTime,
+    (formattedTime, prevFormattedTime) => {
+      if (formattedTime === prevFormattedTime) return;
+
+      // the opponent is interested in the loose timer
+      store
+        .getState()
+        .connectedView.updateDisconnectedLooseValue(formattedTime, "player1");
     },
   );
 }

@@ -788,6 +788,67 @@ describe("connection view slice", () => {
     });
   });
 
+  describe("timer values", () => {
+    test("should show the correct value for the startTimeout timer", async () => {
+      const { getState, player1Id, player2Id, connectPlayer } = testSetup({
+        durations: {
+          startTimeout: Temporal.Duration.from({ seconds: 5 }),
+        },
+      });
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+
+      expect(
+        getState().connectedView.mutable.player1.timer.startTimeout
+          .formattedTime,
+      ).toBe("00:05");
+      expect(
+        getState().connectedView.mutable.player2.timer.startTimeout
+          .formattedTime,
+      ).toBe("00:05");
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(
+        getState().connectedView.mutable.player1.timer.startTimeout
+          .formattedTime,
+      ).toBe("00:04");
+      expect(
+        getState().connectedView.mutable.player2.timer.startTimeout
+          .formattedTime,
+      ).toBe("00:04");
+    });
+
+    test("should show the correct otherPlayerDisconnected value for player1", async () => {
+      const {
+        getState,
+        player1Id,
+        player2Id,
+        connectPlayer,
+        disconnectPlayer,
+      } = testSetup({
+        durations: {
+          disconnectLoose: Temporal.Duration.from({ seconds: 5 }),
+        },
+      });
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      disconnectPlayer(player1Id);
+
+      expect(
+        getState().connectedView.mutable.player2.timer.otherPlayerDisconnect
+          .formattedTime,
+      ).toBe("00:05");
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(
+        getState().connectedView.mutable.player2.timer.otherPlayerDisconnect
+          .formattedTime,
+      ).toBe("00:04");
+    });
+  });
+
   describe("outcome", () => {
     test("by default, should not show any outcome", async () => {
       const { getState } = testSetup();
@@ -855,13 +916,26 @@ describe("connection view slice", () => {
   });
 });
 
-function testSetup() {
+function testSetup(
+  options: {
+    durations?: {
+      forceStop?: Temporal.Duration;
+      disconnectLoose?: Temporal.Duration;
+      startTimeout?: Temporal.Duration;
+    };
+  } = {},
+) {
   const player1Id = "player1";
   const player2Id = "player2";
   const durations = {
-    forceStop: Temporal.Duration.from({ seconds: 120 }),
-    disconnectLoose: Temporal.Duration.from({ seconds: 10 }),
-    startTimeout: Temporal.Duration.from({ seconds: 10 }),
+    forceStop:
+      options.durations?.forceStop ?? Temporal.Duration.from({ seconds: 120 }),
+    disconnectLoose:
+      options.durations?.disconnectLoose ??
+      Temporal.Duration.from({ seconds: 10 }),
+    startTimeout:
+      options.durations?.startTimeout ??
+      Temporal.Duration.from({ seconds: 10 }),
   };
   const store = createStore<ConnectedViewRequirements>()(
     subscribeWithSelector((...a) => ({
@@ -872,20 +946,23 @@ function testSetup() {
         shouldUpdateStateEverySecond: false,
       })(...a),
       ...createTimerSlice("timerStartTimeout", durations.startTimeout, {
-        shouldUpdateStateEverySecond: false,
+        shouldUpdateStateEverySecond: true,
+        countDirection: "down-from-end",
       })(...a),
       ...createTimerSlice(
         "timerPlayer1DisconnectedLoose",
         durations.disconnectLoose,
         {
-          shouldUpdateStateEverySecond: false,
+          shouldUpdateStateEverySecond: true,
+          countDirection: "down-from-end",
         },
       )(...a),
       ...createTimerSlice(
         "timerPlayer2DisconnectedLoose",
         durations.disconnectLoose,
         {
-          shouldUpdateStateEverySecond: false,
+          shouldUpdateStateEverySecond: true,
+          countDirection: "down-from-end",
         },
       )(...a),
     })),
