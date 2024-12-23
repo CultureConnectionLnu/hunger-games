@@ -240,6 +240,11 @@ export function createConnectionViewSlice(
             [keys.opponent]: {
               showView: "waiting-for-other-player-reconnect",
               nextActions: [],
+              timer: {
+                otherPlayerDisconnect: {
+                  visible: true,
+                },
+              },
             } satisfies DeepPartial<PlayerView>,
           });
         },
@@ -259,6 +264,11 @@ export function createConnectionViewSlice(
             [keys.opponent]: {
               showView: "waiting-for-other-player-ready",
               nextActions: [],
+              timer: {
+                otherPlayerDisconnect: {
+                  visible: false,
+                },
+              },
             } satisfies DeepPartial<PlayerView>,
           });
         },
