@@ -8,6 +8,8 @@ declare global {
     player1DisconnectedLoose: string;
     player2DisconnectedLoose: string;
     forceStopGame: string;
+    // todo: keep this one here
+    testingOnly: string;
   }
 }
 
@@ -16,15 +18,22 @@ interface TimerState {
     timerId: NodeJS.Timeout | null;
     intervalId: NodeJS.Timeout | null;
     remainingTime: Temporal.Duration;
-    canceled: boolean;
+    startTime: Temporal.Instant;
 
+    canceled: boolean;
+    completed: boolean;
     formattedTime: string;
     isActive: boolean;
   };
-  options: {
-    countDirection: "up" | "down";
-    shouldUpdateStateEverySecond: boolean;
-  };
+  options:
+    | {
+        countDirection?: "up-from-0" | "down-from-end";
+        shouldUpdateStateEverySecond: false;
+      }
+    | {
+        countDirection: "up-from-0" | "down-from-end";
+        shouldUpdateStateEverySecond: true;
+      };
   timerName: string;
   /**
    * start or resume the timer
@@ -44,6 +53,17 @@ interface TimerState {
   reset: () => void;
 }
 
+export type TimerSlice<Property extends keyof KnownTimerNames> = {
+  [K in Property]: TimerState;
+};
+
+/**
+ *
+ * @param timerName
+ * @param duration
+ * @param options
+ * @returns
+ */
 export function createTimerSlice<TimerName extends keyof KnownTimerNames>(
   timerName: TimerName,
   duration: Temporal.Duration,
@@ -72,7 +92,9 @@ export function createTimerSlice<TimerName extends keyof KnownTimerNames>(
     const defaultMutation = {
       timerId: null,
       intervalId: null,
+      startTime: Temporal.Now.instant(),
       canceled: false,
+      completed: false,
       remainingTime: duration.round({
         largestUnit: "hours",
         smallestUnit: "second",
@@ -93,10 +115,14 @@ export function createTimerSlice<TimerName extends keyof KnownTimerNames>(
 
           const milliseconds = durationToMilliseconds(remainingTime);
           const newTimerId = setTimeout(() => {
-            set({ timerId: null });
+            set({ timerId: null, completed: true });
           }, milliseconds);
 
-          set({ timerId: newTimerId, isActive: true });
+          set({
+            timerId: newTimerId,
+            isActive: true,
+            startTime: Temporal.Now.instant(),
+          });
 
           // only provide a formatted time, if configured in the options
           if (options.shouldUpdateStateEverySecond === false) return;
@@ -106,7 +132,7 @@ export function createTimerSlice<TimerName extends keyof KnownTimerNames>(
           // to counter this effect, an initial delay is added to wait until a full second
           // is over and then the interval is started
           const initialDelay = milliseconds % 1000;
-          const initialDelayTimeoutId = setTimeout(() => {
+          const intervalFunc = () => {
             const newIntervalId = setInterval(() => {
               const currentRemaining = get().mutable.remainingTime.subtract({
                 seconds: 1,
@@ -116,23 +142,45 @@ export function createTimerSlice<TimerName extends keyof KnownTimerNames>(
                 formattedTime: formatTime(currentRemaining),
               });
             }, 1000);
-            set({ intervalId: newIntervalId });
-          }, initialDelay);
 
-          set({ intervalId: initialDelayTimeoutId });
+            set({
+              intervalId: newIntervalId,
+            });
+          };
+
+          if (initialDelay === 0) {
+            intervalFunc();
+            set({ formattedTime: formatTime(remainingTime) });
+          } else {
+            const initialDelayTimeoutId = setTimeout(() => {
+              intervalFunc();
+              const { startTime, remainingTime } = get().mutable;
+              const endTime = startTime.add(remainingTime);
+              const newRemainingTime = endTime.since(Temporal.Now.instant());
+
+              set({
+                remainingTime: newRemainingTime,
+                formattedTime: formatTime(newRemainingTime),
+              });
+            }, initialDelay);
+
+            set({
+              intervalId: initialDelayTimeoutId,
+              formattedTime: formatTime(remainingTime),
+            });
+          }
         },
 
         pause: () => {
-          const { timerId, intervalId, remainingTime, canceled } =
+          const { timerId, intervalId, remainingTime, canceled, startTime } =
             get().mutable;
           if (timerId === null || canceled) return;
 
           clearTimeout(timerId);
           if (intervalId !== null) clearTimeout(intervalId);
 
-          const endTime = Temporal.Now.instant().add(remainingTime);
-          const now = Temporal.Now.instant();
-          const newRemainingTime = endTime.since(now);
+          const endTime = startTime.add(remainingTime);
+          const newRemainingTime = endTime.since(Temporal.Now.instant());
 
           set({
             timerId: null,
@@ -171,10 +219,14 @@ function durationToMilliseconds(duration: Temporal.Duration): number {
 }
 
 function formatTime(duration: Temporal.Duration) {
+  const roundedDuration = duration.round({
+    smallestUnit: "second",
+    roundingMode: "expand",
+  });
   return Temporal.PlainTime.from({
-    hour: duration.hours,
-    minute: duration.minutes,
-    second: duration.seconds,
+    hour: roundedDuration.hours,
+    minute: roundedDuration.minutes,
+    second: roundedDuration.seconds,
   }).toLocaleString("default", {
     minute: "2-digit",
     second: "2-digit",

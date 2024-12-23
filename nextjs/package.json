@@ -17,7 +17,10 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "format:write": "prettier --write \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache"
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,mdx}\" --cache",
+    "test": "dotenv cross-env NODE_ENV=development vitest run",
+    "test:watch": "dotenv cross-env NODE_ENV=development vitest",
+    "ts": "tsc --noEmit --incremental"
   },
   "dependencies": {
     "@clerk/backend": "^1.21.4",
@@ -46,6 +49,8 @@
     "@typescript-eslint/eslint-plugin": "^8.1.0",
     "@typescript-eslint/parser": "^8.1.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "cross-env": "^7.0.3",
+    "dotenv-cli": "^7.3.0",
     "drizzle-kit": "^0.24.0",
     "eslint": "^8.57.0",
     "eslint-config-next": "^15.0.1",
