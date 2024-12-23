@@ -87,6 +87,76 @@ describe("connection view slice", () => {
       );
     });
 
+    test('should switch the view to "waiting-for-other-player-reconnect" once the opponent disconnects', async () => {
+      const {
+        getState,
+        player1Id,
+        player2Id,
+        connectPlayer,
+        markReady,
+        disconnectPlayer,
+      } = testSetup();
+
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      markReady(player1Id);
+      disconnectPlayer(player2Id);
+
+      expect(getState().connectedView.mutable.player1.showView).toBe(
+        "waiting-for-other-player-reconnect",
+      );
+      expect(getState().connectedView.mutable.player2.showView).toBe(
+        "ready-button",
+      );
+    });
+
+    test('should switch the view to "waiting-for-other-player-reconnect" once the opponent disconnects (alternative order)', async () => {
+      const {
+        getState,
+        player1Id,
+        player2Id,
+        connectPlayer,
+        markReady,
+        disconnectPlayer,
+      } = testSetup();
+
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      disconnectPlayer(player2Id);
+      markReady(player1Id);
+
+      expect(getState().connectedView.mutable.player1.showView).toBe(
+        "waiting-for-other-player-reconnect",
+      );
+      expect(getState().connectedView.mutable.player2.showView).toBe(
+        "ready-button",
+      );
+    });
+
+    test('should switch back to "waiting-for-other-player-ready" once the opponent reconnects', async () => {
+      const {
+        getState,
+        player1Id,
+        player2Id,
+        connectPlayer,
+        markReady,
+        disconnectPlayer,
+      } = testSetup();
+
+      connectPlayer(player1Id);
+      markReady(player1Id);
+      connectPlayer(player2Id);
+      disconnectPlayer(player2Id);
+      connectPlayer(player2Id);
+
+      expect(getState().connectedView.mutable.player1.showView).toBe(
+        "waiting-for-other-player-ready",
+      );
+      expect(getState().connectedView.mutable.player2.showView).toBe(
+        "ready-button",
+      );
+    });
+
     test('should switch the view to "game" once both players are ready', async () => {
       const { getState, player1Id, player2Id, connectPlayer, markReady } =
         testSetup();

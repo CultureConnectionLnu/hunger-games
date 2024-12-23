@@ -36,6 +36,8 @@ export interface ConnectionViewSlice {
     };
     playerJoined: (playerId: string) => void;
     playerIsReady: (playerId: string) => void;
+    playerDisconnected: (playerId: string) => void;
+    playerConnected: (playerId: string) => void;
     showGameView: () => void;
   };
 }
@@ -98,24 +100,15 @@ export function createConnectionViewSlice(
       }));
     };
 
-    const getPlayerSpecificKeys = (
-      playerId: string,
-      selectOpponent: boolean,
-    ) => {
-      if (
-        (selectOpponent === false && playerId === player1Id) ||
-        (selectOpponent && playerId === player2Id)
-      )
+    const getPlayerSpecificKeys = (playerId: string) => {
+      if (playerId === player1Id)
         return {
           currentPlayer:
             "player1" satisfies keyof ConnectedViewRequirements["connectedView"]["mutable"],
           opponent:
             "player2" satisfies keyof ConnectedViewRequirements["connectedView"]["mutable"],
         } as const;
-      if (
-        (selectOpponent === false && playerId === player2Id) ||
-        (selectOpponent && playerId === player1Id)
-      )
+      if (playerId === player2Id)
         return {
           currentPlayer:
             "player2" satisfies keyof ConnectedViewRequirements["connectedView"]["mutable"],
@@ -164,7 +157,7 @@ export function createConnectionViewSlice(
           },
         },
         playerJoined: (playerId) => {
-          const keys = getPlayerSpecificKeys(playerId, false);
+          const keys = getPlayerSpecificKeys(playerId);
           if (keys === undefined) return;
 
           if (
@@ -197,18 +190,45 @@ export function createConnectionViewSlice(
         },
 
         playerIsReady: (playerId) => {
-          const keys = getPlayerSpecificKeys(playerId, false);
+          const keys = getPlayerSpecificKeys(playerId);
           if (keys === undefined) return;
 
+          const opponentDisconnected =
+            get().playerConnection.mutable[keys.opponent].disconnected;
           const opponentView =
             get().connectedView.mutable[keys.opponent].showView;
 
           set({
             [keys.currentPlayer]: {
-              showView:
-                opponentView === "joining"
+              showView: opponentDisconnected
+                ? "waiting-for-other-player-reconnect"
+                : opponentView === "joining"
                   ? "waiting-for-other-player-joining"
                   : "waiting-for-other-player-ready",
+              nextActions: [],
+            } satisfies DeepPartial<PlayerView>,
+          });
+        },
+
+        playerDisconnected: (playerId) => {
+          const keys = getPlayerSpecificKeys(playerId);
+          if (keys === undefined) return;
+
+          set({
+            [keys.opponent]: {
+              showView: "waiting-for-other-player-reconnect",
+              nextActions: [],
+            } satisfies DeepPartial<PlayerView>,
+          });
+        },
+
+        playerConnected: (playerId) => {
+          const keys = getPlayerSpecificKeys(playerId);
+          if (keys === undefined) return;
+
+          set({
+            [keys.opponent]: {
+              showView: "waiting-for-other-player-ready",
               nextActions: [],
             } satisfies DeepPartial<PlayerView>,
           });
@@ -235,6 +255,7 @@ export function registerConnectionViewSubscribers(
 ) {
   handlePlayerJoinEvent(store);
   handlePlayerReadyEvent(store);
+  handleDisconnectPlayerEvent(store);
   handleGameRunningEvent(store);
 }
 
@@ -248,7 +269,7 @@ function handlePlayerJoinEvent(
         state.playerConnection.mutable.player1.id,
       ] as const,
     ([player1Joined, player1Id], [prevPlayer1Joined]) => {
-      if (prevPlayer1Joined) return;
+      if (player1Joined === prevPlayer1Joined) return;
       if (player1Joined) {
         store.getState().connectedView.playerJoined(player1Id);
       }
@@ -261,7 +282,7 @@ function handlePlayerJoinEvent(
         state.playerConnection.mutable.player2.id,
       ] as const,
     ([player2Joined, player2Id], [prevPlayer2Joined]) => {
-      if (prevPlayer2Joined) return;
+      if (player2Joined === prevPlayer2Joined) return;
       if (player2Joined) {
         store.getState().connectedView.playerJoined(player2Id);
       }
@@ -279,7 +300,7 @@ function handlePlayerReadyEvent(
         state.playerConnection.mutable.player1.id,
       ] as const,
     ([player1Ready, player1Id], [prevPlayer1Ready]) => {
-      if (prevPlayer1Ready) return;
+      if (player1Ready === prevPlayer1Ready) return;
       if (player1Ready) {
         store.getState().connectedView.playerIsReady(player1Id);
       }
@@ -292,9 +313,44 @@ function handlePlayerReadyEvent(
         state.playerConnection.mutable.player2.id,
       ] as const,
     ([player2Ready, player2Id], [prevPlayer2Ready]) => {
-      if (prevPlayer2Ready) return;
+      if (player2Ready === prevPlayer2Ready) return;
       if (player2Ready) {
         store.getState().connectedView.playerIsReady(player2Id);
+      }
+    },
+  );
+}
+
+function handleDisconnectPlayerEvent(
+  store: SubscribeStore<ConnectedViewRequirements>,
+) {
+  store.subscribe(
+    (state) =>
+      [
+        state.playerConnection.mutable.player1.disconnected,
+        state.playerConnection.mutable.player1.id,
+      ] as const,
+    ([disconnected, player1Id], [prevDisconnected]) => {
+      if (disconnected === prevDisconnected) return;
+      if (disconnected) {
+        store.getState().connectedView.playerDisconnected(player1Id);
+      } else {
+        store.getState().connectedView.playerConnected(player1Id);
+      }
+    },
+  );
+  store.subscribe(
+    (state) =>
+      [
+        state.playerConnection.mutable.player2.disconnected,
+        state.playerConnection.mutable.player2.id,
+      ] as const,
+    ([disconnected, player2Id], [prevDisconnected]) => {
+      if (disconnected === prevDisconnected) return;
+      if (disconnected) {
+        store.getState().connectedView.playerDisconnected(player2Id);
+      } else {
+        store.getState().connectedView.playerConnected(player2Id);
       }
     },
   );
