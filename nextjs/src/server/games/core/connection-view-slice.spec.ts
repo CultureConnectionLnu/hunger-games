@@ -621,6 +621,171 @@ describe("connection view slice", () => {
         ).toBe(false);
       });
     });
+
+    describe("while game is running", () => {
+      test("should hide startTimeout when the game is running", async () => {
+        const { getState, player1Id, player2Id, connectPlayer, markReady } =
+          testSetup();
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+
+        expect(
+          getState().connectedView.mutable.player1.timer.startTimeout.visible,
+        ).toBe(false);
+        expect(
+          getState().connectedView.mutable.player2.timer.startTimeout.visible,
+        ).toBe(false);
+      });
+
+      test("should show otherPlayerDisconnected when player disconnects", async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          disconnectPlayer,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+        disconnectPlayer(player2Id);
+
+        expect(
+          getState().connectedView.mutable.player1.timer.otherPlayerDisconnect
+            .visible,
+        ).toBe(true);
+        expect(
+          getState().connectedView.mutable.player2.timer.otherPlayerDisconnect
+            .visible,
+        ).toBe(false);
+      });
+
+      test("should show otherPlayerDisconnected when both players disconnect", async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          disconnectPlayer,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+        disconnectPlayer(player1Id);
+        disconnectPlayer(player2Id);
+
+        expect(
+          getState().connectedView.mutable.player1.timer.otherPlayerDisconnect
+            .visible,
+        ).toBe(true);
+        expect(
+          getState().connectedView.mutable.player2.timer.otherPlayerDisconnect
+            .visible,
+        ).toBe(true);
+      });
+
+      test("should show otherPlayerDisconnected when one player reconnects", async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          disconnectPlayer,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+        disconnectPlayer(player1Id);
+        disconnectPlayer(player2Id);
+        connectPlayer(player1Id);
+
+        expect(
+          getState().connectedView.mutable.player1.timer.otherPlayerDisconnect
+            .visible,
+        ).toBe(true);
+        expect(
+          getState().connectedView.mutable.player2.timer.otherPlayerDisconnect
+            .visible,
+        ).toBe(false);
+      });
+
+      test("should hide otherPlayerDisconnected when both players reconnect", async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          disconnectPlayer,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+        disconnectPlayer(player1Id);
+        disconnectPlayer(player2Id);
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+
+        expect(
+          getState().connectedView.mutable.player1.timer.otherPlayerDisconnect
+            .visible,
+        ).toBe(false);
+        expect(
+          getState().connectedView.mutable.player2.timer.otherPlayerDisconnect
+            .visible,
+        ).toBe(false);
+      });
+    });
+
+    describe("after game", () => {
+      test("should show no timer after game ends", async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          durations,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+
+        await vi.advanceTimersByTimeAsync(
+          durations.forceStop.total({ unit: "milliseconds" }),
+        );
+
+        expect(
+          getState().connectedView.mutable.player1.timer.startTimeout.visible,
+        ).toBe(false);
+        expect(
+          getState().connectedView.mutable.player1.timer.otherPlayerDisconnect
+            .visible,
+        ).toBe(false);
+        expect(
+          getState().connectedView.mutable.player2.timer.startTimeout.visible,
+        ).toBe(false);
+        expect(
+          getState().connectedView.mutable.player2.timer.otherPlayerDisconnect
+            .visible,
+        ).toBe(false);
+      });
+    });
   });
 
   describe("outcome", () => {

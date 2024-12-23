@@ -46,7 +46,7 @@ export interface ConnectionViewSlice {
     playerDisconnected: (playerId: string) => void;
     playerConnected: (playerId: string) => void;
     showGameView: () => void;
-    showPausedView: () => void;
+    showPausedView: (becauseOfPlayerId: string) => void;
     showGameEndedView: (
       outcome: GameResultSlice["gameResult"]["outcome"],
     ) => void;
@@ -225,11 +225,8 @@ export function createConnectionViewSlice(
           const currentView = get().connectedView.mutable.player1.showView;
           // always both players are in the game.
           // so checking any player if the current view is `game` is sufficient
-          if (currentView === "game") {
-            get().connectedView.showPausedView();
-            return;
-          }
-          if (currentView === "game-paused") {
+          if (currentView === "game" || currentView === "game-paused") {
+            get().connectedView.showPausedView(playerId);
             return;
           }
 
@@ -250,15 +247,24 @@ export function createConnectionViewSlice(
         },
 
         playerConnected: (playerId) => {
+          const keys = getPlayerSpecificKeys(playerId);
+          if (keys === undefined) return;
+
           const currentView = get().connectedView.mutable.player1.showView;
           // always both players are in the game.
           // so checking any player if the current view is `game` is sufficient
           if (currentView === "game-paused") {
+            set({
+              [keys.opponent]: {
+                timer: {
+                  otherPlayerDisconnect: {
+                    visible: false,
+                  },
+                },
+              },
+            });
             return;
           }
-
-          const keys = getPlayerSpecificKeys(playerId);
-          if (keys === undefined) return;
 
           set({
             [keys.opponent]: {
@@ -274,25 +280,41 @@ export function createConnectionViewSlice(
         },
 
         showGameView: () => {
-          // todo: are restrictions needed?
           set({
             player1: {
               showView: "game",
+              timer: {
+                startTimeout: {
+                  visible: false,
+                },
+              },
             },
             player2: {
               showView: "game",
+              timer: {
+                startTimeout: {
+                  visible: false,
+                },
+              },
             },
           });
         },
 
-        showPausedView: () => {
-          // todo: are restrictions needed?
+        showPausedView: (becauseOfPlayerId: string) => {
+          const keys = getPlayerSpecificKeys(becauseOfPlayerId);
+          if (keys === undefined) return;
+
           set({
-            player1: {
+            [keys.currentPlayer]: {
               showView: "game-paused",
             },
-            player2: {
+            [keys.opponent]: {
               showView: "game-paused",
+              timer: {
+                otherPlayerDisconnect: {
+                  visible: true,
+                },
+              },
             },
           });
         },
