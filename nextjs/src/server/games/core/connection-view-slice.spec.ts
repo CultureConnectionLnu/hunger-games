@@ -317,21 +317,134 @@ describe("connection view slice", () => {
   });
 
   describe("next actions", () => {
-    test("by default, no action should be available", async () => {
-      const { getState } = testSetup();
+    describe("before game starts", () => {
+      test("by default, no action should be available", async () => {
+        const { getState } = testSetup();
 
-      expect(getState().connectedView.mutable.player1.nextActions).toEqual([]);
+        expect(getState().connectedView.mutable.player1.nextActions).toEqual(
+          [],
+        );
+      });
+
+      test("when entering the ready-button view, the next action should be 'ready'", async () => {
+        const { getState, player1Id, connectPlayer } = testSetup();
+
+        connectPlayer(player1Id);
+
+        expect(getState().connectedView.mutable.player1.nextActions).toEqual([
+          "ready",
+        ]);
+        expect(getState().connectedView.mutable.player2.nextActions).toEqual(
+          [],
+        );
+      });
+
+      test('should have no actions for the view "waiting-for-other-player-joining"', async () => {
+        const { getState, player1Id, connectPlayer, markReady } = testSetup();
+
+        connectPlayer(player1Id);
+        markReady(player1Id);
+
+        expect(getState().connectedView.mutable.player1.nextActions).toEqual(
+          [],
+        );
+      });
+
+      test('should have no actions for the view "waiting-for-other-player-ready"', async () => {
+        const { getState, player1Id, player2Id, connectPlayer, markReady } =
+          testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+
+        expect(getState().connectedView.mutable.player1.nextActions).toEqual(
+          [],
+        );
+      });
+
+      test('should have no actions for the view "waiting-for-other-player-reconnect"', async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          disconnectPlayer,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        disconnectPlayer(player2Id);
+
+        expect(getState().connectedView.mutable.player1.nextActions).toEqual(
+          [],
+        );
+      });
     });
 
-    test("when entering the ready-button view, the next action should be 'ready'", async () => {
-      const { getState, player1Id, connectPlayer } = testSetup();
+    describe("while game is running", () => {
+      test('should have no actions for the view "game"', async () => {
+        const { getState, player1Id, player2Id, connectPlayer, markReady } =
+          testSetup();
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
 
-      connectPlayer(player1Id);
+        expect(getState().connectedView.mutable.player1.nextActions).toEqual(
+          [],
+        );
+      });
 
-      expect(getState().connectedView.mutable.player1.nextActions).toEqual([
-        "ready",
-      ]);
-      expect(getState().connectedView.mutable.player2.nextActions).toEqual([]);
+      test('should have no actions for the view "game-paused"', async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          disconnectPlayer,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+
+        disconnectPlayer(player1Id);
+
+        expect(getState().connectedView.mutable.player1.nextActions).toEqual(
+          [],
+        );
+      });
+    });
+
+    describe("after game", () => {
+      test("should have no actions for the view 'game-ended'", async () => {
+        const {
+          getState,
+          player1Id,
+          player2Id,
+          connectPlayer,
+          markReady,
+          durations,
+        } = testSetup();
+
+        connectPlayer(player1Id);
+        connectPlayer(player2Id);
+        markReady(player1Id);
+        markReady(player2Id);
+
+        await vi.advanceTimersByTimeAsync(
+          durations.forceStop.total({ unit: "milliseconds" }),
+        );
+
+        expect(getState().connectedView.mutable.player1.nextActions).toEqual(
+          [],
+        );
+      });
     });
   });
 
