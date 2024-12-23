@@ -3,16 +3,21 @@ import { StateCreator } from "zustand";
 type GameResult =
   | {
       result: "ongoing";
+      reason: undefined;
+      winnerId: undefined;
+      looserId: undefined;
     }
   | {
       result: "tie";
       reason: "game-result" | "never-started" | "force-stop-game";
+      winnerId: undefined;
+      looserId: undefined;
     }
   | {
       result: "winner";
+      reason: "game-result" | "other-player-disconnected" | "never-started";
       winnerId: string;
       looserId: string;
-      reason: "game-result" | "other-player-disconnected" | "never-started";
     };
 
 export type GameResultSlice = {
@@ -37,6 +42,9 @@ export function createGameResultSlice(): StateCreator<GameResultSlice> {
     gameResult: {
       outcome: {
         result: "ongoing",
+        reason: undefined,
+        looserId: undefined,
+        winnerId: undefined,
       },
       neverStarted: (optionalResult) => {
         if (get().gameResult.outcome.result !== "ongoing") return;
@@ -62,6 +70,8 @@ export function createGameResultSlice(): StateCreator<GameResultSlice> {
             outcome: {
               result: "tie",
               reason: "never-started",
+              winnerId: undefined,
+              looserId: undefined,
             },
           },
         }));
@@ -75,6 +85,8 @@ export function createGameResultSlice(): StateCreator<GameResultSlice> {
             outcome: {
               result: "tie",
               reason: "force-stop-game",
+              winnerId: undefined,
+              looserId: undefined,
             },
           },
         }));
@@ -103,6 +115,8 @@ export function createGameResultSlice(): StateCreator<GameResultSlice> {
             outcome: {
               result: "tie",
               reason: "game-result",
+              winnerId: undefined,
+              looserId: undefined,
             },
           },
         }));

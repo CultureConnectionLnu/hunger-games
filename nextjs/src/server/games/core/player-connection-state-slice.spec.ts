@@ -109,6 +109,13 @@ describe("player connection slice", () => {
       expect(markReady(player1Id)).toBe("player already ready");
     });
 
+    test('should return "invalid player id" if the player id is invalid', async () => {
+      const { connectPlayer, markReady, player1Id } = testSetup();
+
+      connectPlayer(player1Id);
+      expect(markReady("invalid-player-id")).toBe("invalid player id");
+    });
+
     test('should cancel the "start timeout" timer once both players are ready', async () => {
       const { getState, player1Id, player2Id, markReady, connectPlayer } =
         testSetup();
@@ -120,40 +127,264 @@ describe("player connection slice", () => {
 
       expect(getState().timerStartTimeout.mutable.isActive).toBe(false);
     });
+
+    test("should mark the game as running once both players are ready", async () => {
+      const { getState, player1Id, player2Id, markReady, connectPlayer } =
+        testSetup();
+
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      markReady(player1Id);
+      markReady(player2Id);
+
+      expect(getState().playerConnection.mutable.gameIsRunning).toBe(true);
+    });
+  });
+
+  describe("start timeout", () => {
+    test("player 1 should win if only he joins the game", async () => {
+      const { getState, player1Id, player2Id, connectPlayer, durations } =
+        testSetup();
+      connectPlayer(player1Id);
+
+      await vi.advanceTimersByTimeAsync(
+        durations.startTimeout.total({ unit: "milliseconds" }),
+      );
+
+      expect(getState().gameResult.outcome.result).toBe("winner");
+      expect(getState().gameResult.outcome.reason).toBe("never-started");
+      expect(getState().gameResult.outcome.winnerId).toBe(player1Id);
+      expect(getState().gameResult.outcome.looserId).toBe(player2Id);
+    });
+
+    test("should be a tie if both players join the game", async () => {
+      const { getState, player1Id, player2Id, connectPlayer, durations } =
+        testSetup();
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+
+      await vi.advanceTimersByTimeAsync(
+        durations.startTimeout.total({ unit: "milliseconds" }),
+      );
+
+      expect(getState().gameResult.outcome.result).toBe("tie");
+      expect(getState().gameResult.outcome.reason).toBe("never-started");
+      expect(getState().gameResult.outcome.winnerId).toBe(undefined);
+      expect(getState().gameResult.outcome.looserId).toBe(undefined);
+    });
+
+    test("player 2 should win if only he marks himself as ready", async () => {
+      const {
+        getState,
+        player1Id,
+        player2Id,
+        markReady,
+        connectPlayer,
+        durations,
+      } = testSetup();
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      markReady(player2Id);
+
+      await vi.advanceTimersByTimeAsync(
+        durations.startTimeout.total({ unit: "milliseconds" }),
+      );
+
+      expect(getState().gameResult.outcome.result).toBe("winner");
+      expect(getState().gameResult.outcome.reason).toBe("never-started");
+      expect(getState().gameResult.outcome.winnerId).toBe(player2Id);
+      expect(getState().gameResult.outcome.looserId).toBe(player1Id);
+    });
+  });
+
+  describe("force stop timeout", () => {
+    test("game should automatically end if nothing happens", async () => {
+      const { getState, durations } = testSetup();
+
+      await vi.advanceTimersByTimeAsync(
+        durations.forceStop.total({ unit: "milliseconds" }),
+      );
+
+      expect(getState().gameResult.outcome.result).toBe("tie");
+      expect(getState().gameResult.outcome.reason).toBe("force-stop-game");
+      expect(getState().gameResult.outcome.winnerId).toBe(undefined);
+      expect(getState().gameResult.outcome.looserId).toBe(undefined);
+    });
+
+    test("even if the game is ongoing, the game should be ended with the force stop timer", async () => {
+      const {
+        getState,
+        player1Id,
+        player2Id,
+        connectPlayer,
+        markReady,
+        durations,
+      } = testSetup();
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      markReady(player1Id);
+      markReady(player2Id);
+
+      await vi.advanceTimersByTimeAsync(
+        durations.forceStop.total({ unit: "milliseconds" }),
+      );
+
+      expect(getState().gameResult.outcome.result).toBe("tie");
+      expect(getState().gameResult.outcome.reason).toBe("force-stop-game");
+      expect(getState().gameResult.outcome.winnerId).toBe(undefined);
+      expect(getState().gameResult.outcome.looserId).toBe(undefined);
+    });
+  });
+
+  describe("player disconnected", () => {
+    test("by default, should not mark players as disconnected", async () => {
+      const { getState } = testSetup();
+      expect(getState().playerConnection.mutable.player1.disconnected).toBe(
+        false,
+      );
+      expect(getState().playerConnection.mutable.player2.disconnected).toBe(
+        false,
+      );
+    });
+
+    test('by default, should not start the "player disconnected loose" timer', async () => {
+      const { getState } = testSetup();
+      expect(getState().timerPlayer1DisconnectedLoose.mutable.isActive).toBe(
+        false,
+      );
+      expect(getState().timerPlayer2DisconnectedLoose.mutable.isActive).toBe(
+        false,
+      );
+    });
+
+    test("should mark player 1 as disconnected", async () => {
+      const { getState, player1Id, connectPlayer, disconnectPlayer } =
+        testSetup();
+
+      connectPlayer(player1Id);
+      disconnectPlayer(player1Id);
+
+      expect(getState().playerConnection.mutable.player1.disconnected).toBe(
+        true,
+      );
+      expect(getState().timerPlayer1DisconnectedLoose.mutable.isActive).toBe(
+        true,
+      );
+    });
+
+    test('should return "player never joined" if the player tries to be disconnected before joining', async () => {
+      const { disconnectPlayer } = testSetup();
+
+      expect(disconnectPlayer("player1")).toBe("player never joined");
+    });
+
+    test('should return "invalid player id" if the player id is invalid', async () => {
+      const { disconnectPlayer } = testSetup();
+
+      expect(disconnectPlayer("invalid-player-id")).toBe("invalid player id");
+    });
+
+    test("should mark a running game as stopped upon a player disconnection", async () => {
+      const {
+        getState,
+        player1Id,
+        player2Id,
+        connectPlayer,
+        markReady,
+        disconnectPlayer,
+      } = testSetup();
+
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      markReady(player1Id);
+      markReady(player2Id);
+      disconnectPlayer(player1Id);
+
+      expect(getState().playerConnection.mutable.gameIsRunning).toBe(false);
+    });
+
+    test("player 1 looses if he disconnects for to long", async () => {
+      const {
+        getState,
+        player1Id,
+        player2Id,
+        connectPlayer,
+        markReady,
+        disconnectPlayer,
+        durations,
+      } = testSetup();
+
+      connectPlayer(player1Id);
+      connectPlayer(player2Id);
+      markReady(player1Id);
+      markReady(player2Id);
+      disconnectPlayer(player1Id);
+
+      await vi.advanceTimersByTimeAsync(
+        durations.disconnectLoose.total({ unit: "milliseconds" }),
+      );
+
+      expect(getState().gameResult.outcome.result).toBe("winner");
+      expect(getState().gameResult.outcome.reason).toBe(
+        "other-player-disconnected",
+      );
+      expect(getState().gameResult.outcome.winnerId).toBe(player2Id);
+      expect(getState().gameResult.outcome.looserId).toBe(player1Id);
+    });
+  });
+
+  describe("cleanup", () => {
+    test("should cancel the timers upon game completion", async () => {
+      const { getState, durations } = testSetup();
+
+      await vi.advanceTimersByTimeAsync(
+        durations.forceStop.total({ unit: "milliseconds" }),
+      );
+
+      await vi.advanceTimersByTimeAsync(
+        durations.startTimeout.total({ unit: "milliseconds" }),
+      );
+
+      expect(getState().timerForceStopGame.mutable.canceled).toBe(true);
+      expect(getState().timerStartTimeout.mutable.canceled).toBe(true);
+      expect(getState().timerPlayer1DisconnectedLoose.mutable.canceled).toBe(
+        true,
+      );
+      expect(getState().timerPlayer2DisconnectedLoose.mutable.canceled).toBe(
+        true,
+      );
+    });
   });
 });
 
 function testSetup({}: {} = {}) {
   const player1Id = "player1";
   const player2Id = "player2";
+  const durations = {
+    forceStop: Temporal.Duration.from({ seconds: 120 }),
+    disconnectLoose: Temporal.Duration.from({ seconds: 10 }),
+    startTimeout: Temporal.Duration.from({ seconds: 10 }),
+  };
   const store = createStore<PlayerConnectionSliceRequirements>()(
     subscribeWithSelector((...a) => ({
       ...createPlayerConnectionSlice(player1Id, player2Id)(...a),
       ...createGameResultSlice()(...a),
-      ...createTimerSlice(
-        "timerForceStopGame",
-        Temporal.Duration.from({ seconds: 120 }),
-        {
-          shouldUpdateStateEverySecond: false,
-        },
-      )(...a),
-      ...createTimerSlice(
-        "timerStartTimeout",
-        Temporal.Duration.from({ seconds: 10 }),
-        {
-          shouldUpdateStateEverySecond: false,
-        },
-      )(...a),
+      ...createTimerSlice("timerForceStopGame", durations.forceStop, {
+        shouldUpdateStateEverySecond: false,
+      })(...a),
+      ...createTimerSlice("timerStartTimeout", durations.startTimeout, {
+        shouldUpdateStateEverySecond: false,
+      })(...a),
       ...createTimerSlice(
         "timerPlayer1DisconnectedLoose",
-        Temporal.Duration.from({ seconds: 10 }),
+        durations.disconnectLoose,
         {
           shouldUpdateStateEverySecond: false,
         },
       )(...a),
       ...createTimerSlice(
         "timerPlayer2DisconnectedLoose",
-        Temporal.Duration.from({ seconds: 10 }),
+        durations.disconnectLoose,
         {
           shouldUpdateStateEverySecond: false,
         },
@@ -179,5 +410,6 @@ function testSetup({}: {} = {}) {
     connectPlayer,
     disconnectPlayer,
     markReady,
+    durations,
   };
 }

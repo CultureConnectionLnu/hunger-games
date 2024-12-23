@@ -173,6 +173,10 @@ export function createPlayerConnectionSlice(
           const keys = getPlayerSpecificKeys(playerId);
           if (keys === undefined) return "invalid player id";
           const { disconnectTimerKey, playerKey } = keys;
+
+          if (get().playerConnection.mutable[playerKey].joined === false)
+            return "player never joined";
+
           get()[disconnectTimerKey].startOrResume();
 
           set({
@@ -228,6 +232,10 @@ export function createPlayerConnectionSlice(
 export function registerPlayerConnectionSubscribers(
   store: SubscribeStore<PlayerConnectionSliceRequirements>,
 ) {
+  // start the force stop timer
+  store.getState().timerForceStopGame.startOrResume();
+
+  // handle timer complete events
   handleForceGameEnd(store);
   handlePlayer1DisconnectedLoose(store);
   handlePlayer2DisconnectedLoose(store);
@@ -321,7 +329,7 @@ function cleanupUponGameCompleted(
   store.subscribe(
     (state) => state.gameResult.outcome.result,
     (result) => {
-      if (result !== "ongoing") return;
+      if (result === "ongoing") return;
 
       store.getState().timerStartTimeout.cancel();
       store.getState().timerPlayer1DisconnectedLoose.cancel();
