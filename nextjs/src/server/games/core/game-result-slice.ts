@@ -12,13 +12,16 @@ type GameResult =
       result: "winner";
       winnerId: string;
       looserId: string;
-      reason: "game-result" | "other-player-disconnected";
+      reason: "game-result" | "other-player-disconnected" | "never-started";
     };
 
 export type GameResultSlice = {
   gameResult: {
     outcome: GameResult;
-    neverStarted: () => void;
+    neverStarted: (optionalResult?: {
+      winnerId: string;
+      looserId: string;
+    }) => void;
     forceStopGame: () => void;
     otherPlayerDisconnected: (winnerId: string, looserId: string) => void;
     gameTied: () => void;
@@ -35,8 +38,23 @@ export function createGameResultSlice(): StateCreator<GameResultSlice> {
       outcome: {
         result: "ongoing",
       },
-      neverStarted: () => {
+      neverStarted: (optionalResult) => {
         if (get().gameResult.outcome.result !== "ongoing") return;
+
+        if (optionalResult !== undefined) {
+          set((state) => ({
+            gameResult: {
+              ...state.gameResult,
+              outcome: {
+                result: "winner",
+                winnerId: optionalResult.winnerId,
+                looserId: optionalResult.looserId,
+                reason: "never-started",
+              },
+            },
+          }));
+          return;
+        }
 
         set((state) => ({
           gameResult: {

@@ -1,6 +1,7 @@
-import { StateCreator } from "zustand";
+import { StateCreator, Mutate, UseBoundStore, StoreApi } from "zustand";
 import { GameResultSlice } from "./game-result-slice";
 import { KnownTimerNames, TimerSlice } from "./timer-slice";
+import { SubscribeStore } from "./zustand-helper";
 
 declare global {
   interface KnownTimerNamesMap {
@@ -27,8 +28,8 @@ export interface PlayerConnectionSlice {
     mutable: {
       player1: PlayerState;
       player2: PlayerState;
+      gameIsRunning: boolean;
     };
-    gameIsRunning: boolean;
 
     connectPlayer: (playerId: string) => string | undefined;
     disconnectPlayer: (playerId: string) => void;
@@ -36,18 +37,20 @@ export interface PlayerConnectionSlice {
   };
 }
 
+export type PlayerConnectionSliceRequirements = PlayerConnectionSlice &
+  GameResultSlice &
+  TimerSlice<
+    | "timerForceStopGame"
+    | "timerStartTimeout"
+    | "timerPlayer1DisconnectedLoose"
+    | "timerPlayer2DisconnectedLoose"
+  >;
+
 export function createPlayerConnectionSlice(
   player1Id: string,
   player2Id: string,
 ): StateCreator<
-  PlayerConnectionSlice &
-    GameResultSlice &
-    TimerSlice<
-      | "timerForceStopGame"
-      | "timerStartTimeout"
-      | "timerPlayer1DisconnectedLoose"
-      | "timerPlayer2DisconnectedLoose"
-    >,
+  PlayerConnectionSliceRequirements,
   [],
   [],
   PlayerConnectionSlice
@@ -62,6 +65,8 @@ export function createPlayerConnectionSlice(
         playerConnection: {
           ...state.playerConnection,
           mutable: {
+            ...state.playerConnection.mutable,
+            ...mutation,
             player1: {
               ...state.playerConnection.mutable.player1,
               ...mutation.player1,
@@ -93,6 +98,18 @@ export function createPlayerConnectionSlice(
       return undefined;
     };
 
+    const getGameIsRunning = () => {
+      const { player1, player2 } = get().playerConnection.mutable;
+      return (
+        player1.joined &&
+        player2.joined &&
+        player1.ready &&
+        player2.ready &&
+        player1.disconnected === false &&
+        player2.disconnected === false
+      );
+    };
+
     return {
       playerConnection: {
         mutable: {
@@ -108,24 +125,13 @@ export function createPlayerConnectionSlice(
             ready: false,
             disconnected: false,
           },
-        },
-
-        get gameIsRunning() {
-          const { player1, player2 } = get().playerConnection.mutable;
-          return (
-            player1.joined &&
-            player2.joined &&
-            player1.ready &&
-            player2.ready &&
-            player1.disconnected === false &&
-            player2.disconnected === false
-          );
+          gameIsRunning: false,
         },
 
         connectPlayer: (playerId) => {
           if (get().gameResult.outcome.result !== "ongoing")
             return "game already completed";
-          if (get().playerConnection.gameIsRunning)
+          if (get().playerConnection.mutable.gameIsRunning)
             return "game already running";
 
           const keys = getPlayerSpecificKeys(playerId);
@@ -135,6 +141,12 @@ export function createPlayerConnectionSlice(
           get().timerStartTimeout.startOrResume();
           get()[disconnectTimerKey].pause();
 
+          if (
+            get().playerConnection.mutable[playerKey].joined &&
+            get().playerConnection.mutable[playerKey].disconnected === false
+          )
+            return "player already joined";
+
           set({
             [playerKey]: {
               joined: true,
@@ -142,7 +154,14 @@ export function createPlayerConnectionSlice(
             } satisfies Partial<PlayerState>,
           });
 
-          if (get().playerConnection.gameIsRunning === false) return;
+          const isGameRunning = getGameIsRunning();
+          if (get().playerConnection.mutable.gameIsRunning !== isGameRunning) {
+            set({ gameIsRunning: isGameRunning });
+          }
+
+          if (isGameRunning === false) {
+            return;
+          }
           // should start game again upon all players are connected again
           // todo: start game
         },
@@ -162,19 +181,26 @@ export function createPlayerConnectionSlice(
             } satisfies Partial<PlayerState>,
           });
 
+          const isGameRunning = getGameIsRunning();
+          if (get().playerConnection.mutable.gameIsRunning !== isGameRunning) {
+            set({ gameIsRunning: isGameRunning });
+          }
+
           // todo: pause game
         },
 
         markReady: (playerId) => {
           if (get().gameResult.outcome.result !== "ongoing")
             return "game already completed";
-          if (get().playerConnection.gameIsRunning)
+          if (get().playerConnection.mutable.gameIsRunning)
             return "game already running";
 
           const keys = getPlayerSpecificKeys(playerId);
           if (keys === undefined) return "invalid player id";
           const { playerKey } = keys;
 
+          if (get().playerConnection.mutable[playerKey].joined === false)
+            return "player not joined";
           if (get().playerConnection.mutable[playerKey].ready)
             return "player already ready";
 
@@ -184,7 +210,12 @@ export function createPlayerConnectionSlice(
             } satisfies Partial<PlayerState>,
           });
 
-          if (get().playerConnection.gameIsRunning === false) return;
+          const isGameRunning = getGameIsRunning();
+          if (get().playerConnection.mutable.gameIsRunning !== isGameRunning) {
+            set({ gameIsRunning: isGameRunning });
+          }
+
+          if (isGameRunning === false) return;
 
           get().timerStartTimeout.cancel();
           // todo: start game
@@ -194,4 +225,108 @@ export function createPlayerConnectionSlice(
   };
 }
 
-export function registerSubscribers() {}
+export function registerPlayerConnectionSubscribers(
+  store: SubscribeStore<PlayerConnectionSliceRequirements>,
+) {
+  handleForceGameEnd(store);
+  handlePlayer1DisconnectedLoose(store);
+  handlePlayer2DisconnectedLoose(store);
+  handleStartTimeout(store);
+
+  cleanupUponGameCompleted(store);
+}
+
+function handleForceGameEnd(
+  store: SubscribeStore<PlayerConnectionSliceRequirements>,
+) {
+  store.subscribe(
+    (state) => state.timerForceStopGame.mutable.completed,
+    (completed) => {
+      if (completed === false) return;
+
+      const { canceled } = store.getState().timerForceStopGame.mutable;
+      if (canceled) return;
+
+      store.getState().gameResult.forceStopGame();
+    },
+  );
+}
+
+function handlePlayer1DisconnectedLoose(
+  store: SubscribeStore<PlayerConnectionSliceRequirements>,
+) {
+  store.subscribe(
+    (state) => state.timerPlayer1DisconnectedLoose.mutable.completed,
+    (completed) => {
+      if (completed === false) return;
+
+      const { canceled } =
+        store.getState().timerPlayer1DisconnectedLoose.mutable;
+      if (canceled) return;
+
+      store.getState().gameResult.otherPlayerDisconnected("player2", "player1");
+    },
+  );
+}
+
+function handlePlayer2DisconnectedLoose(
+  store: SubscribeStore<PlayerConnectionSliceRequirements>,
+) {
+  store.subscribe(
+    (state) => state.timerPlayer2DisconnectedLoose.mutable.completed,
+    (completed) => {
+      if (completed === false) return;
+
+      const { canceled } =
+        store.getState().timerPlayer2DisconnectedLoose.mutable;
+      if (canceled) return;
+
+      store.getState().gameResult.otherPlayerDisconnected("player1", "player2");
+    },
+  );
+}
+
+function handleStartTimeout(
+  store: SubscribeStore<PlayerConnectionSliceRequirements>,
+) {
+  store.subscribe(
+    (state) => state.timerStartTimeout.mutable.completed,
+    (completed) => {
+      if (completed === false) return;
+
+      const { canceled } = store.getState().timerStartTimeout.mutable;
+      if (canceled) return;
+
+      const { neverStarted } = store.getState().gameResult;
+      const { player1, player2 } = store.getState().playerConnection.mutable;
+      if (player1.joined && player2.joined === false) {
+        neverStarted({ winnerId: player1.id, looserId: player2.id });
+      } else if (player1.joined === false && player2.joined) {
+        neverStarted({ winnerId: player2.id, looserId: player1.id });
+      } else if (player1.ready && player2.ready === false) {
+        neverStarted({ winnerId: player1.id, looserId: player2.id });
+      } else if (player1.ready === false && player2.ready) {
+        neverStarted({ winnerId: player2.id, looserId: player1.id });
+      }
+
+      // can't decide upon a winner, because both players are in the same state
+      neverStarted();
+    },
+  );
+}
+
+function cleanupUponGameCompleted(
+  store: SubscribeStore<PlayerConnectionSliceRequirements>,
+) {
+  store.subscribe(
+    (state) => state.gameResult.outcome.result,
+    (result) => {
+      if (result !== "ongoing") return;
+
+      store.getState().timerStartTimeout.cancel();
+      store.getState().timerPlayer1DisconnectedLoose.cancel();
+      store.getState().timerPlayer2DisconnectedLoose.cancel();
+      store.getState().timerForceStopGame.cancel();
+    },
+  );
+}
