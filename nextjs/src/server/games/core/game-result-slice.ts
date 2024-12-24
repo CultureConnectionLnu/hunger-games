@@ -1,4 +1,6 @@
-import { StateCreator } from "zustand";
+import { type StateCreator } from "zustand";
+
+// #region types
 
 type GameResult =
   | {
@@ -34,8 +36,11 @@ export type GameResultSlice = {
   };
 };
 
+// #endregion
+
 /**
- * This slice handles the game outcome state
+ * This slice handles the game outcome state.
+ * Once the outcome is decided, it can't be changed anymore.
  */
 export function createGameResultSlice(): StateCreator<GameResultSlice> {
   return (set, get) => ({

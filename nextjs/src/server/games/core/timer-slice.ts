@@ -1,5 +1,7 @@
-import { StateCreator } from "zustand";
 import { Temporal } from "temporal-polyfill";
+import { type StateCreator } from "zustand";
+
+// #region types
 
 declare global {
   interface KnownTimerNamesMap {
@@ -48,12 +50,15 @@ interface TimerState {
 }
 
 export type KnownTimerNames = keyof KnownTimerNamesMap;
-export type TimerSlice<Property extends KnownTimerNames> = {
-  [K in Property]: TimerState;
-};
+export type TimerSlice<Property extends KnownTimerNames> = Record<
+  Property,
+  TimerState
+>;
+
+// #endregion
 
 /**
- *
+ * Use this function to add a timer to a store.
  * @param timerName
  * @param duration
  * @param options
@@ -209,6 +214,8 @@ export function createTimerSlice<TimerName extends KnownTimerNames>(
   };
 }
 
+// #region helper functions
+
 function durationToMilliseconds(duration: Temporal.Duration): number {
   return duration.total({ unit: "milliseconds" });
 }
@@ -227,3 +234,5 @@ function formatTime(duration: Temporal.Duration) {
     second: "2-digit",
   });
 }
+
+// #endregion

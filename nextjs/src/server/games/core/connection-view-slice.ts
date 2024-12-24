@@ -3,6 +3,8 @@ import { type PlayerConnectionSliceRequirements } from "./player-connection-stat
 import { type DeepPartial, type SubscribeStore } from "./zustand-helper";
 import { type GameResultSlice } from "./game-result-slice";
 
+// #region types
+
 type VisibleTimers = "startTimeout" | "otherPlayerDisconnect";
 
 interface PlayerView {
@@ -64,6 +66,23 @@ export interface ConnectionViewSlice {
 export type ConnectedViewRequirements = PlayerConnectionSliceRequirements &
   ConnectionViewSlice;
 
+// #endregion
+
+/**
+ * This slice provides individual views for each player.
+ * Given one game, there should be two views.
+ * This is the first view, which manges the game environment.
+ * The second view is the game itself.
+ *
+ * Tasks:
+ * - show timers
+ * - decide which view to show
+ *
+ * Everything is inferred from the player connection state slice
+ * @param player1Id
+ * @param player2Id
+ * @returns
+ */
 export function createConnectionViewSlice(
   player1Id: string,
   player2Id: string,
@@ -393,173 +412,193 @@ export function createConnectionViewSlice(
 export function registerConnectionViewSubscribers(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
-  handlePlayerJoinEvent(store);
-  handlePlayerReadyEvent(store);
-  handleDisconnectPlayerEvent(store);
-  handleGameRunningEvent(store);
-  handleGameEndedEvent(store);
+  const unsubscribes: (() => void)[] = [];
 
-  handleStartTimeoutUpdate(store);
-  handleDisconnectedLooseUpdate(store);
+  unsubscribes.push(...handlePlayerJoinEvent(store));
+  unsubscribes.push(...handlePlayerReadyEvent(store));
+  unsubscribes.push(...handleDisconnectPlayerEvent(store));
+  unsubscribes.push(...handleGameRunningEvent(store));
+
+  unsubscribes.push(...handleStartTimeoutUpdate(store));
+  unsubscribes.push(...handleDisconnectedLooseUpdate(store));
+
+  handleGameEndedEvent(store, unsubscribes);
 }
 
 function handlePlayerJoinEvent(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
-  store.subscribe(
-    (state) =>
-      [
-        state.playerConnection.mutable.player1.joined,
-        state.playerConnection.mutable.player1.id,
-      ] as const,
-    ([player1Joined, player1Id], [prevPlayer1Joined]) => {
-      if (player1Joined === prevPlayer1Joined) return;
-      if (player1Joined) {
-        store.getState().connectedView.playerJoined(player1Id);
-      }
-    },
-  );
-  store.subscribe(
-    (state) =>
-      [
-        state.playerConnection.mutable.player2.joined,
-        state.playerConnection.mutable.player2.id,
-      ] as const,
-    ([player2Joined, player2Id], [prevPlayer2Joined]) => {
-      if (player2Joined === prevPlayer2Joined) return;
-      if (player2Joined) {
-        store.getState().connectedView.playerJoined(player2Id);
-      }
-    },
-  );
+  return [
+    store.subscribe(
+      (state) =>
+        [
+          state.playerConnection.mutable.player1.joined,
+          state.playerConnection.mutable.player1.id,
+        ] as const,
+      ([player1Joined, player1Id], [prevPlayer1Joined]) => {
+        if (player1Joined === prevPlayer1Joined) return;
+        if (player1Joined) {
+          store.getState().connectedView.playerJoined(player1Id);
+        }
+      },
+    ),
+    store.subscribe(
+      (state) =>
+        [
+          state.playerConnection.mutable.player2.joined,
+          state.playerConnection.mutable.player2.id,
+        ] as const,
+      ([player2Joined, player2Id], [prevPlayer2Joined]) => {
+        if (player2Joined === prevPlayer2Joined) return;
+        if (player2Joined) {
+          store.getState().connectedView.playerJoined(player2Id);
+        }
+      },
+    ),
+  ];
 }
 
 function handlePlayerReadyEvent(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
-  store.subscribe(
-    (state) =>
-      [
-        state.playerConnection.mutable.player1.ready,
-        state.playerConnection.mutable.player1.id,
-      ] as const,
-    ([player1Ready, player1Id], [prevPlayer1Ready]) => {
-      if (player1Ready === prevPlayer1Ready) return;
-      if (player1Ready) {
-        store.getState().connectedView.playerIsReady(player1Id);
-      }
-    },
-  );
-  store.subscribe(
-    (state) =>
-      [
-        state.playerConnection.mutable.player2.ready,
-        state.playerConnection.mutable.player2.id,
-      ] as const,
-    ([player2Ready, player2Id], [prevPlayer2Ready]) => {
-      if (player2Ready === prevPlayer2Ready) return;
-      if (player2Ready) {
-        store.getState().connectedView.playerIsReady(player2Id);
-      }
-    },
-  );
+  return [
+    store.subscribe(
+      (state) =>
+        [
+          state.playerConnection.mutable.player1.ready,
+          state.playerConnection.mutable.player1.id,
+        ] as const,
+      ([player1Ready, player1Id], [prevPlayer1Ready]) => {
+        if (player1Ready === prevPlayer1Ready) return;
+        if (player1Ready) {
+          store.getState().connectedView.playerIsReady(player1Id);
+        }
+      },
+    ),
+    store.subscribe(
+      (state) =>
+        [
+          state.playerConnection.mutable.player2.ready,
+          state.playerConnection.mutable.player2.id,
+        ] as const,
+      ([player2Ready, player2Id], [prevPlayer2Ready]) => {
+        if (player2Ready === prevPlayer2Ready) return;
+        if (player2Ready) {
+          store.getState().connectedView.playerIsReady(player2Id);
+        }
+      },
+    ),
+  ];
 }
 
 function handleDisconnectPlayerEvent(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
-  store.subscribe(
-    (state) =>
-      [
-        state.playerConnection.mutable.player1.disconnected,
-        state.playerConnection.mutable.player1.id,
-      ] as const,
-    ([disconnected, player1Id], [prevDisconnected]) => {
-      if (disconnected === prevDisconnected) return;
-      if (disconnected) {
-        store.getState().connectedView.playerDisconnected(player1Id);
-      } else {
-        store.getState().connectedView.playerConnected(player1Id);
-      }
-    },
-  );
-  store.subscribe(
-    (state) =>
-      [
-        state.playerConnection.mutable.player2.disconnected,
-        state.playerConnection.mutable.player2.id,
-      ] as const,
-    ([disconnected, player2Id], [prevDisconnected]) => {
-      if (disconnected === prevDisconnected) return;
-      if (disconnected) {
-        store.getState().connectedView.playerDisconnected(player2Id);
-      } else {
-        store.getState().connectedView.playerConnected(player2Id);
-      }
-    },
-  );
+  return [
+    store.subscribe(
+      (state) =>
+        [
+          state.playerConnection.mutable.player1.disconnected,
+          state.playerConnection.mutable.player1.id,
+        ] as const,
+      ([disconnected, player1Id], [prevDisconnected]) => {
+        if (disconnected === prevDisconnected) return;
+        if (disconnected) {
+          store.getState().connectedView.playerDisconnected(player1Id);
+        } else {
+          store.getState().connectedView.playerConnected(player1Id);
+        }
+      },
+    ),
+    store.subscribe(
+      (state) =>
+        [
+          state.playerConnection.mutable.player2.disconnected,
+          state.playerConnection.mutable.player2.id,
+        ] as const,
+      ([disconnected, player2Id], [prevDisconnected]) => {
+        if (disconnected === prevDisconnected) return;
+        if (disconnected) {
+          store.getState().connectedView.playerDisconnected(player2Id);
+        } else {
+          store.getState().connectedView.playerConnected(player2Id);
+        }
+      },
+    ),
+  ];
 }
 
 function handleGameRunningEvent(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
-  store.subscribe(
-    (state) => state.playerConnection.mutable.gameIsRunning,
-    (gameIsRunning) => {
-      if (gameIsRunning) {
-        store.getState().connectedView.showGameView();
-      }
-    },
-  );
-}
-
-function handleGameEndedEvent(
-  store: SubscribeStore<ConnectedViewRequirements>,
-) {
-  store.subscribe(
-    (state) => state.gameResult.outcome,
-    (outcome) => {
-      store.getState().connectedView.showGameEndedView(outcome);
-    },
-  );
+  return [
+    store.subscribe(
+      (state) => state.playerConnection.mutable.gameIsRunning,
+      (gameIsRunning) => {
+        if (gameIsRunning) {
+          store.getState().connectedView.showGameView();
+        }
+      },
+    ),
+  ];
 }
 
 function handleStartTimeoutUpdate(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
-  store.subscribe(
-    (state) => state.timerStartTimeout.mutable.formattedTime,
-    (formattedTime, prevFormattedTime) => {
-      if (formattedTime === prevFormattedTime) return;
+  return [
+    store.subscribe(
+      (state) => state.timerStartTimeout.mutable.formattedTime,
+      (formattedTime, prevFormattedTime) => {
+        if (formattedTime === prevFormattedTime) return;
 
-      store.getState().connectedView.updateStartTimeoutValue(formattedTime);
-    },
-  );
+        store.getState().connectedView.updateStartTimeoutValue(formattedTime);
+      },
+    ),
+  ];
 }
 
 function handleDisconnectedLooseUpdate(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
-  store.subscribe(
-    (state) => state.timerPlayer1DisconnectedLoose.mutable.formattedTime,
-    (formattedTime, prevFormattedTime) => {
-      if (formattedTime === prevFormattedTime) return;
+  return [
+    store.subscribe(
+      (state) => state.timerPlayer1DisconnectedLoose.mutable.formattedTime,
+      (formattedTime, prevFormattedTime) => {
+        if (formattedTime === prevFormattedTime) return;
 
-      // the opponent is interested in the loose timer
-      store
-        .getState()
-        .connectedView.updateDisconnectedLooseValue(formattedTime, "player2");
+        // the opponent is interested in the loose timer
+        store
+          .getState()
+          .connectedView.updateDisconnectedLooseValue(formattedTime, "player2");
+      },
+    ),
+    store.subscribe(
+      (state) => state.timerPlayer2DisconnectedLoose.mutable.formattedTime,
+      (formattedTime, prevFormattedTime) => {
+        if (formattedTime === prevFormattedTime) return;
+
+        // the opponent is interested in the loose timer
+        store
+          .getState()
+          .connectedView.updateDisconnectedLooseValue(formattedTime, "player1");
+      },
+    ),
+  ];
+}
+
+function handleGameEndedEvent(
+  store: SubscribeStore<ConnectedViewRequirements>,
+  unsubscribes: (() => void)[],
+) {
+  const unSub = store.subscribe(
+    (state) => state.gameResult.outcome,
+    (outcome) => {
+      store.getState().connectedView.showGameEndedView(outcome);
+      if (outcome.result === "ongoing") return;
+
+      unsubscribes.forEach((unSub) => unSub());
     },
   );
-  store.subscribe(
-    (state) => state.timerPlayer2DisconnectedLoose.mutable.formattedTime,
-    (formattedTime, prevFormattedTime) => {
-      if (formattedTime === prevFormattedTime) return;
-
-      // the opponent is interested in the loose timer
-      store
-        .getState()
-        .connectedView.updateDisconnectedLooseValue(formattedTime, "player1");
-    },
-  );
+  unsubscribes.push(unSub);
 }

@@ -1,7 +1,9 @@
-import { StateCreator, Mutate, UseBoundStore, StoreApi } from "zustand";
-import { GameResultSlice } from "./game-result-slice";
-import { KnownTimerNames, TimerSlice } from "./timer-slice";
-import { DeepPartial, SubscribeStore } from "./zustand-helper";
+import { type StateCreator } from "zustand";
+import { type GameResultSlice } from "./game-result-slice";
+import { type KnownTimerNames, type TimerSlice } from "./timer-slice";
+import { type DeepPartial, type SubscribeStore } from "./zustand-helper";
+
+// #region types
 
 declare global {
   interface KnownTimerNamesMap {
@@ -18,7 +20,6 @@ interface PlayerState {
   disconnected: boolean;
   id: string;
 }
-
 
 export interface PlayerConnectionSlice {
   playerConnection: {
@@ -43,6 +44,21 @@ export type PlayerConnectionSliceRequirements = PlayerConnectionSlice &
     | "timerPlayer2DisconnectedLoose"
   >;
 
+// #endregion
+
+/**
+ * This slice manages the connections of the players.
+ * It is needed once in a store.
+ *
+ * Tasks:
+ * - monitor connected state of players
+ * - only start game when both players are connected and ready
+ * - ensure that there is a last resort cleanup
+ * - ensure that the game does not take too long
+ * @param player1Id
+ * @param player2Id
+ * @returns
+ */
 export function createPlayerConnectionSlice(
   player1Id: string,
   player2Id: string,
@@ -229,101 +245,116 @@ export function createPlayerConnectionSlice(
 export function registerPlayerConnectionSubscribers(
   store: SubscribeStore<PlayerConnectionSliceRequirements>,
 ) {
+  const unsubscribes: (() => void)[] = [];
+
   // start the force stop timer
   store.getState().timerForceStopGame.startOrResume();
 
   // handle timer complete events
-  handleForceGameEnd(store);
-  handlePlayer1DisconnectedLoose(store);
-  handlePlayer2DisconnectedLoose(store);
-  handleStartTimeout(store);
+  unsubscribes.push(...handleForceGameEnd(store));
+  unsubscribes.push(...handlePlayer1DisconnectedLoose(store));
+  unsubscribes.push(...handlePlayer2DisconnectedLoose(store));
+  unsubscribes.push(...handleStartTimeout(store));
 
-  cleanupUponGameCompleted(store);
+  cleanupUponGameCompleted(store, unsubscribes);
 }
 
 function handleForceGameEnd(
   store: SubscribeStore<PlayerConnectionSliceRequirements>,
 ) {
-  store.subscribe(
-    (state) => state.timerForceStopGame.mutable.completed,
-    (completed) => {
-      if (completed === false) return;
+  return [
+    store.subscribe(
+      (state) => state.timerForceStopGame.mutable.completed,
+      (completed) => {
+        if (completed === false) return;
 
-      const { canceled } = store.getState().timerForceStopGame.mutable;
-      if (canceled) return;
+        const { canceled } = store.getState().timerForceStopGame.mutable;
+        if (canceled) return;
 
-      store.getState().gameResult.forceStopGame();
-    },
-  );
+        store.getState().gameResult.forceStopGame();
+      },
+    ),
+  ];
 }
 
 function handlePlayer1DisconnectedLoose(
   store: SubscribeStore<PlayerConnectionSliceRequirements>,
 ) {
-  store.subscribe(
-    (state) => state.timerPlayer1DisconnectedLoose.mutable.completed,
-    (completed) => {
-      if (completed === false) return;
+  return [
+    store.subscribe(
+      (state) => state.timerPlayer1DisconnectedLoose.mutable.completed,
+      (completed) => {
+        if (completed === false) return;
 
-      const { canceled } =
-        store.getState().timerPlayer1DisconnectedLoose.mutable;
-      if (canceled) return;
+        const { canceled } =
+          store.getState().timerPlayer1DisconnectedLoose.mutable;
+        if (canceled) return;
 
-      store.getState().gameResult.otherPlayerDisconnected("player2", "player1");
-    },
-  );
+        store
+          .getState()
+          .gameResult.otherPlayerDisconnected("player2", "player1");
+      },
+    ),
+  ];
 }
 
 function handlePlayer2DisconnectedLoose(
   store: SubscribeStore<PlayerConnectionSliceRequirements>,
 ) {
-  store.subscribe(
-    (state) => state.timerPlayer2DisconnectedLoose.mutable.completed,
-    (completed) => {
-      if (completed === false) return;
+  return [
+    store.subscribe(
+      (state) => state.timerPlayer2DisconnectedLoose.mutable.completed,
+      (completed) => {
+        if (completed === false) return;
 
-      const { canceled } =
-        store.getState().timerPlayer2DisconnectedLoose.mutable;
-      if (canceled) return;
+        const { canceled } =
+          store.getState().timerPlayer2DisconnectedLoose.mutable;
+        if (canceled) return;
 
-      store.getState().gameResult.otherPlayerDisconnected("player1", "player2");
-    },
-  );
+        store
+          .getState()
+          .gameResult.otherPlayerDisconnected("player1", "player2");
+      },
+    ),
+  ];
 }
 
 function handleStartTimeout(
   store: SubscribeStore<PlayerConnectionSliceRequirements>,
 ) {
-  store.subscribe(
-    (state) => state.timerStartTimeout.mutable.completed,
-    (completed) => {
-      if (completed === false) return;
+  return [
+    store.subscribe(
+      (state) => state.timerStartTimeout.mutable.completed,
+      (completed) => {
+        if (completed === false) return;
 
-      const { canceled } = store.getState().timerStartTimeout.mutable;
-      if (canceled) return;
+        const { canceled } = store.getState().timerStartTimeout.mutable;
+        if (canceled) return;
 
-      const { neverStarted } = store.getState().gameResult;
-      const { player1, player2 } = store.getState().playerConnection.mutable;
-      if (player1.joined && player2.joined === false) {
-        neverStarted({ winnerId: player1.id, looserId: player2.id });
-      } else if (player1.joined === false && player2.joined) {
-        neverStarted({ winnerId: player2.id, looserId: player1.id });
-      } else if (player1.ready && player2.ready === false) {
-        neverStarted({ winnerId: player1.id, looserId: player2.id });
-      } else if (player1.ready === false && player2.ready) {
-        neverStarted({ winnerId: player2.id, looserId: player1.id });
-      }
+        const { neverStarted } = store.getState().gameResult;
+        const { player1, player2 } = store.getState().playerConnection.mutable;
+        if (player1.joined && player2.joined === false) {
+          neverStarted({ winnerId: player1.id, looserId: player2.id });
+        } else if (player1.joined === false && player2.joined) {
+          neverStarted({ winnerId: player2.id, looserId: player1.id });
+        } else if (player1.ready && player2.ready === false) {
+          neverStarted({ winnerId: player1.id, looserId: player2.id });
+        } else if (player1.ready === false && player2.ready) {
+          neverStarted({ winnerId: player2.id, looserId: player1.id });
+        }
 
-      // can't decide upon a winner, because both players are in the same state
-      neverStarted();
-    },
-  );
+        // can't decide upon a winner, because both players are in the same state
+        neverStarted();
+      },
+    ),
+  ];
 }
 
 function cleanupUponGameCompleted(
   store: SubscribeStore<PlayerConnectionSliceRequirements>,
+  unsubscribes: (() => void)[],
 ) {
-  store.subscribe(
+  const unSub = store.subscribe(
     (state) => state.gameResult.outcome.result,
     (result) => {
       if (result === "ongoing") return;
@@ -332,6 +363,11 @@ function cleanupUponGameCompleted(
       store.getState().timerPlayer1DisconnectedLoose.cancel();
       store.getState().timerPlayer2DisconnectedLoose.cancel();
       store.getState().timerForceStopGame.cancel();
+
+      // remove all subscriptions to make the store garbage collectable
+      unsubscribes.forEach((unSub) => unSub());
     },
   );
+
+  unsubscribes.push(unSub);
 }
