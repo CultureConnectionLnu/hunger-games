@@ -33,12 +33,11 @@
     ".eslintrc.cjs",
     "next-env.d.ts",
     "custom-ws-auth-prop.d.ts",
-    "vitest.config.mts",
     "**/*.ts",
     "**/*.tsx",
     "**/*.cjs",
     "**/*.js",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "vitest.config.mts"]
 }
