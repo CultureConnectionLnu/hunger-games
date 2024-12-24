@@ -1,14 +1,12 @@
 import { Temporal } from "temporal-polyfill";
-import { describe, test, vi, beforeEach, afterEach, expect } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createStore } from "zustand";
-import { createGameResultSlice } from "./game-result-slice";
+import { subscribeWithSelector } from "zustand/middleware";
+import { createPlayerConnectionRequirement } from "./creator";
 import {
-  createPlayerConnectionSlice,
   type PlayerConnectionSliceRequirements,
   registerPlayerConnectionSubscribers,
 } from "./player-connection-state-slice";
-import { createTimerSlice } from "./timer-slice";
-import { subscribeWithSelector } from "zustand/middleware";
 import { type SubscribeStore } from "./zustand-helper";
 
 describe("player connection slice", () => {
@@ -367,27 +365,10 @@ function testSetup() {
   };
   const store = createStore<PlayerConnectionSliceRequirements>()(
     subscribeWithSelector((...a) => ({
-      ...createPlayerConnectionSlice(player1Id, player2Id)(...a),
-      ...createGameResultSlice()(...a),
-      ...createTimerSlice("timerForceStopGame", durations.forceStop, {
-        shouldUpdateStateEverySecond: false,
-      })(...a),
-      ...createTimerSlice("timerStartTimeout", durations.startTimeout, {
-        shouldUpdateStateEverySecond: false,
-      })(...a),
-      ...createTimerSlice(
-        "timerPlayer1DisconnectedLoose",
-        durations.disconnectLoose,
-        {
-          shouldUpdateStateEverySecond: false,
-        },
-      )(...a),
-      ...createTimerSlice(
-        "timerPlayer2DisconnectedLoose",
-        durations.disconnectLoose,
-        {
-          shouldUpdateStateEverySecond: false,
-        },
+      ...createPlayerConnectionRequirement(
+        player1Id,
+        player2Id,
+        durations,
       )(...a),
     })),
   );

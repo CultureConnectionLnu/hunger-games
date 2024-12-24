@@ -7,12 +7,8 @@ import {
   registerConnectionViewSubscribers,
   type ConnectedViewRequirements,
 } from "./connection-view-slice";
-import { createGameResultSlice } from "./game-result-slice";
-import {
-  createPlayerConnectionSlice,
-  registerPlayerConnectionSubscribers,
-} from "./player-connection-state-slice";
-import { createTimerSlice } from "./timer-slice";
+import { createPlayerConnectionRequirement } from "./creator";
+import { registerPlayerConnectionSubscribers } from "./player-connection-state-slice";
 import { type SubscribeStore } from "./zustand-helper";
 
 describe("connection view slice", () => {
@@ -940,30 +936,10 @@ function testSetup(
   const store = createStore<ConnectedViewRequirements>()(
     subscribeWithSelector((...a) => ({
       ...createConnectionViewSlice(player1Id, player2Id)(...a),
-      ...createPlayerConnectionSlice(player1Id, player2Id)(...a),
-      ...createGameResultSlice()(...a),
-      ...createTimerSlice("timerForceStopGame", durations.forceStop, {
-        shouldUpdateStateEverySecond: false,
-      })(...a),
-      ...createTimerSlice("timerStartTimeout", durations.startTimeout, {
-        shouldUpdateStateEverySecond: true,
-        countDirection: "down-from-end",
-      })(...a),
-      ...createTimerSlice(
-        "timerPlayer1DisconnectedLoose",
-        durations.disconnectLoose,
-        {
-          shouldUpdateStateEverySecond: true,
-          countDirection: "down-from-end",
-        },
-      )(...a),
-      ...createTimerSlice(
-        "timerPlayer2DisconnectedLoose",
-        durations.disconnectLoose,
-        {
-          shouldUpdateStateEverySecond: true,
-          countDirection: "down-from-end",
-        },
+      ...createPlayerConnectionRequirement(
+        player1Id,
+        player2Id,
+        durations,
       )(...a),
     })),
   );
