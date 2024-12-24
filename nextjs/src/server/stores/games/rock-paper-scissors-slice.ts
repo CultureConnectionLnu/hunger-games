@@ -13,24 +13,36 @@ declare global {
   }
 }
 
-type Item = "rock" | "paper" | "scissors";
+export type RockPaperScissorsItem = "rock" | "paper" | "scissors";
 
 interface PlayerState {
   id: string;
-  item: Item | undefined;
+  item: RockPaperScissorsItem | undefined;
   canChoose: boolean;
 }
 
-type GameScore = { type: "tie" } | { type: "win"; winnerId: string };
+export type RockPaperScissorGameScore =
+  | {
+      type: "tie";
+      winnerId?: undefined;
+      player1: RockPaperScissorsItem;
+      player2: RockPaperScissorsItem;
+    }
+  | {
+      type: "win";
+      winnerId: string;
+      player1: RockPaperScissorsItem;
+      player2: RockPaperScissorsItem;
+    };
 
-interface RockPaperScissorsSlice {
+export interface RockPaperScissorsSlice {
   gameLogic: {
     mutable: {
       player1: PlayerState;
       player2: PlayerState;
-      score: GameScore[];
+      score: RockPaperScissorGameScore[];
     };
-    chooseItem(playerId: string, item: Item): void;
+    chooseItem(playerId: string, item: RockPaperScissorsItem): void;
     onChooseTimeout(): void;
     pauseGame: () => void;
     startOrResumeGame: () => void;
@@ -54,9 +66,34 @@ export function createRockPaperScissorsSlice(
       originalSet((state) => ({
         gameLogic: {
           ...state.gameLogic,
-          // todo
+          mutable: {
+            ...state.gameLogic.mutable,
+            ...mutation,
+            player1: {
+              ...state.gameLogic.mutable.player1,
+              ...mutation.player1,
+            },
+            player2: {
+              ...state.gameLogic.mutable.player2,
+              ...mutation.player2,
+            },
+          },
         },
       }));
+    };
+
+    const getPlayerSpecificKeys = (playerId: string) => {
+      if (playerId === player1Id)
+        return {
+          playerKey:
+            "player1" satisfies keyof PlayerConnectionSlice["playerConnection"]["mutable"],
+        } as const;
+      if (playerId === player2Id)
+        return {
+          playerKey:
+            "player2" satisfies keyof PlayerConnectionSlice["playerConnection"]["mutable"],
+        } as const;
+      return undefined;
     };
 
     return {
@@ -74,14 +111,47 @@ export function createRockPaperScissorsSlice(
           },
           score: [],
         },
-        chooseItem: (playerId, item) => {},
+        chooseItem: (playerId, item) => {
+          const keys = getPlayerSpecificKeys(playerId);
+          if (keys === undefined) return;
+
+          if (get().gameLogic.mutable[keys.playerKey].item !== undefined)
+            return "player already chosen";
+
+          set({
+            [keys.playerKey]: {
+              item,
+            },
+          });
+
+          const { player1, player2, score } = get().gameLogic.mutable;
+          if (player1.item === undefined || player2.item === undefined) return;
+
+          set({
+            score: [
+              ...score,
+              getOutcome(player1.id, player2.id, player1.item, player2.item),
+            ],
+          });
+        },
         onChooseTimeout: () => {},
         pauseGame: () => {},
-        startOrResumeGame: () => {},
+        startOrResumeGame: () => {
+          set({
+            player1: {
+              canChoose: true,
+            },
+            player2: {
+              canChoose: true,
+            },
+          });
+        },
       },
     };
   };
 }
+
+// #region subscriptions
 
 export function registerRockPaperScissorsSubscribers(
   store: SubscribeStore<RockPaperScissorsRequirements>,
@@ -122,3 +192,44 @@ function cleanupUponGameCompleted(
   );
   unsubscribes.push(unSub);
 }
+
+// #endregion
+
+// #region helper functions
+
+function getOutcome(
+  player1Id: string,
+  player2Id: string,
+  player1Item: RockPaperScissorsItem,
+  player2Item: RockPaperScissorsItem,
+): RockPaperScissorGameScore {
+  const base = {
+    player1: player1Item,
+    player2: player2Item,
+  };
+  if (player1Item === player2Item) return { type: "tie", ...base };
+
+  if (player1Item === "rock") {
+    if (player2Item === "scissors")
+      return { type: "win", winnerId: player1Id, ...base };
+    if (player2Item === "paper")
+      return { type: "win", winnerId: player2Id, ...base };
+  }
+
+  if (player1Item === "scissors") {
+    if (player2Item === "rock")
+      return { type: "win", winnerId: player2Id, ...base };
+    if (player2Item === "paper")
+      return { type: "win", winnerId: player1Id, ...base };
+  }
+
+  if (player1Item === "paper") {
+    if (player2Item === "rock")
+      return { type: "win", winnerId: player1Id, ...base };
+    if (player2Item === "scissors")
+      return { type: "win", winnerId: player2Id, ...base };
+  }
+
+  return { type: "tie", ...base };
+}
+// #endregion
