@@ -2,10 +2,15 @@
 
 ## todo
 
-- the slice for the game logic should be called `gameLogic`
+// current
+
 - the slice for the game view should be called `gameView`
-- the game logic should listen for `isGameRunning` from the player connection slice
+
+// next
+
+- check if there can be helper function to define the setter function for each slice
 - consider creating a common structure to streamline the creation of the stores
+
   - required function for the store
   - optional function for subscriptions
   - optional function for startup init

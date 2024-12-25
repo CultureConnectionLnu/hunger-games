@@ -3,6 +3,10 @@ import { type Temporal } from "temporal-polyfill";
 import { createGameResultSlice } from "./game-result-slice";
 import { createPlayerConnectionSlice } from "./player-connection-state-slice";
 import { createTimerSlice } from "./timer-slice";
+import {
+  createRockPaperScissorsSlice,
+  type RockPaperScissorsOptions,
+} from "../games/rock-paper-scissors-slice";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AcceptedAny = any;
@@ -44,3 +48,51 @@ export function createPlayerConnectionRequirement(
     )(set, get, write),
   });
 }
+
+// #region game requirements
+
+export function createRockPaperScissorsRequirement(
+  player1Id: string,
+  player2Id: string,
+  roomOptions: {
+    forceStop: Temporal.Duration;
+    disconnectLoose: Temporal.Duration;
+    startTimeout: Temporal.Duration;
+  },
+  gameOptions: {
+    durations: {
+      chooseTimeout: Temporal.Duration;
+      showCurrentScore: Temporal.Duration;
+    };
+  } & RockPaperScissorsOptions,
+) {
+  return (set: AcceptedAny, get: AcceptedAny, write: AcceptedAny) => ({
+    ...createRockPaperScissorsSlice(player1Id, player2Id, {
+      roundsNeededToWin: gameOptions.roundsNeededToWin,
+      roundsLimit: gameOptions.roundsLimit,
+    })(set, get, write),
+    ...createTimerSlice(
+      "timerRpsChooseTimeout",
+      gameOptions.durations.chooseTimeout,
+      {
+        shouldUpdateStateEverySecond: true,
+        countDirection: "down-from-end",
+      },
+    )(set, get, write),
+    ...createTimerSlice(
+      "timerRpsShowCurrentScore",
+      gameOptions.durations.chooseTimeout,
+      {
+        shouldUpdateStateEverySecond: true,
+        countDirection: "down-from-end",
+      },
+    )(set, get, write),
+    ...createPlayerConnectionRequirement(player1Id, player2Id, roomOptions)(
+      set,
+      get,
+      write,
+    ),
+  });
+}
+
+// #endregion

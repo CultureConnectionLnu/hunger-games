@@ -2,11 +2,9 @@ import { Temporal } from "temporal-polyfill";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { createStore } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import { createPlayerConnectionRequirement } from "../core/creator";
-import { createTimerSlice } from "../core/timer-slice";
+import { createRockPaperScissorsRequirement } from "../core/creator";
 import { type SubscribeStore } from "../core/zustand-helper";
 import {
-  createRockPaperScissorsSlice,
   registerRockPaperScissorsSubscribers,
   type RockPaperScissorGameScore,
   type RockPaperScissorsItem,
@@ -529,23 +527,20 @@ function testSetup({
   };
   const store = createStore<RockPaperScissorsRequirements>()(
     subscribeWithSelector((...a) => ({
-      ...createRockPaperScissorsSlice(player1Id, player2Id, {
-        roundsNeededToWin: roundsNeededToWin ?? 3,
-        roundsLimit: roundsLimit ?? 10,
-      })(...a),
-      ...createTimerSlice("timerRpsChooseTimeout", durations.chooseTimeout, {
-        shouldUpdateStateEverySecond: true,
-        countDirection: "down-from-end",
-      })(...a),
-      ...createTimerSlice("timerRpsShowCurrentScore", durations.chooseTimeout, {
-        shouldUpdateStateEverySecond: true,
-        countDirection: "down-from-end",
-      })(...a),
-      ...createPlayerConnectionRequirement(player1Id, player2Id, {
-        forceStop: Temporal.Duration.from({ seconds: 120 }),
-        disconnectLoose: Temporal.Duration.from({ seconds: 10 }),
-        startTimeout: Temporal.Duration.from({ seconds: 10 }),
-      })(...a),
+      ...createRockPaperScissorsRequirement(
+        player1Id,
+        player2Id,
+        {
+          forceStop: Temporal.Duration.from({ seconds: 120 }),
+          disconnectLoose: Temporal.Duration.from({ seconds: 10 }),
+          startTimeout: Temporal.Duration.from({ seconds: 10 }),
+        },
+        {
+          durations,
+          roundsNeededToWin: roundsNeededToWin ?? 3,
+          roundsLimit: roundsLimit ?? 10,
+        },
+      )(...a),
     })),
   );
 
