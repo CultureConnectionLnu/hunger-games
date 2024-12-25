@@ -54,9 +54,11 @@ export interface RockPaperScissorsSlice {
     };
     options: RockPaperScissorsOptions;
     chooseItem(playerId: string, item: RockPaperScissorsItem): void;
-    onChooseTimeout(): void;
-    pauseGame: () => void;
-    startOrResumeGame: () => void;
+    private: {
+      onChooseTimeout(): void;
+      pauseGame: () => void;
+      startOrResumeGame: () => void;
+    };
   };
 }
 
@@ -192,56 +194,60 @@ export function createRockPaperScissorsSlice(
           endTheRound();
         },
 
-        onChooseTimeout: () => {
-          endTheRound();
-        },
-        pauseGame: () => {
-          const isChooseTimeoutRunning =
-            get().timerRpsChooseTimeout.mutable.isActive;
-          const isShowCurrentScoreRunning =
-            get().timerRpsShowCurrentScore.mutable.isActive;
-          set({
-            pausedState: {
-              isPaused: true,
-              chooseTimeoutPaused: isChooseTimeoutRunning,
-              showCurrentScorePaused: isShowCurrentScoreRunning,
-            },
-          });
+        private: {
+          onChooseTimeout: () => {
+            endTheRound();
+          },
 
-          get().timerRpsChooseTimeout.pause();
-          get().timerRpsShowCurrentScore.pause();
-        },
-        startOrResumeGame: () => {
-          const { pausedState } = get().gameLogic.mutable;
-          if (pausedState.isPaused) {
-            if (pausedState.chooseTimeoutPaused) {
-              get().timerRpsChooseTimeout.startOrResume();
-            }
-            if (pausedState.showCurrentScorePaused) {
-              get().timerRpsShowCurrentScore.startOrResume();
-            }
+          pauseGame: () => {
+            const isChooseTimeoutRunning =
+              get().timerRpsChooseTimeout.mutable.isActive;
+            const isShowCurrentScoreRunning =
+              get().timerRpsShowCurrentScore.mutable.isActive;
             set({
               pausedState: {
-                isPaused: false,
-                chooseTimeoutPaused: false,
-                showCurrentScorePaused: false,
+                isPaused: true,
+                chooseTimeoutPaused: isChooseTimeoutRunning,
+                showCurrentScorePaused: isShowCurrentScoreRunning,
               },
             });
-            return;
-          }
 
-          set({
-            player1: {
-              canChoose: true,
-              item: undefined,
-            },
-            player2: {
-              canChoose: true,
-              item: undefined,
-            },
-          });
+            get().timerRpsChooseTimeout.pause();
+            get().timerRpsShowCurrentScore.pause();
+          },
 
-          get().timerRpsChooseTimeout.startOrResume();
+          startOrResumeGame: () => {
+            const { pausedState } = get().gameLogic.mutable;
+            if (pausedState.isPaused) {
+              if (pausedState.chooseTimeoutPaused) {
+                get().timerRpsChooseTimeout.startOrResume();
+              }
+              if (pausedState.showCurrentScorePaused) {
+                get().timerRpsShowCurrentScore.startOrResume();
+              }
+              set({
+                pausedState: {
+                  isPaused: false,
+                  chooseTimeoutPaused: false,
+                  showCurrentScorePaused: false,
+                },
+              });
+              return;
+            }
+
+            set({
+              player1: {
+                canChoose: true,
+                item: undefined,
+              },
+              player2: {
+                canChoose: true,
+                item: undefined,
+              },
+            });
+
+            get().timerRpsChooseTimeout.startOrResume();
+          },
         },
       },
     };
@@ -265,14 +271,16 @@ export function registerRockPaperScissorsSubscribers(
 function handleGameRunningEvent(
   store: SubscribeStore<RockPaperScissorsRequirements>,
 ) {
+  const { startOrResumeGame, pauseGame } = store.getState().gameLogic.private;
+
   return [
     store.subscribe(
       (state) => state.playerConnection.mutable.gameIsRunning,
       (gameRunning) => {
         if (gameRunning) {
-          store.getState().gameLogic.startOrResumeGame();
+          startOrResumeGame();
         } else {
-          store.getState().gameLogic.pauseGame();
+          pauseGame();
         }
       },
     ),
@@ -282,6 +290,8 @@ function handleGameRunningEvent(
 function handleChooseTimeout(
   store: SubscribeStore<RockPaperScissorsRequirements>,
 ) {
+  // eslint-disable-next-line @typescript-eslint/unbound-method
+  const { onChooseTimeout } = store.getState().gameLogic.private;
   return [
     store.subscribe(
       (state) => state.timerRpsChooseTimeout.mutable.completed,
@@ -291,7 +301,7 @@ function handleChooseTimeout(
         const { canceled } = store.getState().timerRpsChooseTimeout.mutable;
         if (canceled) return;
 
-        store.getState().gameLogic.onChooseTimeout();
+        onChooseTimeout();
       },
     ),
   ];
@@ -300,6 +310,8 @@ function handleChooseTimeout(
 function handleNextRoundTimeout(
   store: SubscribeStore<RockPaperScissorsRequirements>,
 ) {
+  // eslint-disable-next-line @typescript-eslint/unbound-method
+  const { startOrResumeGame } = store.getState().gameLogic.private;
   return [
     store.subscribe(
       (state) => state.timerRpsShowCurrentScore.mutable.completed,
@@ -311,7 +323,7 @@ function handleNextRoundTimeout(
 
         store.getState().timerRpsChooseTimeout.reset();
         store.getState().timerRpsShowCurrentScore.reset();
-        store.getState().gameLogic.startOrResumeGame();
+        startOrResumeGame();
       },
     ),
   ];

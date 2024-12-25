@@ -43,23 +43,22 @@ export interface ConnectionViewSlice {
       player1: PlayerView;
       player2: PlayerView;
     };
-    playerJoined: (playerId: string) => void;
-    playerIsReady: (playerId: string) => void;
-    playerDisconnected: (playerId: string) => void;
-    playerConnected: (playerId: string) => void;
-    showGameView: () => void;
-    showPausedView: (becauseOfPlayerId: string) => void;
-    showGameEndedView: (
-      outcome: GameResultSlice["gameResult"]["outcome"],
-    ) => void;
-    updateStartTimeoutValue: (formattedTime: string) => void;
-    /**
-     * for this function to work properly, the player id assignment must be aligned between all zustand slices
-     */
-    updateDisconnectedLooseValue: (
-      formattedTime: string,
-      playerKey: "player1" | "player2",
-    ) => void;
+    private: {
+      playerJoined: (playerId: string) => void;
+      playerIsReady: (playerId: string) => void;
+      playerDisconnected: (playerId: string) => void;
+      playerConnected: (playerId: string) => void;
+      showGameView: () => void;
+      showPausedView: (becauseOfPlayerId: string) => void;
+      showGameEndedView: (
+        outcome: GameResultSlice["gameResult"]["outcome"],
+      ) => void;
+      updateStartTimeoutValue: (formattedTime: string) => void;
+      updateDisconnectedLooseValue: (
+        formattedTime: string,
+        playerId: string,
+      ) => void;
+    };
   };
 }
 
@@ -194,215 +193,220 @@ export function createConnectionViewSlice(
             },
           },
         },
-        playerJoined: (playerId) => {
-          const keys = getPlayerSpecificKeys(playerId);
-          if (keys === undefined) return;
+        private: {
+          playerJoined: (playerId) => {
+            const keys = getPlayerSpecificKeys(playerId);
+            if (keys === undefined) return;
 
-          if (
-            get().connectedView.mutable[keys.currentPlayer].showView !==
-            "joining"
-          )
-            return;
+            if (
+              get().connectedView.mutable[keys.currentPlayer].showView !==
+              "joining"
+            )
+              return;
 
-          set({
-            [keys.currentPlayer]: {
-              showView: "ready-button",
-              nextActions: ["ready"],
-              timer: {
-                startTimeout: {
-                  visible: true,
+            set({
+              [keys.currentPlayer]: {
+                showView: "ready-button",
+                nextActions: ["ready"],
+                timer: {
+                  startTimeout: {
+                    visible: true,
+                  },
                 },
-              },
-            } satisfies DeepPartial<PlayerView>,
-          });
+              } satisfies DeepPartial<PlayerView>,
+            });
 
-          const opponentView =
-            get().connectedView.mutable[keys.opponent].showView;
-          if (opponentView === "waiting-for-other-player-joining") {
+            const opponentView =
+              get().connectedView.mutable[keys.opponent].showView;
+            if (opponentView === "waiting-for-other-player-joining") {
+              set({
+                [keys.opponent]: {
+                  showView: "waiting-for-other-player-ready",
+                },
+              });
+            }
+          },
+
+          playerIsReady: (playerId) => {
+            const keys = getPlayerSpecificKeys(playerId);
+            if (keys === undefined) return;
+
+            const opponentDisconnected =
+              get().playerConnection.mutable[keys.opponent].disconnected;
+            const opponentView =
+              get().connectedView.mutable[keys.opponent].showView;
+
+            set({
+              [keys.currentPlayer]: {
+                showView: opponentDisconnected
+                  ? "waiting-for-other-player-reconnect"
+                  : opponentView === "joining"
+                    ? "waiting-for-other-player-joining"
+                    : "waiting-for-other-player-ready",
+                nextActions: [],
+              } satisfies DeepPartial<PlayerView>,
+            });
+          },
+
+          playerDisconnected: (playerId) => {
+            const currentView = get().connectedView.mutable.player1.showView;
+            // always both players are in the game.
+            // so checking any player if the current view is `game` is sufficient
+            if (currentView === "game" || currentView === "game-paused") {
+              get().connectedView.private.showPausedView(playerId);
+              return;
+            }
+
+            const keys = getPlayerSpecificKeys(playerId);
+            if (keys === undefined) return;
+
+            set({
+              [keys.opponent]: {
+                showView: "waiting-for-other-player-reconnect",
+                nextActions: [],
+                timer: {
+                  otherPlayerDisconnect: {
+                    visible: true,
+                  },
+                },
+              } satisfies DeepPartial<PlayerView>,
+            });
+          },
+
+          playerConnected: (playerId) => {
+            const keys = getPlayerSpecificKeys(playerId);
+            if (keys === undefined) return;
+
+            const currentView = get().connectedView.mutable.player1.showView;
+            // always both players are in the game.
+            // so checking any player if the current view is `game` is sufficient
+            if (currentView === "game-paused") {
+              set({
+                [keys.opponent]: {
+                  timer: {
+                    otherPlayerDisconnect: {
+                      visible: false,
+                    },
+                  },
+                },
+              });
+              return;
+            }
+
             set({
               [keys.opponent]: {
                 showView: "waiting-for-other-player-ready",
-              },
-            });
-          }
-        },
-
-        playerIsReady: (playerId) => {
-          const keys = getPlayerSpecificKeys(playerId);
-          if (keys === undefined) return;
-
-          const opponentDisconnected =
-            get().playerConnection.mutable[keys.opponent].disconnected;
-          const opponentView =
-            get().connectedView.mutable[keys.opponent].showView;
-
-          set({
-            [keys.currentPlayer]: {
-              showView: opponentDisconnected
-                ? "waiting-for-other-player-reconnect"
-                : opponentView === "joining"
-                  ? "waiting-for-other-player-joining"
-                  : "waiting-for-other-player-ready",
-              nextActions: [],
-            } satisfies DeepPartial<PlayerView>,
-          });
-        },
-
-        playerDisconnected: (playerId) => {
-          const currentView = get().connectedView.mutable.player1.showView;
-          // always both players are in the game.
-          // so checking any player if the current view is `game` is sufficient
-          if (currentView === "game" || currentView === "game-paused") {
-            get().connectedView.showPausedView(playerId);
-            return;
-          }
-
-          const keys = getPlayerSpecificKeys(playerId);
-          if (keys === undefined) return;
-
-          set({
-            [keys.opponent]: {
-              showView: "waiting-for-other-player-reconnect",
-              nextActions: [],
-              timer: {
-                otherPlayerDisconnect: {
-                  visible: true,
-                },
-              },
-            } satisfies DeepPartial<PlayerView>,
-          });
-        },
-
-        playerConnected: (playerId) => {
-          const keys = getPlayerSpecificKeys(playerId);
-          if (keys === undefined) return;
-
-          const currentView = get().connectedView.mutable.player1.showView;
-          // always both players are in the game.
-          // so checking any player if the current view is `game` is sufficient
-          if (currentView === "game-paused") {
-            set({
-              [keys.opponent]: {
+                nextActions: [],
                 timer: {
                   otherPlayerDisconnect: {
                     visible: false,
                   },
                 },
+              } satisfies DeepPartial<PlayerView>,
+            });
+          },
+
+          showGameView: () => {
+            set({
+              player1: {
+                showView: "game",
+                timer: {
+                  startTimeout: {
+                    visible: false,
+                  },
+                },
+              },
+              player2: {
+                showView: "game",
+                timer: {
+                  startTimeout: {
+                    visible: false,
+                  },
+                },
               },
             });
-            return;
-          }
+          },
 
-          set({
-            [keys.opponent]: {
-              showView: "waiting-for-other-player-ready",
-              nextActions: [],
-              timer: {
-                otherPlayerDisconnect: {
-                  visible: false,
+          showPausedView: (becauseOfPlayerId: string) => {
+            const keys = getPlayerSpecificKeys(becauseOfPlayerId);
+            if (keys === undefined) return;
+
+            set({
+              [keys.currentPlayer]: {
+                showView: "game-paused",
+              },
+              [keys.opponent]: {
+                showView: "game-paused",
+                timer: {
+                  otherPlayerDisconnect: {
+                    visible: true,
+                  },
                 },
               },
-            } satisfies DeepPartial<PlayerView>,
-          });
-        },
+            });
+          },
 
-        showGameView: () => {
-          set({
-            player1: {
-              showView: "game",
-              timer: {
-                startTimeout: {
-                  visible: false,
+          showGameEndedView: (outcome) => {
+            if (outcome.result === "ongoing") return;
+
+            const toPlayerOutcome = (yourId: string, opponentId: string) =>
+              ({
+                result:
+                  outcome.result === "tie"
+                    ? "tie"
+                    : outcome.winnerId === yourId
+                      ? "win"
+                      : "loose",
+                yourId,
+                opponentId,
+                reason: outcome.reason,
+              }) satisfies PlayerView["outcome"];
+
+            set({
+              player1: {
+                showView: "game-ended",
+                outcome: toPlayerOutcome(player1Id, player2Id),
+              },
+              player2: {
+                showView: "game-ended",
+                outcome: toPlayerOutcome(player2Id, player1Id),
+              },
+            });
+          },
+
+          updateStartTimeoutValue: (formattedTime) => {
+            set({
+              player1: {
+                timer: {
+                  startTimeout: {
+                    formattedTime,
+                  },
                 },
               },
-            },
-            player2: {
-              showView: "game",
-              timer: {
-                startTimeout: {
-                  visible: false,
+              player2: {
+                timer: {
+                  startTimeout: {
+                    formattedTime,
+                  },
                 },
               },
-            },
-          });
-        },
+            });
+          },
 
-        showPausedView: (becauseOfPlayerId: string) => {
-          const keys = getPlayerSpecificKeys(becauseOfPlayerId);
-          if (keys === undefined) return;
+          updateDisconnectedLooseValue: (formattedTime, playerId) => {
+            const keys = getPlayerSpecificKeys(playerId);
+            if (keys === undefined) return;
 
-          set({
-            [keys.currentPlayer]: {
-              showView: "game-paused",
-            },
-            [keys.opponent]: {
-              showView: "game-paused",
-              timer: {
-                otherPlayerDisconnect: {
-                  visible: true,
+            set({
+              [keys.opponent]: {
+                timer: {
+                  otherPlayerDisconnect: {
+                    formattedTime,
+                  },
                 },
               },
-            },
-          });
-        },
-
-        showGameEndedView: (outcome) => {
-          if (outcome.result === "ongoing") return;
-
-          const toPlayerOutcome = (yourId: string, opponentId: string) =>
-            ({
-              result:
-                outcome.result === "tie"
-                  ? "tie"
-                  : outcome.winnerId === yourId
-                    ? "win"
-                    : "loose",
-              yourId,
-              opponentId,
-              reason: outcome.reason,
-            }) satisfies PlayerView["outcome"];
-
-          set({
-            player1: {
-              showView: "game-ended",
-              outcome: toPlayerOutcome(player1Id, player2Id),
-            },
-            player2: {
-              showView: "game-ended",
-              outcome: toPlayerOutcome(player2Id, player1Id),
-            },
-          });
-        },
-
-        updateStartTimeoutValue: (formattedTime) => {
-          set({
-            player1: {
-              timer: {
-                startTimeout: {
-                  formattedTime,
-                },
-              },
-            },
-            player2: {
-              timer: {
-                startTimeout: {
-                  formattedTime,
-                },
-              },
-            },
-          });
-        },
-
-        updateDisconnectedLooseValue: (formattedTime, playerKey) => {
-          set({
-            [playerKey]: {
-              timer: {
-                otherPlayerDisconnect: {
-                  formattedTime,
-                },
-              },
-            },
-          });
+            });
+          },
         },
       },
     };
@@ -428,30 +432,23 @@ export function registerConnectionViewSubscribers(
 function handlePlayerJoinEvent(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
+  const { id: player1Id } = store.getState().playerConnection.mutable.player1;
+  const { id: player2Id } = store.getState().playerConnection.mutable.player2;
+  const { playerJoined } = store.getState().connectedView.private;
   return [
     store.subscribe(
-      (state) =>
-        [
-          state.playerConnection.mutable.player1.joined,
-          state.playerConnection.mutable.player1.id,
-        ] as const,
-      ([player1Joined, player1Id], [prevPlayer1Joined]) => {
-        if (player1Joined === prevPlayer1Joined) return;
+      (state) => state.playerConnection.mutable.player1.joined,
+      (player1Joined) => {
         if (player1Joined) {
-          store.getState().connectedView.playerJoined(player1Id);
+          playerJoined(player1Id);
         }
       },
     ),
     store.subscribe(
-      (state) =>
-        [
-          state.playerConnection.mutable.player2.joined,
-          state.playerConnection.mutable.player2.id,
-        ] as const,
-      ([player2Joined, player2Id], [prevPlayer2Joined]) => {
-        if (player2Joined === prevPlayer2Joined) return;
+      (state) => state.playerConnection.mutable.player2.joined,
+      (player2Joined) => {
         if (player2Joined) {
-          store.getState().connectedView.playerJoined(player2Id);
+          playerJoined(player2Id);
         }
       },
     ),
@@ -461,30 +458,23 @@ function handlePlayerJoinEvent(
 function handlePlayerReadyEvent(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
+  const { id: player1Id } = store.getState().playerConnection.mutable.player1;
+  const { id: player2Id } = store.getState().playerConnection.mutable.player2;
+  const { playerIsReady } = store.getState().connectedView.private;
   return [
     store.subscribe(
-      (state) =>
-        [
-          state.playerConnection.mutable.player1.ready,
-          state.playerConnection.mutable.player1.id,
-        ] as const,
-      ([player1Ready, player1Id], [prevPlayer1Ready]) => {
-        if (player1Ready === prevPlayer1Ready) return;
+      (state) => state.playerConnection.mutable.player1.ready,
+      (player1Ready) => {
         if (player1Ready) {
-          store.getState().connectedView.playerIsReady(player1Id);
+          playerIsReady(player1Id);
         }
       },
     ),
     store.subscribe(
-      (state) =>
-        [
-          state.playerConnection.mutable.player2.ready,
-          state.playerConnection.mutable.player2.id,
-        ] as const,
-      ([player2Ready, player2Id], [prevPlayer2Ready]) => {
-        if (player2Ready === prevPlayer2Ready) return;
+      (state) => state.playerConnection.mutable.player2.ready,
+      (player2Ready) => {
         if (player2Ready) {
-          store.getState().connectedView.playerIsReady(player2Id);
+          playerIsReady(player2Id);
         }
       },
     ),
@@ -494,34 +484,28 @@ function handlePlayerReadyEvent(
 function handleDisconnectPlayerEvent(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
+  const { id: player1Id } = store.getState().playerConnection.mutable.player1;
+  const { id: player2Id } = store.getState().playerConnection.mutable.player2;
+  const { playerConnected, playerDisconnected } =
+    store.getState().connectedView.private;
   return [
     store.subscribe(
-      (state) =>
-        [
-          state.playerConnection.mutable.player1.disconnected,
-          state.playerConnection.mutable.player1.id,
-        ] as const,
-      ([disconnected, player1Id], [prevDisconnected]) => {
-        if (disconnected === prevDisconnected) return;
+      (state) => state.playerConnection.mutable.player1.disconnected,
+      (disconnected) => {
         if (disconnected) {
-          store.getState().connectedView.playerDisconnected(player1Id);
+          playerDisconnected(player1Id);
         } else {
-          store.getState().connectedView.playerConnected(player1Id);
+          playerConnected(player1Id);
         }
       },
     ),
     store.subscribe(
-      (state) =>
-        [
-          state.playerConnection.mutable.player2.disconnected,
-          state.playerConnection.mutable.player2.id,
-        ] as const,
-      ([disconnected, player2Id], [prevDisconnected]) => {
-        if (disconnected === prevDisconnected) return;
+      (state) => state.playerConnection.mutable.player2.disconnected,
+      (disconnected) => {
         if (disconnected) {
-          store.getState().connectedView.playerDisconnected(player2Id);
+          playerDisconnected(player2Id);
         } else {
-          store.getState().connectedView.playerConnected(player2Id);
+          playerConnected(player2Id);
         }
       },
     ),
@@ -531,12 +515,13 @@ function handleDisconnectPlayerEvent(
 function handleGameRunningEvent(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
+  const { showGameView } = store.getState().connectedView.private;
   return [
     store.subscribe(
       (state) => state.playerConnection.mutable.gameIsRunning,
       (gameIsRunning) => {
         if (gameIsRunning) {
-          store.getState().connectedView.showGameView();
+          showGameView();
         }
       },
     ),
@@ -546,13 +531,12 @@ function handleGameRunningEvent(
 function handleStartTimeoutUpdate(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
+  const { updateStartTimeoutValue } = store.getState().connectedView.private;
   return [
     store.subscribe(
       (state) => state.timerStartTimeout.mutable.formattedTime,
-      (formattedTime, prevFormattedTime) => {
-        if (formattedTime === prevFormattedTime) return;
-
-        store.getState().connectedView.updateStartTimeoutValue(formattedTime);
+      (formattedTime) => {
+        updateStartTimeoutValue(formattedTime);
       },
     ),
   ];
@@ -561,27 +545,21 @@ function handleStartTimeoutUpdate(
 function handleDisconnectedLooseUpdate(
   store: SubscribeStore<ConnectedViewRequirements>,
 ) {
+  const { id: player1Id } = store.getState().playerConnection.mutable.player1;
+  const { id: player2Id } = store.getState().playerConnection.mutable.player2;
+  const { updateDisconnectedLooseValue } =
+    store.getState().connectedView.private;
   return [
     store.subscribe(
       (state) => state.timerPlayer1DisconnectedLoose.mutable.formattedTime,
-      (formattedTime, prevFormattedTime) => {
-        if (formattedTime === prevFormattedTime) return;
-
-        // the opponent is interested in the loose timer
-        store
-          .getState()
-          .connectedView.updateDisconnectedLooseValue(formattedTime, "player2");
+      (formattedTime) => {
+        updateDisconnectedLooseValue(formattedTime, player1Id);
       },
     ),
     store.subscribe(
       (state) => state.timerPlayer2DisconnectedLoose.mutable.formattedTime,
-      (formattedTime, prevFormattedTime) => {
-        if (formattedTime === prevFormattedTime) return;
-
-        // the opponent is interested in the loose timer
-        store
-          .getState()
-          .connectedView.updateDisconnectedLooseValue(formattedTime, "player1");
+      (formattedTime) => {
+        updateDisconnectedLooseValue(formattedTime, player2Id);
       },
     ),
   ];
@@ -591,12 +569,13 @@ function handleGameEndedEvent(
   store: SubscribeStore<ConnectedViewRequirements>,
   unsubscribes: (() => void)[],
 ) {
+  const { showGameEndedView } = store.getState().connectedView.private;
   const unSub = store.subscribe(
     (state) => state.gameResult.outcome,
     (outcome) => {
-      store.getState().connectedView.showGameEndedView(outcome);
       if (outcome.result === "ongoing") return;
 
+      showGameEndedView(outcome);
       unsubscribes.forEach((unSub) => unSub());
     },
   );
