@@ -396,16 +396,10 @@ function hasOverallWinner(
   score: RockPaperScissorGameScore[],
 ) {
   const roundsPlayed = score.length;
-  const currentWinRates = score.reduce<Record<string, number>>(
-    (acc, cur) => {
-      if (cur.type === "win") {
-        acc[cur.winnerId]!++;
-      } else {
-        acc.tie!++;
-      }
-      return acc;
-    },
-    { [player1Id]: 0, [player2Id]: 0, tie: 0 },
+  const currentWinRates = getCurrentScoreDistributionOfRockPaperScissors(
+    player1Id,
+    player2Id,
+    score,
   );
 
   const player1Wins = currentWinRates[player1Id]!;
@@ -427,5 +421,23 @@ function hasOverallWinner(
   }
 
   return undefined;
+}
+
+export function getCurrentScoreDistributionOfRockPaperScissors(
+  player1Id: string,
+  player2Id: string,
+  score: RockPaperScissorGameScore[],
+) {
+  return score.reduce<Record<string, number>>(
+    (acc, cur) => {
+      if (cur.type === "win") {
+        acc[cur.winnerId]!++;
+      } else {
+        acc.tie!++;
+      }
+      return acc;
+    },
+    { [player1Id]: 0, [player2Id]: 0, tie: 0 },
+  );
 }
 // #endregion

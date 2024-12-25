@@ -523,7 +523,7 @@ function testSetup({
   const player2Id = "player2";
   const durations = {
     chooseTimeout: Temporal.Duration.from({ seconds: 10 }),
-    showCurrentScore: Temporal.Duration.from({ seconds: 10 }),
+    roundResult: Temporal.Duration.from({ seconds: 10 }),
   };
   const store = createStore<RockPaperScissorsRequirements>()(
     subscribeWithSelector((...a) => ({
@@ -573,14 +573,14 @@ function testSetup({
       chooseItem(playerId, "rock");
       chooseItem(opponent, "scissors");
       await vi.advanceTimersByTimeAsync(
-        durations.showCurrentScore.total({ unit: "milliseconds" }),
+        durations.roundResult.total({ unit: "milliseconds" }),
       );
     },
     letPlayersTieRound: async () => {
       chooseItem(player1Id, "rock");
       chooseItem(player2Id, "rock");
       await vi.advanceTimersByTimeAsync(
-        durations.showCurrentScore.total({ unit: "milliseconds" }),
+        durations.roundResult.total({ unit: "milliseconds" }),
       );
     },
     connectPlayer,

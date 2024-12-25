@@ -25,8 +25,8 @@ describe("rock paper scissors view slice", () => {
     test("by default, players see choose view", async () => {
       const { getState } = testSetup();
 
-      expect(getState().gameView.mutable.player1.showView).toBe("choose");
-      expect(getState().gameView.mutable.player2.showView).toBe("choose");
+      expect(getState().gameView.mutable.player1.showView).toBe("none");
+      expect(getState().gameView.mutable.player2.showView).toBe("none");
     });
 
     test("by default, scores are empty", async () => {
@@ -35,12 +35,14 @@ describe("rock paper scissors view slice", () => {
       expect(getState().gameView.mutable.player1.score).toEqual({
         currentRound: 0,
         roundLimit: 0,
+        roundsNeededToWin: 0,
         yourScore: 0,
         opponentScore: 0,
       });
       expect(getState().gameView.mutable.player2.score).toEqual({
         currentRound: 0,
         roundLimit: 0,
+        roundsNeededToWin: 0,
         yourScore: 0,
         opponentScore: 0,
       });
@@ -48,22 +50,159 @@ describe("rock paper scissors view slice", () => {
   });
 
   describe("round 1", () => {
+    test('should show "choose" view when the game starts', async () => {
+      const { getState, startGame } = testSetup();
+
+      startGame();
+
+      expect(getState().gameView.mutable.player1.showView).toBe("choose");
+      expect(getState().gameView.mutable.player2.showView).toBe("choose");
+    });
+
     test("should provide the correct roundLimit and currentRound numbers", async () => {
-      const { getState, startGame } = testSetup({ roundsLimit: 3 });
+      const { getState, startGame } = testSetup({
+        roundsLimit: 3,
+        roundsNeededToWin: 2,
+      });
 
       startGame();
 
       expect(getState().gameView.mutable.player1.score).toEqual({
         currentRound: 1,
         roundLimit: 3,
+        roundsNeededToWin: 2,
         yourScore: 0,
         opponentScore: 0,
       });
       expect(getState().gameView.mutable.player2.score).toEqual({
         currentRound: 1,
         roundLimit: 3,
+        roundsNeededToWin: 2,
         yourScore: 0,
         opponentScore: 0,
+      });
+    });
+
+    test("should show 'wait-for-other-player-to-choose' view upon choosing", async () => {
+      const { getState, startGame, chooseItem, player1Id } = testSetup();
+      startGame();
+      chooseItem(player1Id, "rock");
+
+      expect(getState().gameView.mutable.player1.showView).toBe(
+        "waiting-for-other-player-choose",
+      );
+      expect(getState().gameView.mutable.player2.showView).toBe("choose");
+    });
+
+    test("should show 'wait-for-other-player-to-choose' view upon choosing (alternative order)", async () => {
+      const { getState, startGame, chooseItem, player2Id } = testSetup();
+      startGame();
+      chooseItem(player2Id, "rock");
+
+      expect(getState().gameView.mutable.player2.showView).toBe(
+        "waiting-for-other-player-choose",
+      );
+      expect(getState().gameView.mutable.player1.showView).toBe("choose");
+    });
+
+    test("should update 'choose timeout' value", async () => {
+      const { getState, startGame } = testSetup({
+        durations: {
+          chooseTimeout: Temporal.Duration.from({ seconds: 5 }),
+        },
+      });
+      startGame();
+
+      expect(getState().gameView.mutable.player1.timer.chooseTimeout).toEqual({
+        visible: true,
+        formattedTime: "00:05",
+      });
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(getState().gameView.mutable.player1.timer.chooseTimeout).toEqual({
+        visible: true,
+        formattedTime: "00:04",
+      });
+    });
+
+    test("should show 'show-results' view upon both player selecting", async () => {
+      const { getState, startGame, chooseItem, player1Id, player2Id } =
+        testSetup();
+      startGame();
+      chooseItem(player1Id, "rock");
+      chooseItem(player2Id, "paper");
+
+      expect(getState().gameView.mutable.player1.showView).toBe(
+        "show-round-results",
+      );
+      expect(getState().gameView.mutable.player2.showView).toBe(
+        "show-round-results",
+      );
+    });
+
+    describe("update score", () => {
+      test("player 1 should have a score of 1", async () => {
+        const { getState, startGame, chooseItem, player1Id, player2Id } =
+          testSetup();
+
+        startGame();
+        chooseItem(player1Id, "rock");
+        chooseItem(player2Id, "scissors");
+
+        expect(getState().gameView.mutable.player1.score.yourScore).toBe(1);
+        expect(getState().gameView.mutable.player1.score.opponentScore).toBe(0);
+
+        expect(getState().gameView.mutable.player2.score.yourScore).toBe(0);
+        expect(getState().gameView.mutable.player2.score.opponentScore).toBe(1);
+      });
+
+      test("player 2 should have a score of 1", async () => {
+        const { getState, startGame, chooseItem, player1Id, player2Id } =
+          testSetup();
+
+        startGame();
+        chooseItem(player2Id, "rock");
+        chooseItem(player1Id, "scissors");
+
+        expect(getState().gameView.mutable.player1.score.yourScore).toBe(0);
+        expect(getState().gameView.mutable.player1.score.opponentScore).toBe(1);
+
+        expect(getState().gameView.mutable.player2.score.yourScore).toBe(1);
+        expect(getState().gameView.mutable.player2.score.opponentScore).toBe(0);
+      });
+
+      test("both players should have score of 0", async () => {
+        const { getState, startGame, chooseItem, player1Id, player2Id } =
+          testSetup();
+
+        startGame();
+        chooseItem(player1Id, "rock");
+        chooseItem(player2Id, "rock");
+
+        expect(getState().gameView.mutable.player1.score.yourScore).toBe(0);
+        expect(getState().gameView.mutable.player1.score.opponentScore).toBe(0);
+
+        expect(getState().gameView.mutable.player2.score.yourScore).toBe(0);
+        expect(getState().gameView.mutable.player2.score.opponentScore).toBe(0);
+      });
+    });
+
+    test("should show 'round result' timer", async () => {
+      const { getState, startGame, chooseItem, player1Id, player2Id } =
+        testSetup({
+          durations: {
+            roundResult: Temporal.Duration.from({ seconds: 5 }),
+          },
+        });
+
+      startGame();
+      chooseItem(player1Id, "rock");
+      chooseItem(player2Id, "scissors");
+
+      expect(getState().gameView.mutable.player1.timer.roundResult).toEqual({
+        visible: true,
+        formattedTime: "00:05",
       });
     });
   });
@@ -78,14 +217,14 @@ function testSetup({
   roundsLimit?: number;
   durations?: {
     chooseTimeout?: Temporal.Duration;
-    showCurrentScore?: Temporal.Duration;
+    roundResult?: Temporal.Duration;
   };
 } = {}) {
   const player1Id = "player1";
   const player2Id = "player2";
   const usedDurations = {
     chooseTimeout: Temporal.Duration.from({ seconds: 10 }),
-    showCurrentScore: Temporal.Duration.from({ seconds: 10 }),
+    roundResult: Temporal.Duration.from({ seconds: 10 }),
     ...durations,
   };
   const store = createStore<RockPaperScissorsViewRequirements>()(
@@ -137,14 +276,14 @@ function testSetup({
       chooseItem(playerId, "rock");
       chooseItem(opponent, "scissors");
       await vi.advanceTimersByTimeAsync(
-        usedDurations.showCurrentScore.total({ unit: "milliseconds" }),
+        usedDurations.roundResult.total({ unit: "milliseconds" }),
       );
     },
     letPlayersTieRound: async () => {
       chooseItem(player1Id, "rock");
       chooseItem(player2Id, "rock");
       await vi.advanceTimersByTimeAsync(
-        usedDurations.showCurrentScore.total({ unit: "milliseconds" }),
+        usedDurations.roundResult.total({ unit: "milliseconds" }),
       );
     },
     connectPlayer,

@@ -62,7 +62,7 @@ export function createRockPaperScissorsRequirement(
   gameOptions: {
     durations: {
       chooseTimeout: Temporal.Duration;
-      showCurrentScore: Temporal.Duration;
+      roundResult: Temporal.Duration;
     };
   } & RockPaperScissorsOptions,
 ) {
@@ -81,7 +81,7 @@ export function createRockPaperScissorsRequirement(
     )(set, get, write),
     ...createTimerSlice(
       "timerRpsShowCurrentScore",
-      gameOptions.durations.chooseTimeout,
+      gameOptions.durations.roundResult,
       {
         shouldUpdateStateEverySecond: true,
         countDirection: "down-from-end",
