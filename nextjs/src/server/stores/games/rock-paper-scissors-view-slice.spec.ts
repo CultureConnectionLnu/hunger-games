@@ -188,6 +188,80 @@ describe("rock paper scissors view slice", () => {
       });
     });
 
+    describe("round result", () => {
+      test("player 1 should win", async () => {
+        const { getState, startGame, player1Id, player2Id, chooseItem } =
+          testSetup();
+
+        startGame();
+        chooseItem(player1Id, "rock");
+        chooseItem(player2Id, "scissors");
+
+        expect(getState().gameView.mutable.player1.roundResult).toEqual({
+          youChoose: "rock",
+          opponentChoose: "scissors",
+          youWon: true,
+          yourId: player1Id,
+          opponentId: player2Id,
+        });
+        expect(getState().gameView.mutable.player2.roundResult).toEqual({
+          youChoose: "scissors",
+          opponentChoose: "rock",
+          youWon: false,
+          yourId: player2Id,
+          opponentId: player1Id,
+        });
+      });
+
+      test("player 2 should win", async () => {
+        const { getState, startGame, player1Id, player2Id, chooseItem } =
+          testSetup();
+
+        startGame();
+        chooseItem(player2Id, "rock");
+        chooseItem(player1Id, "scissors");
+
+        expect(getState().gameView.mutable.player1.roundResult).toEqual({
+          youChoose: "scissors",
+          opponentChoose: "rock",
+          youWon: false,
+          yourId: player1Id,
+          opponentId: player2Id,
+        });
+        expect(getState().gameView.mutable.player2.roundResult).toEqual({
+          youChoose: "rock",
+          opponentChoose: "scissors",
+          youWon: true,
+          yourId: player2Id,
+          opponentId: player1Id,
+        });
+      });
+
+      test("should be a tie", async () => {
+        const { getState, startGame, player1Id, player2Id, chooseItem } =
+          testSetup();
+
+        startGame();
+        chooseItem(player1Id, "rock");
+        chooseItem(player2Id, "rock");
+
+        expect(getState().gameView.mutable.player1.roundResult).toEqual({
+          youChoose: "rock",
+          opponentChoose: "rock",
+          youWon: false,
+          yourId: player1Id,
+          opponentId: player2Id,
+        });
+        expect(getState().gameView.mutable.player2.roundResult).toEqual({
+          youChoose: "rock",
+          opponentChoose: "rock",
+          youWon: false,
+          yourId: player2Id,
+          opponentId: player1Id,
+        });
+      });
+    });
+
     test("should show 'round result' timer", async () => {
       const { getState, startGame, chooseItem, player1Id, player2Id } =
         testSetup({
@@ -204,6 +278,56 @@ describe("rock paper scissors view slice", () => {
         visible: true,
         formattedTime: "00:05",
       });
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      expect(getState().gameView.mutable.player1.timer.roundResult).toEqual({
+        visible: true,
+        formattedTime: "00:04",
+      });
+    });
+  });
+
+  describe("round 2", () => {
+    test('should show "choose" again', async () => {
+      const { getState, startGame, player1Id, letPlayerWinRound } = testSetup();
+
+      startGame();
+      await letPlayerWinRound(player1Id);
+
+      expect(getState().gameView.mutable.player1.showView).toBe("choose");
+      expect(getState().gameView.mutable.player2.showView).toBe("choose");
+    });
+
+    test("should show second round", async () => {
+      const { getState, startGame, player1Id, letPlayerWinRound } = testSetup();
+
+      startGame();
+      await letPlayerWinRound(player1Id);
+
+      expect(getState().gameView.mutable.player1.score.currentRound).toBe(2);
+      expect(getState().gameView.mutable.player2.score.currentRound).toBe(2);
+    });
+  });
+
+  describe("handle disconnects", () => {
+    test("should have same state after pause", async () => {
+      const {
+        getState,
+        startGame,
+        player1Id,
+        disconnectPlayer,
+        connectPlayer,
+        letPlayerWinRound,
+      } = testSetup();
+      startGame();
+      await letPlayerWinRound(player1Id);
+      const currentState = getState().gameView.mutable;
+
+      disconnectPlayer(player1Id);
+      connectPlayer(player1Id);
+
+      expect(getState().gameView.mutable).toEqual(currentState);
     });
   });
 });

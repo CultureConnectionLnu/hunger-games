@@ -26,8 +26,8 @@ interface PlayerView {
     opponentScore: number;
   };
   roundResult?: {
-    youChoose: RockPaperScissorsItem;
-    opponentChoose: RockPaperScissorsItem;
+    youChoose: RockPaperScissorsItem | undefined;
+    opponentChoose: RockPaperScissorsItem | undefined;
     youWon: boolean;
     yourId: string;
     opponentId: string;
@@ -39,9 +39,11 @@ export interface RockPaperScissorViewSlice {
     mutable: {
       player1: PlayerView;
       player2: PlayerView;
+      isPaused: boolean;
     };
     private: {
-      initGame: () => void;
+      pauseGame: () => void;
+      startOrResumeGame: () => void;
       enableChoose: () => void;
       playerChoose: (playerId: string) => void;
       updateScore: (newScore: RockPaperScissorGameScore[]) => void;
@@ -76,6 +78,7 @@ export function createRockPaperScissorsViewSlice(
         gameView: {
           ...state.gameView,
           mutable: {
+            isPaused: mutation.isPaused ?? state.gameView.mutable.isPaused,
             player1: {
               ...state.gameView.mutable.player1,
               ...mutation.player1,
@@ -183,10 +186,21 @@ export function createRockPaperScissorsViewSlice(
             showView: "none",
             timer: initialTimer,
           },
+          isPaused: false,
         },
         private: {
-          initGame: () => {
-            // todo: add check if the game was already initialized
+          pauseGame: () => {
+            set({
+              isPaused: true,
+            });
+          },
+
+          startOrResumeGame: () => {
+            if (get().gameView.mutable.isPaused) {
+              set({ isPaused: false });
+              return;
+            }
+
             const gameOptions = get().gameLogic.options;
             set({
               player1: {
@@ -207,12 +221,23 @@ export function createRockPaperScissorsViewSlice(
           },
 
           enableChoose: () => {
+            const { player1, player2 } = get().gameView.mutable;
+            if (player1.showView === "choose" || player2.showView === "choose")
+              return;
+
+            const completedRounds = get().gameLogic.mutable.score.length;
             set({
               player1: {
                 showView: "choose",
+                score: {
+                  currentRound: completedRounds + 1,
+                },
               },
               player2: {
                 showView: "choose",
+                score: {
+                  currentRound: completedRounds + 1,
+                },
               },
             });
           },
@@ -252,17 +277,36 @@ export function createRockPaperScissorsViewSlice(
             );
             const player1Wins = overallScore[player1Id]!;
             const player2Wins = overallScore[player2Id]!;
+
+            const { item: player1Item } = get().gameLogic.mutable.player1;
+            const { item: player2Item } = get().gameLogic.mutable.player2;
+            const winner = newScore.at(-1)?.winnerId;
+
             set({
               player1: {
                 score: {
                   yourScore: player1Wins,
                   opponentScore: player2Wins,
                 },
+                roundResult: {
+                  opponentChoose: player2Item,
+                  youChoose: player1Item,
+                  opponentId: player2Id,
+                  yourId: player1Id,
+                  youWon: winner === player1Id,
+                },
               },
               player2: {
                 score: {
                   yourScore: player2Wins,
                   opponentScore: player1Wins,
+                },
+                roundResult: {
+                  opponentChoose: player1Item,
+                  youChoose: player2Item,
+                  opponentId: player1Id,
+                  yourId: player2Id,
+                  youWon: winner === player2Id,
                 },
               },
             });
@@ -381,13 +425,13 @@ function handleGameEndedEvent(
 function handleGameStartedEvent(
   store: SubscribeStore<RockPaperScissorsViewRequirements>,
 ) {
-  const { initGame } = store.getState().gameView.private;
+  const { startOrResumeGame, pauseGame } = store.getState().gameView.private;
   return [
     store.subscribe(
       (state) => state.playerConnection.mutable.gameIsRunning,
       (gameIsRunning) => {
-        if (gameIsRunning === false) return;
-        initGame();
+        if (gameIsRunning) startOrResumeGame();
+        else pauseGame();
       },
     ),
   ];
