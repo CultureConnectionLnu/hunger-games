@@ -1,10 +1,12 @@
-import { type GameResult } from "../core/game-result-slice";
-import { createGameFactory, type GameMap } from "../games/game-factory";
-import { type Service as Service } from "./types";
+import { type GameResult } from "../stores/core/game-result-slice";
+import { createGameFactory, type GameMap } from "../stores/games/game-factory";
+import { registerService, type Service } from "./types";
+
+// #region types
 
 declare global {
   interface KnownServiceMap {
-    gameService: GameService;
+    game: GameService;
   }
 }
 
@@ -12,8 +14,9 @@ export type GameList = {
   [K in keyof GameMap]: { type: K; store: GameMap[K]; playerIds: string[] };
 }[keyof GameMap];
 
+// #endregion
+
 class GameService implements Service {
-  name = "gameService" as const;
   private games: GameList[] = [];
 
   getGameOfPlayer(playerId: string) {
@@ -49,7 +52,11 @@ class GameService implements Service {
 
   cleanup() {
     this.games.forEach((game) => {
-      // todo: function that force destroys a game
+      game.store.getState().gameResult.forceStopGame();
     });
+    this.games = [];
   }
 }
+
+// make sure the service is instantiated
+registerService(GameService, "game");
