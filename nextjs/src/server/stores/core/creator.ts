@@ -7,9 +7,20 @@ import {
   createRockPaperScissorsSlice,
   type RockPaperScissorsOptions,
 } from "../games/rock-paper-scissors-slice";
+import { type AcceptedAny } from "~/type-utils";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AcceptedAny = any;
+export type RoomConfig = {
+  forceStop: Temporal.Duration;
+  disconnectLoose: Temporal.Duration;
+  startTimeout: Temporal.Duration;
+};
+
+export type RockPaperScissorsConfig = {
+  durations: {
+    chooseTimeout: Temporal.Duration;
+    roundResult: Temporal.Duration;
+  };
+} & RockPaperScissorsOptions;
 
 export function createPlayerConnectionRequirement(
   player1Id: string,
@@ -54,17 +65,8 @@ export function createPlayerConnectionRequirement(
 export function createRockPaperScissorsRequirement(
   player1Id: string,
   player2Id: string,
-  roomOptions: {
-    forceStop: Temporal.Duration;
-    disconnectLoose: Temporal.Duration;
-    startTimeout: Temporal.Duration;
-  },
-  gameOptions: {
-    durations: {
-      chooseTimeout: Temporal.Duration;
-      roundResult: Temporal.Duration;
-    };
-  } & RockPaperScissorsOptions,
+  roomOptions: RoomConfig,
+  gameOptions: RockPaperScissorsConfig,
 ) {
   return (set: AcceptedAny, get: AcceptedAny, write: AcceptedAny) => ({
     ...createRockPaperScissorsSlice(player1Id, player2Id, {

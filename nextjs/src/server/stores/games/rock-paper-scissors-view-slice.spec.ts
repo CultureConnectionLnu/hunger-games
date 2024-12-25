@@ -10,6 +10,7 @@ import {
   registerRockPaperScissorsViewSubscribers,
   type RockPaperScissorsViewRequirements,
 } from "./rock-paper-scissors-view-slice";
+import { registerPlayerConnectionSubscribers } from "../core/player-connection-state-slice";
 
 describe("rock paper scissors view slice", () => {
   beforeEach(() => {
@@ -374,6 +375,7 @@ function testSetup({
   const subStore = store as SubscribeStore<RockPaperScissorsViewRequirements>;
   registerRockPaperScissorsSubscribers(subStore);
   registerRockPaperScissorsViewSubscribers(subStore);
+  registerPlayerConnectionSubscribers(subStore);
 
   const getState = () => {
     return store.getState();

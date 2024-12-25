@@ -2,7 +2,7 @@ import { type StateCreator } from "zustand";
 
 // #region types
 
-type GameResult =
+export type GameResult =
   | {
       result: "ongoing";
       reason: undefined;
