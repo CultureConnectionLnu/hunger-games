@@ -46,6 +46,11 @@ export interface RockPaperScissorsSlice {
       player1: PlayerState;
       player2: PlayerState;
       score: RockPaperScissorGameScore[];
+      pausedState: {
+        isPaused: boolean;
+        chooseTimeoutPaused: boolean;
+        showCurrentScorePaused: boolean;
+      };
     };
     options: RockPaperScissorsOptions;
     chooseItem(playerId: string, item: RockPaperScissorsItem): void;
@@ -83,6 +88,10 @@ export function createRockPaperScissorsSlice(
             player2: {
               ...state.gameLogic.mutable.player2,
               ...mutation.player2,
+            },
+            pausedState: {
+              ...state.gameLogic.mutable.pausedState,
+              ...mutation.pausedState,
             },
           },
         },
@@ -151,9 +160,18 @@ export function createRockPaperScissorsSlice(
             canChoose: false,
           },
           score: [],
+          pausedState: {
+            isPaused: false,
+            chooseTimeoutPaused: false,
+            showCurrentScorePaused: false,
+          },
         },
         options,
         chooseItem: (playerId, item) => {
+          if (get().gameLogic.mutable.pausedState.isPaused) {
+            return;
+          }
+
           const keys = getPlayerSpecificKeys(playerId);
           if (keys === undefined) return;
 
@@ -177,8 +195,41 @@ export function createRockPaperScissorsSlice(
         onChooseTimeout: () => {
           endTheRound();
         },
-        pauseGame: () => {},
+        pauseGame: () => {
+          const isChooseTimeoutRunning =
+            get().timerRpsChooseTimeout.mutable.isActive;
+          const isShowCurrentScoreRunning =
+            get().timerRpsShowCurrentScore.mutable.isActive;
+          set({
+            pausedState: {
+              isPaused: true,
+              chooseTimeoutPaused: isChooseTimeoutRunning,
+              showCurrentScorePaused: isShowCurrentScoreRunning,
+            },
+          });
+
+          get().timerRpsChooseTimeout.pause();
+          get().timerRpsShowCurrentScore.pause();
+        },
         startOrResumeGame: () => {
+          const { pausedState } = get().gameLogic.mutable;
+          if (pausedState.isPaused) {
+            if (pausedState.chooseTimeoutPaused) {
+              get().timerRpsChooseTimeout.startOrResume();
+            }
+            if (pausedState.showCurrentScorePaused) {
+              get().timerRpsShowCurrentScore.startOrResume();
+            }
+            set({
+              pausedState: {
+                isPaused: false,
+                chooseTimeoutPaused: false,
+                showCurrentScorePaused: false,
+              },
+            });
+            return;
+          }
+
           set({
             player1: {
               canChoose: true,
@@ -220,6 +271,8 @@ function handleGameRunningEvent(
       (gameRunning) => {
         if (gameRunning) {
           store.getState().gameLogic.startOrResumeGame();
+        } else {
+          store.getState().gameLogic.pauseGame();
         }
       },
     ),

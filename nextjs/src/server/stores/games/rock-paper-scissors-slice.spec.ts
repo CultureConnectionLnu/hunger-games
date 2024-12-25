@@ -412,7 +412,109 @@ describe("rock paper scissors slice", () => {
     });
   });
 
-  describe("handle disconnects");
+  describe("handle disconnects", () => {
+    test("should pause 'choose timeout' timer", async () => {
+      const { getState, startGame, player1Id, disconnectPlayer } = testSetup();
+
+      startGame();
+      disconnectPlayer(player1Id);
+
+      expect(getState().timerRpsChooseTimeout.mutable.isActive).toBe(false);
+    });
+
+    test("should resume 'choose timeout' timer", async () => {
+      const {
+        getState,
+        startGame,
+        player1Id,
+        disconnectPlayer,
+        connectPlayer,
+      } = testSetup();
+
+      startGame();
+      disconnectPlayer(player1Id);
+      connectPlayer(player1Id);
+
+      expect(getState().timerRpsChooseTimeout.mutable.isActive).toBe(true);
+    });
+
+    test("should have the same player state as before the disconnect", async () => {
+      const {
+        getState,
+        startGame,
+        player1Id,
+        chooseItem,
+        disconnectPlayer,
+        connectPlayer,
+      } = testSetup();
+      startGame();
+      chooseItem(player1Id, "rock");
+
+      const currentState = getState().gameLogic.mutable;
+      disconnectPlayer(player1Id);
+      connectPlayer(player1Id);
+
+      const newState = getState().gameLogic.mutable;
+      expect(newState.player1).toEqual(currentState.player1);
+      expect(newState.player2).toEqual(currentState.player2);
+      expect(newState.score).toEqual(currentState.score);
+    });
+
+    test("should not allow to select while the game is paused", async () => {
+      const {
+        getState,
+        player1Id,
+        player2Id,
+        startGame,
+        chooseItem,
+        disconnectPlayer,
+      } = testSetup();
+
+      startGame();
+      disconnectPlayer(player1Id);
+      chooseItem(player2Id, "rock");
+
+      expect(getState().gameLogic.mutable.player2.item).toBe(undefined);
+    });
+
+    test("should pause 'show current score' timer", async () => {
+      const {
+        getState,
+        startGame,
+        chooseItem,
+        player1Id,
+        player2Id,
+        disconnectPlayer,
+      } = testSetup();
+
+      startGame();
+      chooseItem(player1Id, "rock");
+      chooseItem(player2Id, "rock");
+      disconnectPlayer(player1Id);
+
+      expect(getState().timerRpsShowCurrentScore.mutable.isActive).toBe(false);
+    });
+
+    test("should resume 'show current score' timer", async () => {
+      const {
+        getState,
+        startGame,
+        chooseItem,
+        player1Id,
+        player2Id,
+        disconnectPlayer,
+        connectPlayer,
+      } = testSetup();
+
+      startGame();
+      chooseItem(player1Id, "rock");
+      chooseItem(player2Id, "rock");
+      disconnectPlayer(player1Id);
+      connectPlayer(player1Id);
+
+      expect(getState().timerRpsShowCurrentScore.mutable.isActive).toBe(true);
+    });
+  });
 });
 
 function testSetup({
