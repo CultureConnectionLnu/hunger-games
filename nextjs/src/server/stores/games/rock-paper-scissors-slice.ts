@@ -1,6 +1,9 @@
 import { type StateCreator } from "zustand";
 import { type GameResultSlice } from "../core/game-result-slice";
-import { type PlayerConnectionSliceRequirements, type PlayerConnectionSlice } from "../core/player-connection-state-slice";
+import {
+  type PlayerConnectionSliceRequirements,
+  type PlayerConnectionSlice,
+} from "../core/player-connection-state-slice";
 import { type TimerSlice } from "../core/timer-slice";
 import { type DeepPartial, type SubscribeStore } from "../core/zustand-helper";
 
@@ -53,7 +56,10 @@ export interface RockPaperScissorsSlice {
       };
     };
     options: RockPaperScissorsOptions;
-    chooseItem(playerId: string, item: RockPaperScissorsItem): void;
+    chooseItem(
+      playerId: string,
+      item: RockPaperScissorsItem,
+    ): string | undefined;
     private: {
       onChooseTimeout(): void;
       pauseGame: () => void;

@@ -63,5 +63,20 @@ function createRockPaperScissorsGame(player1Id: string, player2Id: string) {
   registerRockPaperScissorsViewSubscribers(subStore);
   registerPlayerConnectionSubscribers(subStore);
 
-  return subStore;
+  const { playerConnection, gameLogic } = store.getState();
+  const { connectPlayer, disconnectPlayer, markReady } = playerConnection;
+  // eslint-disable-next-line @typescript-eslint/unbound-method
+  const { chooseItem } = gameLogic;
+
+  return {
+    store: subStore,
+    roomInteractions: {
+      connectPlayer,
+      disconnectPlayer,
+      markReady,
+    },
+    gameInteractions: {
+      chooseItem,
+    },
+  };
 }

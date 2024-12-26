@@ -32,7 +32,6 @@
   "include": [
     ".eslintrc.cjs",
     "next-env.d.ts",
-    "custom-ws-auth-prop.d.ts",
     "**/*.ts",
     "**/*.tsx",
     "**/*.cjs",

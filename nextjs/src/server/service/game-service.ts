@@ -10,33 +10,46 @@ declare global {
   }
 }
 
-export type GameList = {
-  [K in keyof GameMap]: { type: K; store: GameMap[K]; playerIds: string[] };
+export type GameEntry = {
+  [K in keyof GameMap]: {
+    type: K;
+    game: GameMap[K];
+    playerIds: string[];
+    id: string;
+  };
 }[keyof GameMap];
 
 // #endregion
 
 class GameService implements Service {
-  private games: GameList[] = [];
+  private games: GameEntry[] = [];
+  private playerJoinListeners = new Map<string, (game: GameEntry) => void>();
 
   getGameOfPlayer(playerId: string) {
     return this.games.find((game) => game.playerIds.includes(playerId));
   }
 
-  createNewGame(
+  async createNewGame(
     players: [string, string],
     onGameComplete: (outcome: GameResult) => Promise<void>,
   ) {
     const [player1Id, player2Id] = players;
+    // todo: in the future get the game that should be played next from a strategy function
+    const gameType = "rock-paper-scissors";
 
-    const game = createGameFactory("rock-paper-scissors", player1Id, player2Id);
-    this.games.push({
-      type: "rock-paper-scissors",
-      store: game,
-      playerIds: [player1Id, player2Id],
-    });
+    const game = createGameFactory(gameType, player1Id, player2Id);
+    const gameEntry = {
+      type: gameType,
+      game,
+      playerIds: players,
+      // todo: should come from database
+      id: crypto.randomUUID(),
+    } satisfies GameEntry;
+    this.games.push(gameEntry);
+    this.playerJoinListeners.get(player1Id)?.(gameEntry);
+    this.playerJoinListeners.get(player2Id)?.(gameEntry);
 
-    const unSub = game.subscribe(
+    const unSub = game.store.subscribe(
       (state) => state.gameResult.outcome,
       (outcome) => {
         if (outcome.result === "ongoing") return;
@@ -44,15 +57,25 @@ class GameService implements Service {
         void onGameComplete(outcome).finally(() => {
           // get rid of the reference
           unSub();
-          this.games = this.games.filter((wrapper) => wrapper.store !== game);
+          this.games = this.games.filter((wrapper) => wrapper.game !== game);
         });
       },
     );
   }
 
+  listenForPlayerJoiningGame(
+    playerId: string,
+    cb: (gameEntry: GameEntry) => void,
+  ) {
+    this.playerJoinListeners.set(playerId, cb);
+    return () => {
+      this.playerJoinListeners.delete(playerId);
+    };
+  }
+
   cleanup() {
-    this.games.forEach((game) => {
-      game.store.getState().gameResult.forceStopGame();
+    this.games.forEach((gameEntry) => {
+      gameEntry.game.store.getState().gameResult.forceStopGame();
     });
     this.games = [];
   }
