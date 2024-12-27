@@ -4,6 +4,7 @@ import { type RockPaperScissorsItem } from "~/server/stores/games/rock-paper-sci
 import { type RockPaperScissorsPlayerView } from "~/server/stores/games/rock-paper-scissors-view-slice";
 import { type WsMessageToClient } from "~/server/web-socket-connection";
 import { WSClient } from "./ws-client";
+import { AcceptedAny } from "~/type-utils";
 
 // #region types
 
@@ -33,12 +34,14 @@ type WsCallResult =
       connected: boolean;
       gameIsOngoing: boolean;
     };
-type WsCall<Param = never> = (param: Param) => WsCallResult;
+type WsCall<Param extends Array<AcceptedAny> = []> = (
+  ...param: Param
+) => WsCallResult;
 
 type GameSpecificMap = {
   "rock-paper-scissors": {
     actions: {
-      chooseItem: WsCall<RockPaperScissorsItem>;
+      chooseItem: WsCall<[RockPaperScissorsItem]>;
     };
     logic: RockPaperScissorsPlayerView;
   };

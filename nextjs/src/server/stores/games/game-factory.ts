@@ -14,6 +14,10 @@ import { subscribeWithSelector } from "zustand/middleware";
 import { type SubscribeStore } from "../core/zustand-helper";
 import { registerRockPaperScissorsSubscribers } from "./rock-paper-scissors-slice";
 import { registerPlayerConnectionSubscribers } from "../core/player-connection-state-slice";
+import {
+  type ConnectedViewRequirements,
+  registerConnectionViewSubscribers,
+} from "../core/connection-view-slice";
 
 export type GameMap = {
   "rock-paper-scissors": ReturnType<typeof createRockPaperScissorsGame>;
@@ -45,8 +49,11 @@ const gamesConfig = {
   } satisfies RockPaperScissorsConfig,
 };
 
+type RockPaperScissorsGameStore = RockPaperScissorsViewRequirements &
+  ConnectedViewRequirements;
+
 function createRockPaperScissorsGame(player1Id: string, player2Id: string) {
-  const store = createStore<RockPaperScissorsViewRequirements>()(
+  const store = createStore<RockPaperScissorsGameStore>()(
     subscribeWithSelector((...a) => ({
       ...createRockPaperScissorsViewSlice(player1Id, player2Id)(...a),
       ...createRockPaperScissorsRequirement(
@@ -58,10 +65,11 @@ function createRockPaperScissorsGame(player1Id: string, player2Id: string) {
     })),
   );
 
-  const subStore = store as SubscribeStore<RockPaperScissorsViewRequirements>;
+  const subStore = store as SubscribeStore<RockPaperScissorsGameStore>;
   registerRockPaperScissorsSubscribers(subStore);
   registerRockPaperScissorsViewSubscribers(subStore);
   registerPlayerConnectionSubscribers(subStore);
+  registerConnectionViewSubscribers(subStore);
 
   const { playerConnection, gameLogic } = store.getState();
   const { connectPlayer, disconnectPlayer, markReady } = playerConnection;

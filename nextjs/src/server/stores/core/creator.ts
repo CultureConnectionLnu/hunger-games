@@ -8,6 +8,7 @@ import {
   type RockPaperScissorsOptions,
 } from "../games/rock-paper-scissors-slice";
 import { type AcceptedAny } from "~/type-utils";
+import { createConnectionViewSlice } from "./connection-view-slice";
 
 export type RoomConfig = {
   forceStop: Temporal.Duration;
@@ -94,6 +95,7 @@ export function createRockPaperScissorsRequirement(
       get,
       write,
     ),
+    ...createConnectionViewSlice(player1Id, player2Id)(set, get, write),
   });
 }
 

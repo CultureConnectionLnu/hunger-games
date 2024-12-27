@@ -19,8 +19,16 @@ type KnownErrorReasons =
 type KnownActions = "pause" | "connect" | "ready" | "choose" | "unknown";
 
 export class WebSocketConnection {
-  private currentGame?: GameEntry;
   private unsubscribeJoiningListener;
+  private _currentGame?: GameEntry;
+  private get currentGame() {
+    return this._currentGame;
+  }
+  private set currentGame(value: GameEntry | undefined) {
+    this._currentGame = value;
+    if (value === undefined) return;
+    this.initGameStoreListeners(value);
+  }
 
   constructor(
     private ws: WebSocket,
@@ -31,6 +39,7 @@ export class WebSocketConnection {
         this.auth.userId,
         (game) => {
           this.currentGame = game;
+          // should force join the player if the person is already connected
           this.sendJoinGame(game);
         },
       );
@@ -41,15 +50,11 @@ export class WebSocketConnection {
     this.currentGame = service.activeGames.getActiveGameOfPlayer(
       this.auth.userId,
     );
-    if (this.currentGame !== undefined) {
-      this.sendJoinGame(this.currentGame);
-    }
 
     this.ws.on("close", () => {
       this.onWebSocketDisconnect();
     });
 
-    // todo: handle incoming messages properly
     this.ws.on("message", (data: Buffer | ArrayBuffer | Buffer[]) => {
       if (Array.isArray(data)) {
         data.forEach((buf) => this.receiveMessageFromClient(buf.toString()));
@@ -59,6 +64,44 @@ export class WebSocketConnection {
         this.receiveMessageFromClient(data.toString());
       }
     });
+  }
+
+  private initGameStoreListeners(entry: GameEntry) {
+    const { playerConnection } = entry.game.store.getState();
+    const playerKey =
+      playerConnection.mutable.player1.id === this.auth.userId
+        ? "player1"
+        : "player2";
+
+    entry.game.store.subscribe(
+      (state) => state.connectedView.mutable[playerKey],
+      (current, previous) => {
+        if (JSON.stringify(current) !== JSON.stringify(previous)) {
+          this.sendMessageToClient({
+            type: "game-room",
+            data: current,
+          });
+        }
+      },
+    );
+
+    if (entry.type !== "rock-paper-scissors") {
+      // todo: implement once other games exits
+      return;
+    }
+
+    entry.game.store.subscribe(
+      (state) => state.gameView.mutable[playerKey],
+      (current, previous) => {
+        if (JSON.stringify(current) !== JSON.stringify(previous)) {
+          this.sendMessageToClient({
+            type: "game-logic",
+            gameType: "rock-paper-scissors",
+            data: current,
+          });
+        }
+      },
+    );
   }
 
   private sendMessageToClient(message: WsMessageToClient) {

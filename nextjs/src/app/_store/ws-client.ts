@@ -65,14 +65,12 @@ export class WSClient {
     this.send = result.send;
 
     this.ws.onopen = () => {
-      console.log("WS connected");
       this.reconnectAttempts = 0;
       this.reconnectTimeout = FIRST_RECONNECT_TIMEOUT_IN_MS;
       this.onConnectedChange(true);
     };
 
     this.ws.onclose = () => {
-      console.log("WS disconnected");
       this.onConnectedChange(false);
       this.tryReconnect();
     };
