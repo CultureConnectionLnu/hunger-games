@@ -5,58 +5,7 @@ import { env } from "~/env";
 import { clerkClient, testUserMap } from "../auth/clerk";
 import { createWebSocketServer } from "../web-socket-server";
 
-export async function getTestJwt(playerName: keyof typeof testUserMap) {
-  const session = await createNewActiveSession(testUserMap[playerName]);
-  const client = await clerkClient.sessions.getToken(
-    session.id,
-    "testing-player",
-  );
-  return client.jwt;
-
-  async function createNewActiveSession(userId: string): Promise<ClerkSession> {
-    const response = await fetch(`https://api.clerk.com/v1/sessions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.CLERK_SECRET_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ user_id: userId }),
-    });
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return response.json();
-  }
-}
-
-/**
- * Starts an HTTP server on a dynamic port.
- */
-export async function startServer() {
-  return new Promise<{ server: Server; port: number }>((resolve, reject) => {
-    // Create an HTTP server
-    const server = createServer();
-
-    // Listen on a random available port
-    server.listen(0, () => {
-      const address = server.address();
-      if (address === null) {
-        // impossible, as this only happens if the server is not listening
-        return reject(new Error("Server is not listening"));
-      }
-      if (typeof address === "string") {
-        return reject(new Error("Does not work with a unix socket"));
-      }
-      const { port } = address;
-
-      // Resolve with the server instance and the port number
-      resolve({ server, port });
-    });
-
-    // Handle server errors
-    server.on("error", (err) => {
-      reject(err);
-    });
-  });
-}
+// #region types
 
 // created this type based on the response from the endpoint
 interface ClerkSession {
@@ -72,6 +21,10 @@ interface ClerkSession {
   updated_at: number;
   user_id: string;
 }
+
+// #endregion
+
+// #region testing hooks
 
 export function setupServer() {
   let server: Server;
@@ -129,3 +82,62 @@ export function setupWebSocketServer(
 
   return { connectClient, disconnectClient };
 }
+
+// #endregion
+
+// #region helper functions
+
+async function getTestJwt(playerName: keyof typeof testUserMap) {
+  const session = await createNewActiveSession(testUserMap[playerName]);
+  const client = await clerkClient.sessions.getToken(
+    session.id,
+    "testing-player",
+  );
+  return client.jwt;
+
+  async function createNewActiveSession(userId: string): Promise<ClerkSession> {
+    const response = await fetch(`https://api.clerk.com/v1/sessions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.CLERK_SECRET_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ user_id: userId }),
+    });
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return response.json();
+  }
+}
+
+/**
+ * Starts an HTTP server on a dynamic port.
+ */
+async function startServer() {
+  return new Promise<{ server: Server; port: number }>((resolve, reject) => {
+    // Create an HTTP server
+    const server = createServer();
+
+    // Listen on a random available port
+    server.listen(0, () => {
+      const address = server.address();
+      if (address === null) {
+        // impossible, as this only happens if the server is not listening
+        return reject(new Error("Server is not listening"));
+      }
+      if (typeof address === "string") {
+        return reject(new Error("Does not work with a unix socket"));
+      }
+      const { port } = address;
+
+      // Resolve with the server instance and the port number
+      resolve({ server, port });
+    });
+
+    // Handle server errors
+    server.on("error", (err) => {
+      reject(err);
+    });
+  });
+}
+
+// #endregion

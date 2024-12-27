@@ -66,6 +66,7 @@ export function createWebSocketServer(server: Server) {
 
   return () => {
     server.removeListener("upgrade", upgrade);
+    wss.close();
   };
 }
 

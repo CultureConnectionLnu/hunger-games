@@ -1,14 +1,14 @@
 import { type SignedInAuthObject } from "@clerk/backend/internal";
 import { type WebSocket } from "ws";
-import { type GameEntry } from "./service/active-games-service";
+import { z } from "zod";
 import { service } from "./service";
+import { type GameEntry } from "./service/active-games-service";
+import { type ConnectionPlayerView } from "./stores/core/connection-view-slice";
+import { type GameType } from "./stores/games/game-factory";
 import {
   rockPaperScissorsItemSchema,
   type RockPaperScissorsItem,
 } from "./stores/games/rock-paper-scissors-slice";
-import { z } from "zod";
-import { type GameType } from "./stores/games/game-factory";
-import { type ConnectionViewSlice } from "./stores/core/connection-view-slice";
 import { type RockPaperScissorsPlayerView } from "./stores/games/rock-paper-scissors-view-slice";
 
 type KnownErrorReasons =
@@ -213,8 +213,8 @@ const wsMessageFromClientSchema = z.union([
   }),
 ]);
 
-export type WSMessagesFromClient = z.infer<typeof wsMessageFromClientSchema>;
-type WsMessageToClient =
+export type WSMessageFromClient = z.infer<typeof wsMessageFromClientSchema>;
+export type WsMessageToClient =
   | {
       type: "error";
       reason: KnownErrorReasons;
@@ -229,7 +229,7 @@ type WsMessageToClient =
     }
   | {
       type: "game-room";
-      data: ConnectionViewSlice;
+      data: ConnectionPlayerView;
     }
   | {
       type: "game-logic";
