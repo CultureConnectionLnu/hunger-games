@@ -6,6 +6,7 @@ import {
 } from "../core/player-connection-state-slice";
 import { type TimerSlice } from "../core/timer-slice";
 import { type DeepPartial, type SubscribeStore } from "../core/zustand-helper";
+import { z } from "zod";
 
 // #region types
 
@@ -16,7 +17,13 @@ declare global {
   }
 }
 
-export type RockPaperScissorsItem = "rock" | "paper" | "scissors";
+export const rockPaperScissorsItemSchema = z.enum([
+  "rock",
+  "paper",
+  "scissors",
+]);
+
+export type RockPaperScissorsItem = z.infer<typeof rockPaperScissorsItemSchema>;
 
 interface PlayerState {
   id: string;

@@ -7,7 +7,7 @@ import { type GameResultSlice } from "./game-result-slice";
 
 type VisibleTimers = "startTimeout" | "otherPlayerDisconnect";
 
-interface PlayerView {
+export interface ConnectionPlayerView {
   nextActions: "ready"[];
   showView: // before the game starts
   | "joining"
@@ -40,8 +40,8 @@ interface PlayerView {
 export interface ConnectionViewSlice {
   connectedView: {
     mutable: {
-      player1: PlayerView;
-      player2: PlayerView;
+      player1: ConnectionPlayerView;
+      player2: ConnectionPlayerView;
     };
     private: {
       playerJoined: (playerId: string) => void;
@@ -213,7 +213,7 @@ export function createConnectionViewSlice(
                     visible: true,
                   },
                 },
-              } satisfies DeepPartial<PlayerView>,
+              } satisfies DeepPartial<ConnectionPlayerView>,
             });
 
             const opponentView =
@@ -244,7 +244,7 @@ export function createConnectionViewSlice(
                     ? "waiting-for-other-player-joining"
                     : "waiting-for-other-player-ready",
                 nextActions: [],
-              } satisfies DeepPartial<PlayerView>,
+              } satisfies DeepPartial<ConnectionPlayerView>,
             });
           },
 
@@ -269,7 +269,7 @@ export function createConnectionViewSlice(
                     visible: true,
                   },
                 },
-              } satisfies DeepPartial<PlayerView>,
+              } satisfies DeepPartial<ConnectionPlayerView>,
             });
           },
 
@@ -302,7 +302,7 @@ export function createConnectionViewSlice(
                     visible: false,
                   },
                 },
-              } satisfies DeepPartial<PlayerView>,
+              } satisfies DeepPartial<ConnectionPlayerView>,
             });
           },
 
@@ -360,7 +360,7 @@ export function createConnectionViewSlice(
                 yourId,
                 opponentId,
                 reason: outcome.reason,
-              }) satisfies PlayerView["outcome"];
+              }) satisfies ConnectionPlayerView["outcome"];
 
             set({
               player1: {

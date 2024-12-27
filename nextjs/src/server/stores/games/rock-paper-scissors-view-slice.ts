@@ -10,7 +10,7 @@ import {
 // #region types
 type VisibleTimers = "chooseTimeout" | "roundResult";
 
-interface PlayerView {
+export interface RockPaperScissorsPlayerView {
   id: string;
   showView:
     | "none"
@@ -37,8 +37,8 @@ interface PlayerView {
 export interface RockPaperScissorViewSlice {
   gameView: {
     mutable: {
-      player1: PlayerView;
-      player2: PlayerView;
+      player1: RockPaperScissorsPlayerView;
+      player2: RockPaperScissorsPlayerView;
       isPaused: boolean;
     };
     private: {
@@ -161,7 +161,7 @@ export function createRockPaperScissorsViewSlice(
       roundsNeededToWin: 0,
       yourScore: 0,
       opponentScore: 0,
-    } satisfies PlayerView["score"];
+    } satisfies RockPaperScissorsPlayerView["score"];
 
     const initialTimer = {
       chooseTimeout: {
@@ -169,7 +169,7 @@ export function createRockPaperScissorsViewSlice(
         formattedTime: "",
       },
       roundResult: { visible: false, formattedTime: "" },
-    } satisfies PlayerView["timer"];
+    } satisfies RockPaperScissorsPlayerView["timer"];
 
     return {
       gameView: {

@@ -4,17 +4,18 @@ import { WebSocketServer } from "ws";
 import { type SignedInAuthObject } from "@clerk/backend/internal";
 import { clerkClient } from "./auth/clerk";
 import { type AcceptedAny } from "~/type-utils";
+import { WebSocketConnection } from "./web-socket-connection";
 
 export function createWebSocketServer(server: Server) {
   const wss = new WebSocketServer({ noServer: true });
 
   wss.on("connection", (ws) => {
-    console.log("New client connected");
     // the effort of globally extending the WebSocket type with the `auth` property is not worth it
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const auth: SignedInAuthObject = (ws as AcceptedAny).auth;
 
-
+    // don't store the connection so that it can be garbage collected when the client disconnects
+    new WebSocketConnection(ws, auth);
   });
 
   server.on("upgrade", function upgrade(incomingMessage, socket, head) {

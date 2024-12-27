@@ -1,31 +1,48 @@
 import { type SignedInAuthObject } from "@clerk/backend/internal";
 import { type WebSocket } from "ws";
-import { type GameEntry } from "./service/game-service";
+import { type GameEntry } from "./service/active-games-service";
 import { service } from "./service/references";
-import { type RockPaperScissorsItem } from "./stores/games/rock-paper-scissors-slice";
+import {
+  rockPaperScissorsItemSchema,
+  type RockPaperScissorsItem,
+} from "./stores/games/rock-paper-scissors-slice";
+import { z } from "zod";
+import { type GameType } from "./stores/games/game-factory";
+import { type ConnectionViewSlice } from "./stores/core/connection-view-slice";
+import { type RockPaperScissorsPlayerView } from "./stores/games/rock-paper-scissors-view-slice";
 
-type KnownErrorReasons = "no-game-found" | "wrong-game-type" | "game-logic";
-type KnownActions = "pause" | "connect" | "ready" | "choose";
+type KnownErrorReasons =
+  | "no-game-found"
+  | "wrong-game-type"
+  | "game-logic"
+  | "invalid-data";
+type KnownActions = "pause" | "connect" | "ready" | "choose" | "unknown";
 
 export class WebSocketConnection {
   private currentGame?: GameEntry;
+  private unsubscribeJoiningListener;
 
   constructor(
     private ws: WebSocket,
     private auth: SignedInAuthObject,
   ) {
+    this.unsubscribeJoiningListener =
+      service.activeGames.listenForPlayerJoiningGame(
+        this.auth.userId,
+        (game) => {
+          this.currentGame = game;
+          this.sendJoinGame(game);
+        },
+      );
     this.init();
   }
 
   private init() {
-    service.game.listenForPlayerJoiningGame(this.auth.userId, (game) => {
-      this.currentGame = game;
-      this.sendJoinGame();
-    });
-
-    this.currentGame = service.game.getGameOfPlayer(this.auth.userId);
+    this.currentGame = service.activeGames.getActiveGameOfPlayer(
+      this.auth.userId,
+    );
     if (this.currentGame !== undefined) {
-      this.sendJoinGame();
+      this.sendJoinGame(this.currentGame);
     }
 
     this.ws.on("close", () => {
@@ -33,15 +50,55 @@ export class WebSocketConnection {
     });
 
     // todo: handle incoming messages properly
-    this.ws.on("message", (message) => {
-      console.log(`Received message: ${message}`);
-      this.ws.send(`Server: ${message}`);
+    this.ws.on("message", (data: Buffer | ArrayBuffer | Buffer[]) => {
+      if (Array.isArray(data)) {
+        data.forEach((buf) => this.receiveMessageFromClient(buf.toString()));
+      } else if (data instanceof ArrayBuffer) {
+        this.receiveMessageFromClient(Buffer.from(data).toString());
+      } else {
+        this.receiveMessageFromClient(data.toString());
+      }
     });
+  }
+
+  private sendMessageToClient(message: WsMessageToClient) {
+    this.ws.send(JSON.stringify(message));
+  }
+
+  private receiveMessageFromClient(message: string) {
+    const parsed = wsMessageFromClientSchema.safeParse(JSON.parse(message));
+    if (!parsed.success) {
+      this.sendError("invalid-data", "unknown", parsed.error.message);
+      return;
+    }
+
+    const { data } = parsed;
+    switch (data.type) {
+      case "connect-to-fight":
+        this.onConnectOrResumeGame();
+        return;
+      case "pause-game":
+        this.onPauseGame();
+        return;
+      case "resume-game":
+        this.onConnectOrResumeGame();
+        return;
+      case "mark-ready":
+        this.onReadyMark();
+        return;
+    }
+
+    data.type satisfies "game-action";
+
+    // todo: once more games are implemented, then create proper separation
+    this.onRockPaperScissorsChoose(data.data);
   }
 
   // #region events from client side
 
   private onWebSocketDisconnect() {
+    this.unsubscribeJoiningListener();
+    this.ws.removeAllListeners();
     if (this.currentGame === undefined) {
       return;
     }
@@ -109,8 +166,15 @@ export class WebSocketConnection {
 
   // #region events from server side
 
-  private sendJoinGame() {
-    // todo: send a 'join' message to the client
+  private sendJoinGame(gameEntry: GameEntry) {
+    const playerConnection =
+      gameEntry.game.store.getState().playerConnection.mutable;
+    this.sendMessageToClient({
+      type: "join-game",
+      gameId: gameEntry.id,
+      gameType: gameEntry.type,
+      playerIds: [playerConnection.player1.id, playerConnection.player2.id],
+    });
   }
 
   private sendError(
@@ -118,7 +182,57 @@ export class WebSocketConnection {
     action: KnownActions,
     details?: string,
   ) {
-    // todo: send an error message to the client
+    this.sendMessageToClient({
+      type: "error",
+      reason,
+      action,
+      details,
+    });
   }
   // #endregion
 }
+
+const wsMessageFromClientSchema = z.union([
+  z.object({
+    type: z.literal("connect-to-fight"),
+  }),
+  z.object({
+    type: z.literal("pause-game"),
+  }),
+  z.object({
+    type: z.literal("resume-game"),
+  }),
+  z.object({
+    type: z.literal("mark-ready"),
+  }),
+  z.object({
+    type: z.literal("game-action"),
+    game: z.literal("rock-paper-scissors"),
+    action: z.literal("choose"),
+    data: rockPaperScissorsItemSchema,
+  }),
+]);
+
+export type WSMessagesFromClient = z.infer<typeof wsMessageFromClientSchema>;
+type WsMessageToClient =
+  | {
+      type: "error";
+      reason: KnownErrorReasons;
+      action: KnownActions;
+      details?: string;
+    }
+  | {
+      type: "join-game";
+      gameId: string;
+      gameType: GameType;
+      playerIds: [string, string];
+    }
+  | {
+      type: "game-room";
+      data: ConnectionViewSlice;
+    }
+  | {
+      type: "game-logic";
+      gameType: GameType;
+      data: RockPaperScissorsPlayerView;
+    };

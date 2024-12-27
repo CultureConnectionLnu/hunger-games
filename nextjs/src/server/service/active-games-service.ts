@@ -6,7 +6,7 @@ import { registerService, type Service } from "./types";
 
 declare global {
   interface KnownServiceMap {
-    game: GameService;
+    activeGames: ActiveGameService;
   }
 }
 
@@ -21,21 +21,21 @@ export type GameEntry = {
 
 // #endregion
 
-class GameService implements Service {
+class ActiveGameService implements Service {
   private games: GameEntry[] = [];
   private playerJoinListeners = new Map<string, (game: GameEntry) => void>();
 
-  getGameOfPlayer(playerId: string) {
+  getActiveGameOfPlayer(playerId: string) {
     return this.games.find((game) => game.playerIds.includes(playerId));
   }
 
   async createNewGame(
+    gameId: string,
+    gameType: keyof GameMap,
     players: [string, string],
     onGameComplete: (outcome: GameResult) => Promise<void>,
   ) {
     const [player1Id, player2Id] = players;
-    // todo: in the future get the game that should be played next from a strategy function
-    const gameType = "rock-paper-scissors";
 
     const game = createGameFactory(gameType, player1Id, player2Id);
     const gameEntry = {
@@ -82,4 +82,4 @@ class GameService implements Service {
 }
 
 // make sure the service is instantiated
-registerService(GameService, "game");
+registerService(ActiveGameService, "activeGames");
