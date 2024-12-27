@@ -8,7 +8,7 @@ const FIRST_RECONNECT_TIMEOUT_IN_MS = 100;
 
 export class WSClient {
   private url;
-  private ws: WebSocket | BackendWebSocket;
+  private ws!: WebSocket | BackendWebSocket;
   private reconnectAttempts = 0;
   private reconnectTimeout = FIRST_RECONNECT_TIMEOUT_IN_MS;
   private isBrowser: boolean;
@@ -17,7 +17,7 @@ export class WSClient {
   constructor(
     private onMessage: (message: WsMessageToClient) => void,
     private onConnectedChange: (connected: boolean) => void,
-    private getToken: () => string,
+    private getToken: () => Promise<string>,
     url?: string,
   ) {
     if (url === undefined) {
@@ -28,26 +28,13 @@ export class WSClient {
       this.url = url;
     }
 
-    const { ws, send } = this.init();
-    // the assignment is necessary to make the types work
-    this.ws = ws;
-    this.send = send;
-
-    this.ws.onopen = () => {
-      console.log("WS connected");
-      this.reconnectAttempts = 0;
-      this.reconnectTimeout = FIRST_RECONNECT_TIMEOUT_IN_MS;
-      this.onConnectedChange(true);
-    };
-
-    this.ws.onclose = () => {
-      console.log("WS disconnected");
-      this.onConnectedChange(false);
-      this.tryReconnect();
-    };
+    // explicitly don't await, as a constructor is not a promise
+    void this.init();
   }
 
-  public send: (message: WSMessageFromClient) => void;
+  public send: (message: WSMessageFromClient) => void = () => {
+    throw new Error("WSClient is not connected yet");
+  };
 
   /**
    * Closes the WebSocket connection and prevents further attempts to reconnect.
@@ -64,19 +51,37 @@ export class WSClient {
     this.onMessage = () => {
       throw new Error("WSClient is closed");
     };
+    this.send = () => {
+      throw new Error("WSClient is closed");
+    };
     this.ws.close();
   }
 
-  private init() {
-    const result = this.isBrowser ? this.initBrowser() : this.initServer();
+  private async init() {
+    const result = await (this.isBrowser
+      ? this.initBrowser()
+      : this.initServer());
     this.ws = result.ws;
     this.send = result.send;
+
+    this.ws.onopen = () => {
+      console.log("WS connected");
+      this.reconnectAttempts = 0;
+      this.reconnectTimeout = FIRST_RECONNECT_TIMEOUT_IN_MS;
+      this.onConnectedChange(true);
+    };
+
+    this.ws.onclose = () => {
+      console.log("WS disconnected");
+      this.onConnectedChange(false);
+      this.tryReconnect();
+    };
     return result;
   }
 
-  private initBrowser() {
+  private async initBrowser() {
     const urlWithToken = new URL(this.url);
-    urlWithToken.username = this.getToken();
+    urlWithToken.username = await this.getToken();
     const ws = new WebSocket(urlWithToken.toString());
     // only a guess that this works:
     // https://stackoverflow.com/questions/4361173/http-headers-in-websockets-client-api
@@ -97,10 +102,10 @@ export class WSClient {
     };
   }
 
-  private initServer() {
+  private async initServer() {
     const ws = new BackendWebSocket(this.url, {
       headers: {
-        Authorization: `Bearer ${this.getToken()}`,
+        Authorization: `Bearer ${await this.getToken()}`,
       },
     });
 
@@ -135,9 +140,11 @@ export class WSClient {
 
     setTimeout(() => {
       console.log(`Attempting to reconnect... (${this.reconnectAttempts + 1})`);
-      this.init();
       this.reconnectAttempts++;
       this.reconnectTimeout *= 2; // Exponential backoff
+
+      // explicitly don't await, as a timeout is not a promise
+      void this.init();
     }, this.reconnectTimeout);
   }
 }

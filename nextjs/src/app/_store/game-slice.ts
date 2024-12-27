@@ -7,7 +7,7 @@ import { WSClient } from "./ws-client";
 
 // #region types
 
-interface GameSlice {
+export interface GameSlice {
   game: {
     mutable: {
       room?: ConnectionPlayerView;
@@ -57,7 +57,7 @@ type GameActions = {
 // #region slice
 
 export function createGameSlice(
-  getToken: () => string,
+  getToken: () => Promise<string>,
   url?: string,
 ): StateCreator<GameSlice> {
   return function gameSlice(originalSet, get) {
@@ -193,7 +193,7 @@ export function createGameSlice(
           ws.close();
         },
       },
-    };
+    } satisfies GameSlice;
   };
 }
 

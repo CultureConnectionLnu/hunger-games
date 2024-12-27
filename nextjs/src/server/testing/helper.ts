@@ -1,6 +1,5 @@
 import { createServer, type Server } from "http";
 import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
-import { WebSocket } from "ws";
 import { env } from "~/env";
 import { clerkClient, testUserMap } from "../auth/clerk";
 import { createWebSocketServer } from "../web-socket-server";
@@ -56,44 +55,39 @@ export function setupWebSocketServer(
   afterEach(async () => {
     unsubscribeUpgrade();
   });
-
-  let allClients: WebSocket[] = [];
-
-  const connectClient = async (playerName: keyof typeof testUserMap) => {
-    const jwt = await getTestJwt(playerName);
-    const ws = new WebSocket(`ws://localhost:${serverGetters.getPort()}`, {
-      headers: {
-        Authorization: `Bearer ${jwt}`,
-      },
-    });
-    allClients.push(ws);
-    return ws;
-  };
-
-  const disconnectClient = (ws: WebSocket) => {
-    allClients.splice(allClients.indexOf(ws), 1);
-    ws.close();
-  };
-
-  afterEach(() => {
-    allClients.forEach((ws) => ws.close());
-    allClients = [];
-  });
-
-  return { connectClient, disconnectClient };
 }
 
 // #endregion
 
 // #region helper functions
 
-async function getTestJwt(playerName: keyof typeof testUserMap) {
+const tokenCache = new Map<
+  string,
+  {
+    session: ClerkSession;
+    token: string;
+  }
+>();
+
+export async function getTestJwt(playerName: keyof typeof testUserMap) {
+  const cached = tokenCache.get(playerName);
+  if (cached !== undefined) {
+    if (cached.session.expire_at > Date.now()) {
+      return cached.token;
+    }
+  }
+
   const session = await createNewActiveSession(testUserMap[playerName]);
   const client = await clerkClient.sessions.getToken(
     session.id,
     "testing-player",
   );
-  return client.jwt;
+  const token = client.jwt;
+  tokenCache.set(playerName, {
+    session,
+    token,
+  });
+  return token;
 
   async function createNewActiveSession(userId: string): Promise<ClerkSession> {
     const response = await fetch(`https://api.clerk.com/v1/sessions`, {
