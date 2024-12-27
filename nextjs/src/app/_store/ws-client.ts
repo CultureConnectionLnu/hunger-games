@@ -42,15 +42,6 @@ export class WSClient {
    */
   public close() {
     this.isClosed = true;
-    this.getToken = () => {
-      throw new Error("WSClient is closed");
-    };
-    this.onConnectedChange = () => {
-      throw new Error("WSClient is closed");
-    };
-    this.onMessage = () => {
-      throw new Error("WSClient is closed");
-    };
     this.send = () => {
       throw new Error("WSClient is closed");
     };

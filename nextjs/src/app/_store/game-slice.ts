@@ -4,7 +4,7 @@ import { type RockPaperScissorsItem } from "~/server/stores/games/rock-paper-sci
 import { type RockPaperScissorsPlayerView } from "~/server/stores/games/rock-paper-scissors-view-slice";
 import { type WsMessageToClient } from "~/server/web-socket-connection";
 import { WSClient } from "./ws-client";
-import { AcceptedAny } from "~/type-utils";
+import { type AcceptedAny } from "~/type-utils";
 
 // #region types
 
@@ -109,7 +109,7 @@ export function createGameSlice(
     const onNewMessage = (message: WsMessageToClient) => {
       switch (message.type) {
         case "game-room":
-          set({ room: message.data });
+          set({ room: message.data, gameIsOngoing: true });
           return;
         case "game-logic":
           set({
@@ -118,6 +118,7 @@ export function createGameSlice(
               logic: message.data,
               actions: actions[message.gameType],
             },
+            gameIsOngoing: true,
           });
           if (message.data.roundResult !== undefined) {
             set({

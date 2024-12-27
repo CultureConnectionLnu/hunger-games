@@ -25,6 +25,10 @@ class ActiveGameService implements Service {
   private games: GameEntry[] = [];
   private playerJoinListeners = new Map<string, (game: GameEntry) => void>();
 
+  getAllActiveGames() {
+    return [...this.games];
+  }
+
   getActiveGameOfPlayer(playerId: string) {
     return this.games.find((game) => game.playerIds.includes(playerId));
   }

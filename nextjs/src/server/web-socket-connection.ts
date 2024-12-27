@@ -19,7 +19,7 @@ type KnownErrorReasons =
 type KnownActions = "pause" | "connect" | "ready" | "choose" | "unknown";
 
 export class WebSocketConnection {
-  private unsubscribeJoiningListener;
+  private unsubscribeListeners: Array<() => void> = [];
   private _currentGame?: GameEntry;
   private get currentGame() {
     return this._currentGame;
@@ -34,7 +34,7 @@ export class WebSocketConnection {
     private ws: WebSocket,
     private auth: SignedInAuthObject,
   ) {
-    this.unsubscribeJoiningListener =
+    this.unsubscribeListeners.push(
       service.activeGames.listenForPlayerJoiningGame(
         this.auth.userId,
         (game) => {
@@ -42,7 +42,8 @@ export class WebSocketConnection {
           // should force join the player if the person is already connected
           this.sendJoinGame(game);
         },
-      );
+      ),
+    );
     this.init();
   }
 
@@ -67,41 +68,54 @@ export class WebSocketConnection {
   }
 
   private initGameStoreListeners(entry: GameEntry) {
-    const { playerConnection } = entry.game.store.getState();
+    const { connectedView, gameView } = entry.game.store.getState();
     const playerKey =
-      playerConnection.mutable.player1.id === this.auth.userId
+      connectedView.mutable.player1.id === this.auth.userId
         ? "player1"
         : "player2";
 
-    entry.game.store.subscribe(
-      (state) => state.connectedView.mutable[playerKey],
-      (current, previous) => {
-        if (JSON.stringify(current) !== JSON.stringify(previous)) {
-          this.sendMessageToClient({
-            type: "game-room",
-            data: current,
-          });
-        }
-      },
+    this.unsubscribeListeners.push(
+      entry.game.store.subscribe(
+        (state) => state.connectedView.mutable[playerKey],
+        (current, previous) => {
+          if (JSON.stringify(current) !== JSON.stringify(previous)) {
+            this.sendMessageToClient({
+              type: "game-room",
+              data: current,
+            });
+          }
+        },
+      ),
     );
+    this.sendMessageToClient({
+      type: "game-room",
+      data: connectedView.mutable[playerKey],
+    });
 
     if (entry.type !== "rock-paper-scissors") {
       // todo: implement once other games exits
       return;
     }
 
-    entry.game.store.subscribe(
-      (state) => state.gameView.mutable[playerKey],
-      (current, previous) => {
-        if (JSON.stringify(current) !== JSON.stringify(previous)) {
-          this.sendMessageToClient({
-            type: "game-logic",
-            gameType: "rock-paper-scissors",
-            data: current,
-          });
-        }
-      },
+    this.unsubscribeListeners.push(
+      entry.game.store.subscribe(
+        (state) => state.gameView.mutable[playerKey],
+        (current, previous) => {
+          if (JSON.stringify(current) !== JSON.stringify(previous)) {
+            this.sendMessageToClient({
+              type: "game-logic",
+              gameType: "rock-paper-scissors",
+              data: current,
+            });
+          }
+        },
+      ),
     );
+    this.sendMessageToClient({
+      type: "game-logic",
+      gameType: "rock-paper-scissors",
+      data: gameView.mutable[playerKey],
+    });
   }
 
   private sendMessageToClient(message: WsMessageToClient) {
@@ -140,7 +154,7 @@ export class WebSocketConnection {
   // #region events from client side
 
   private onWebSocketDisconnect() {
-    this.unsubscribeJoiningListener();
+    this.unsubscribeListeners.forEach((unsubscribe) => unsubscribe());
     this.ws.removeAllListeners();
     if (this.currentGame === undefined) {
       return;
