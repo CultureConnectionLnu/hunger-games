@@ -1,23 +1,19 @@
-import { Temporal } from "temporal-polyfill";
-import {
-  createRockPaperScissorsRequirement,
-  type RockPaperScissorsConfig,
-  type RoomConfig,
-} from "../core/creator";
 import { createStore } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
+import { service } from "~/server/service";
+import {
+  type ConnectedViewRequirements,
+  registerConnectionViewSubscribers,
+} from "../core/connection-view-slice";
+import { createRockPaperScissorsRequirement } from "../core/creator";
+import { registerPlayerConnectionSubscribers } from "../core/player-connection-state-slice";
+import { type SubscribeStore } from "../core/zustand-helper";
+import { registerRockPaperScissorsSubscribers } from "./rock-paper-scissors-slice";
 import {
   createRockPaperScissorsViewSlice,
   registerRockPaperScissorsViewSubscribers,
   type RockPaperScissorsViewRequirements,
 } from "./rock-paper-scissors-view-slice";
-import { subscribeWithSelector } from "zustand/middleware";
-import { type SubscribeStore } from "../core/zustand-helper";
-import { registerRockPaperScissorsSubscribers } from "./rock-paper-scissors-slice";
-import { registerPlayerConnectionSubscribers } from "../core/player-connection-state-slice";
-import {
-  type ConnectedViewRequirements,
-  registerConnectionViewSubscribers,
-} from "../core/connection-view-slice";
 
 export type GameMap = {
   "rock-paper-scissors": ReturnType<typeof createRockPaperScissorsGame>;
@@ -32,23 +28,6 @@ export function createGameFactory(
   return createRockPaperScissorsGame(player1Id, player2Id);
 }
 
-const roomConfig: RoomConfig = {
-  forceStop: Temporal.Duration.from({ seconds: 120 }),
-  disconnectLoose: Temporal.Duration.from({ seconds: 10 }),
-  startTimeout: Temporal.Duration.from({ seconds: 30 }),
-};
-
-const gamesConfig = {
-  rockPaperScissors: {
-    roundsLimit: 10,
-    roundsNeededToWin: 3,
-    durations: {
-      chooseTimeout: Temporal.Duration.from({ seconds: 5 }),
-      roundResult: Temporal.Duration.from({ seconds: 7 }),
-    },
-  } satisfies RockPaperScissorsConfig,
-};
-
 type RockPaperScissorsGameStore = RockPaperScissorsViewRequirements &
   ConnectedViewRequirements;
 
@@ -59,8 +38,8 @@ function createRockPaperScissorsGame(player1Id: string, player2Id: string) {
       ...createRockPaperScissorsRequirement(
         player1Id,
         player2Id,
-        roomConfig,
-        gamesConfig.rockPaperScissors,
+        service.gameConfig.getRoomConfig(),
+        service.gameConfig.getGameConfig("rockPaperScissors"),
       )(...a),
     })),
   );

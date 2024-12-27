@@ -2,6 +2,7 @@ import { type Service } from "./types";
 import "./types";
 // very important to import the services here before all the code in this file
 import "./active-games-service";
+import "./game-config-service";
 
 let servicesInstances: KnownServiceMap | undefined;
 

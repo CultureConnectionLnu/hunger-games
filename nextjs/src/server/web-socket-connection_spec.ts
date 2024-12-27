@@ -4,13 +4,15 @@ import { createStore } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { createGameSlice, type GameSlice } from "~/app/_store/game-slice";
 import { testUserMap } from "./auth/clerk";
+import { initServices, service } from "./service";
+import { type ConnectionPlayerView } from "./stores/core/connection-view-slice";
 import { type SubscribeStore } from "./stores/core/zustand-helper";
 import {
   getTestJwt,
   setupServer,
   setupWebSocketServer,
 } from "./testing/helper";
-import { initServices, service } from "./service";
+import { Temporal } from "temporal-polyfill";
 
 export function webSocketConnectionTests() {
   describe(
@@ -206,6 +208,66 @@ export function webSocketConnectionTests() {
           );
         });
 
+        test("should show start timer updates", async () => {
+          const { createClient } = testSetup(serverGetters);
+          const client1 = await createClient("player1");
+
+          await service.activeGames.createNewGame(
+            "1",
+            "rock-paper-scissors",
+            [testUserMap.player1, testUserMap.player2],
+            NOOP,
+          );
+
+          await waitFor(() => client1.getState().game.mutable.gameIsOngoing);
+
+          client1.getState().game.joinGame();
+
+          await waitFor(
+            () =>
+              client1.getState().game.mutable.room?.showView === "ready-button",
+          );
+
+          await expectTimerRunning(
+            () => client1.getState().game.mutable.room!.timer.startTimeout,
+          );
+        });
+
+        test("should end game upon start timer running out", async () => {
+          const { createClient } = testSetup(serverGetters);
+          const client1 = await createClient("player1");
+
+          service.gameConfig.setRoomConfig({
+            startTimeout: Temporal.Duration.from({ milliseconds: 500 }),
+          });
+          await service.activeGames.createNewGame(
+            "1",
+            "rock-paper-scissors",
+            [testUserMap.player1, "whatever"],
+            NOOP,
+          );
+
+          await waitFor(() => client1.getState().game.mutable.gameIsOngoing);
+
+          client1.getState().game.joinGame();
+
+          await waitFor(
+            () =>
+              client1.getState().game.mutable.room?.showView === "ready-button",
+          );
+
+          await expectPolling(
+            () => client1.getState().game.mutable.room?.outcome !== undefined,
+            1_000,
+          );
+          expect(client1.getState().game.mutable.room?.outcome).toEqual({
+            result: "win",
+            yourId: testUserMap.player1,
+            opponentId: "whatever",
+            reason: "never-started",
+          });
+        });
+
         test("should handle disconnect", async () => {
           const { createClient } = testSetup(serverGetters);
           const client1 = await createClient("player1");
@@ -292,6 +354,123 @@ export function webSocketConnectionTests() {
               "waiting-for-other-player-ready",
           );
         });
+
+        test("should show disconnect timer", async () => {
+          const { createClient } = testSetup(serverGetters);
+          const client1 = await createClient("player1");
+          const client2 = await createClient("player2");
+
+          await service.activeGames.createNewGame(
+            "1",
+            "rock-paper-scissors",
+            [testUserMap.player1, testUserMap.player2],
+            NOOP,
+          );
+
+          await waitFor(() => client1.getState().game.mutable.gameIsOngoing);
+          await waitFor(() => client2.getState().game.mutable.gameIsOngoing);
+
+          client1.getState().game.joinGame();
+          client2.getState().game.joinGame();
+
+          await waitFor(
+            () =>
+              client1.getState().game.mutable.room?.showView === "ready-button",
+          );
+          await waitFor(
+            () =>
+              client2.getState().game.mutable.room?.showView === "ready-button",
+          );
+
+          client1.getState().game.markReady();
+          client2.getState().game.cleanup();
+
+          await waitFor(
+            () =>
+              client1.getState().game.mutable.room?.showView ===
+              "waiting-for-other-player-reconnect",
+          );
+
+          await expectTimerRunning(
+            () =>
+              client1.getState().game.mutable.room!.timer.otherPlayerDisconnect,
+          );
+        });
+      });
+
+      describe("rock paper scissor", () => {
+        async function rpsTestSetup() {
+          const { createClient } = testSetup(serverGetters);
+          const client1 = await createClient("player1");
+          const client2 = await createClient("player2");
+
+          await service.activeGames.createNewGame(
+            "1",
+            "rock-paper-scissors",
+            [testUserMap.player1, testUserMap.player2],
+            NOOP,
+          );
+
+          await waitFor(() => client1.getState().game.mutable.gameIsOngoing);
+          await waitFor(() => client2.getState().game.mutable.gameIsOngoing);
+
+          client1.getState().game.joinGame();
+          client2.getState().game.joinGame();
+
+          await waitFor(
+            () =>
+              client1.getState().game.mutable.room?.showView === "ready-button",
+          );
+          await waitFor(
+            () =>
+              client2.getState().game.mutable.room?.showView === "ready-button",
+          );
+
+          client1.getState().game.markReady();
+          client2.getState().game.markReady();
+
+          await expectPolling(
+            () => client1.getState().game.mutable.room?.showView === "game",
+          );
+          await expectPolling(
+            () => client2.getState().game.mutable.room?.showView === "game",
+          );
+          return { client1, client2 };
+        }
+
+        test("should be in choosing view", async () => {
+          const { client1, client2 } = await rpsTestSetup();
+
+          await expectPolling(
+            () =>
+              client1.getState().game.mutable.gameSpecific?.logic.showView ===
+              "choose",
+          );
+          await expectPolling(
+            () =>
+              client2.getState().game.mutable.gameSpecific?.logic.showView ===
+              "choose",
+          );
+        });
+
+        test("should show choose timer update", async () => {
+          const { client1, client2 } = await rpsTestSetup();
+
+          await Promise.all([
+            expectTimerRunning(
+              () =>
+                client1.getState().game.mutable.gameSpecific!.logic.timer
+                  .chooseTimeout,
+            ),
+            expectTimerRunning(
+              () =>
+                client2.getState().game.mutable.gameSpecific!.logic.timer
+                  .chooseTimeout,
+            ),
+          ]);
+        });
+
+        test("should choose ");
       });
     },
   );
@@ -343,6 +522,19 @@ async function expectPollingNot(fn: () => boolean, timeout = 100) {
   return expect(waitFor(fn, timeout)).rejects.toThrow();
 }
 
+async function expectTimerRunning(
+  getTimerValue: () => ConnectionPlayerView["timer"]["startTimeout"],
+) {
+  const timer = getTimerValue();
+  expect(timer.visible).toBe(true);
+
+  const initialTime = timer.formattedTime.split(":")[1];
+  await waitASecond();
+  const newTime = getTimerValue().formattedTime.split(":")[1];
+
+  expect(Number(newTime)).toBeLessThan(Number(initialTime));
+}
+
 function waitFor<T>(fn: () => T, timeout = 100) {
   return new Promise<T>((resolve, reject) => {
     let timeoutId: NodeJS.Timeout | undefined = undefined;
@@ -360,4 +552,8 @@ function waitFor<T>(fn: () => T, timeout = 100) {
       reject(new Error("Timeout"));
     }, timeout);
   });
+}
+
+function waitASecond() {
+  return new Promise((resolve) => setTimeout(resolve, 1000));
 }
