@@ -1,7 +1,7 @@
 import { type SignedInAuthObject } from "@clerk/backend/internal";
 import { type WebSocket } from "ws";
 import { type GameEntry } from "./service/active-games-service";
-import { service } from "./service/references";
+import { service } from "./service";
 import {
   rockPaperScissorsItemSchema,
   type RockPaperScissorsItem,

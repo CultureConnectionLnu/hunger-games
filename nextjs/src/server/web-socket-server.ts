@@ -18,7 +18,11 @@ export function createWebSocketServer(server: Server) {
     new WebSocketConnection(ws, auth);
   });
 
-  server.on("upgrade", function upgrade(incomingMessage, socket, head) {
+  const upgrade = (
+    incomingMessage: IncomingMessage,
+    socket: internal.Duplex,
+    head: Buffer,
+  ) => {
     socket.on("error", onSocketError);
 
     const request = convertIncomingMessageToRequest(incomingMessage);
@@ -56,7 +60,13 @@ export function createWebSocketServer(server: Server) {
         );
         responseInternalServerError(socket);
       });
-  });
+  };
+
+  server.on("upgrade", upgrade);
+
+  return () => {
+    server.removeListener("upgrade", upgrade);
+  };
 }
 
 function onSocketError(err: Error) {

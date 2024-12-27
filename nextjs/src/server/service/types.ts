@@ -22,7 +22,7 @@ export interface Service {
   cleanup: () => void;
 }
 
-KnownServices = {} as ServiceConstructorMap;
+globalThis.KnownServices = {} as ServiceConstructorMap;
 
 type GetKeyOfServiceConstructor<
   Constructor extends ServiceConstructor<AcceptedAny>,
@@ -37,7 +37,7 @@ export function registerService<T extends ServiceConstructor<Service>>(
   service: T,
   name: GetKeyOfServiceConstructor<T>,
 ) {
-  const map = KnownServices as unknown as Record<
+  const map = globalThis.KnownServices as unknown as Record<
     string,
     ServiceConstructor<Service> | undefined
   >;
