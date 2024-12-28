@@ -1,18 +1,33 @@
 import { type StateCreator } from "zustand";
-import { type ConnectionPlayerView } from "~/server/stores/core/connection-view-slice";
+import { type GameType } from "~/server/stores/games/game-factory";
 import { type RockPaperScissorsItem } from "~/server/stores/games/rock-paper-scissors-slice";
-import { type RockPaperScissorsPlayerView } from "~/server/stores/games/rock-paper-scissors-view-slice";
 import { type WsMessageToClient } from "~/server/web-socket-connection";
-import { WSClient } from "./ws-client";
 import { type AcceptedAny } from "~/type-utils";
+import { WSClient } from "./ws-client";
 
 // #region types
+
+type GetType<
+  Message extends WsMessageToClient,
+  Type extends Message["type"],
+> = Message extends {
+  type: Type;
+}
+  ? Message
+  : never;
+
+type ErrorMessage = Omit<GetType<WsMessageToClient, "error">, "type"> & {
+  id: string;
+};
+type RoomMessage = GetType<WsMessageToClient, "game-room">["data"];
+type GameLogicMessage = GetType<WsMessageToClient, "game-logic">;
 
 export interface GameSlice {
   game: {
     mutable: {
-      room?: ConnectionPlayerView;
+      room?: RoomMessage;
       gameSpecific?: GameSpecific;
+      errors: ErrorMessage[];
       gameIsOngoing: boolean;
       connected: boolean;
     };
@@ -25,6 +40,10 @@ export interface GameSlice {
      * Therefore rendering the game slice unusable.
      */
     cleanup: () => void;
+    /**
+     * Remove an error from the error list.
+     */
+    ackError: (id: string) => void;
   };
 }
 
@@ -38,12 +57,19 @@ type WsCall<Param extends Array<AcceptedAny> = []> = (
   ...param: Param
 ) => WsCallResult;
 
+type GetSpecificGameLogicMessage<GT extends GameType> =
+  GameLogicMessage extends {
+    gameType: GT;
+  }
+    ? GameLogicMessage["data"]
+    : never;
+
 type GameSpecificMap = {
   "rock-paper-scissors": {
     actions: {
       chooseItem: WsCall<[RockPaperScissorsItem]>;
     };
-    logic: RockPaperScissorsPlayerView;
+    logic: GetSpecificGameLogicMessage<"rock-paper-scissors">;
   };
 };
 
@@ -106,6 +132,8 @@ export function createGameSlice(
       },
     } satisfies GameActions;
 
+    let errorCounter = 0;
+
     const onNewMessage = (message: WsMessageToClient) => {
       switch (message.type) {
         case "game-room":
@@ -131,6 +159,14 @@ export function createGameSlice(
             gameIsOngoing: true,
           });
           return;
+        case "error":
+          set({
+            errors: [
+              ...get().game.mutable.errors,
+              { ...message, id: String(errorCounter++) },
+            ],
+          });
+          return;
       }
     };
 
@@ -148,6 +184,7 @@ export function createGameSlice(
         mutable: {
           gameIsOngoing: false,
           connected: false,
+          errors: [],
         },
         joinGame: () => {
           const error = callGuard();
@@ -195,6 +232,14 @@ export function createGameSlice(
 
         cleanup: () => {
           ws.close();
+        },
+
+        ackError: (id: string) => {
+          set({
+            errors: get().game.mutable.errors.filter(
+              (error) => error.id !== id,
+            ),
+          });
         },
       },
     } satisfies GameSlice;

@@ -238,7 +238,7 @@ export function webSocketConnectionTests() {
           const client1 = await createClient("player1");
 
           service.gameConfig.setRoomConfig({
-            startTimeout: Temporal.Duration.from({ milliseconds: 500 }),
+            startTimeout: Temporal.Duration.from({ milliseconds: 250 }),
           });
           await service.activeGames.createNewGame(
             "1",
@@ -248,17 +248,12 @@ export function webSocketConnectionTests() {
           );
 
           await waitFor(() => client1.getState().game.mutable.gameIsOngoing);
-
           client1.getState().game.joinGame();
 
-          await waitFor(
-            () =>
-              client1.getState().game.mutable.room?.showView === "ready-button",
-          );
 
           await expectPolling(
             () => client1.getState().game.mutable.room?.outcome !== undefined,
-            1_000,
+            1000,
           );
           expect(client1.getState().game.mutable.room?.outcome).toEqual({
             result: "win",
@@ -470,8 +465,72 @@ export function webSocketConnectionTests() {
           ]);
         });
 
-        test("should choose ");
+        test("should choose items", async () => {
+          const { client1, client2 } = await rpsTestSetup();
+
+          client1
+            .getState()
+            .game.mutable.gameSpecific!.actions.chooseItem("rock");
+          client2
+            .getState()
+            .game.mutable.gameSpecific!.actions.chooseItem("paper");
+
+          await expectPolling(
+            () =>
+              client1.getState().game.mutable.gameSpecific!.logic.showView ===
+              "show-round-results",
+          );
+          await expectPolling(
+            () =>
+              client2.getState().game.mutable.gameSpecific!.logic.showView ===
+              "show-round-results",
+          );
+
+          expect(
+            client1.getState().game.mutable.gameSpecific!.logic.roundResult,
+          ).toEqual({
+            youChoose: "rock",
+            opponentChoose: "paper",
+            youWon: false,
+            yourId: testUserMap.player1,
+            opponentId: testUserMap.player2,
+          });
+        });
+
+        test("should show round result timer update", async () => {
+          const { client1, client2 } = await rpsTestSetup();
+
+          client1
+            .getState()
+            .game.mutable.gameSpecific!.actions.chooseItem("rock");
+          client2
+            .getState()
+            .game.mutable.gameSpecific!.actions.chooseItem("paper");
+
+          await waitFor(
+            () =>
+              client1.getState().game.mutable.gameSpecific!.logic.showView ===
+              "show-round-results",
+          );
+
+          await Promise.all([
+            expectTimerRunning(
+              () =>
+                client1.getState().game.mutable.gameSpecific!.logic.timer
+                  .roundResult,
+            ),
+            expectTimerRunning(
+              () =>
+                client2.getState().game.mutable.gameSpecific!.logic.timer
+                  .roundResult,
+            ),
+          ]);
+        });
       });
+
+      describe('errors', ()=>{
+
+      })
     },
   );
 }
@@ -549,7 +608,7 @@ function waitFor<T>(fn: () => T, timeout = 100) {
 
     timeoutId = setTimeout(() => {
       clearInterval(interval);
-      reject(new Error("Timeout"));
+      reject(new Error(`Timeout (${timeout}ms) for: ${fn.toString()}`));
     }, timeout);
   });
 }
