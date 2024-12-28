@@ -132,7 +132,7 @@ export function createGameSlice(
       },
     } satisfies GameActions;
 
-    let errorCounter = 0;
+    let errorCounter = 1;
 
     const onNewMessage = (message: WsMessageToClient) => {
       switch (message.type) {

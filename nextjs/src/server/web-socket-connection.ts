@@ -184,7 +184,12 @@ export class WebSocketConnection {
       return;
     }
 
-    this.currentGame.game.roomInteractions.connectPlayer(this.auth.userId);
+    const error = this.currentGame.game.roomInteractions.connectPlayer(
+      this.auth.userId,
+    );
+    if (error === undefined) return;
+
+    this.sendError("game-logic", "connect", error);
   }
 
   private onReadyMark() {
@@ -193,7 +198,12 @@ export class WebSocketConnection {
       return;
     }
 
-    this.currentGame.game.roomInteractions.markReady(this.auth.userId);
+    const error = this.currentGame.game.roomInteractions.markReady(
+      this.auth.userId,
+    );
+    if (error === undefined) return;
+
+    this.sendError("game-logic", "ready", error);
   }
 
   // #region game specific events
@@ -208,13 +218,13 @@ export class WebSocketConnection {
       return;
     }
 
-    const errorDetails = this.currentGame.game.gameInteractions.chooseItem(
+    const error = this.currentGame.game.gameInteractions.chooseItem(
       this.auth.userId,
       choice,
     );
-    if (errorDetails) {
-      this.sendError("game-logic", "choose", errorDetails);
-    }
+    if (error === undefined) return;
+
+    this.sendError("game-logic", "choose", error);
   }
 
   // #endregion

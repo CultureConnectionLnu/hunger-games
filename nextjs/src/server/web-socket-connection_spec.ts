@@ -250,7 +250,6 @@ export function webSocketConnectionTests() {
           await waitFor(() => client1.getState().game.mutable.gameIsOngoing);
           client1.getState().game.joinGame();
 
-
           await expectPolling(
             () => client1.getState().game.mutable.room?.outcome !== undefined,
             1000,
@@ -528,9 +527,42 @@ export function webSocketConnectionTests() {
         });
       });
 
-      describe('errors', ()=>{
+      describe("errors", () => {
+        test("should have no errors in the beginning", async () => {
+          const { createClient } = testSetup(serverGetters);
+          const client = await createClient("player1");
 
-      })
+          expect(client.getState().game.mutable.errors).toEqual([]);
+        });
+
+        test("should show the error in the list", async () => {
+          const { createClient } = testSetup(serverGetters);
+          const client = await createClient("player1");
+
+          await service.activeGames.createNewGame(
+            "1",
+            "rock-paper-scissors",
+            [testUserMap.player1, "whatever"],
+            NOOP,
+          );
+          await waitFor(() => client.getState().game.mutable.gameIsOngoing);
+          client.getState().game.joinGame();
+          client.getState().game.markReady();
+          client.getState().game.markReady();
+
+          await expectPolling(
+            () => client.getState().game.mutable.errors.length === 1,
+            1000,
+          );
+          expect(client.getState().game.mutable.errors[0]).toEqual({
+            action: "ready",
+            details: "player already ready",
+            id: "1",
+            reason: "game-logic",
+            type: "error",
+          });
+        });
+      });
     },
   );
 }
