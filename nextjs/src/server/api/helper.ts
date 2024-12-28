@@ -8,10 +8,29 @@ const authMap = {
   user: isLoggedIn,
 };
 
-type Auth = Awaited<ReturnType<typeof isPlayer>>;
+type Auth = NonNullable<Awaited<ReturnType<typeof isPlayer>>>;
 type AuthOptions = keyof typeof authMap;
 
 type TransformUndefinedToVoid<T> = [T] extends [undefined] ? void : T;
+
+export class ApiError extends Error {
+  public readonly code;
+  constructor(
+    message: string,
+    public readonly status: keyof typeof apiErrorTextToCode,
+  ) {
+    super(message);
+    this.code = apiErrorTextToCode[status];
+  }
+
+  toString() {
+    return JSON.stringify({
+      code: this.code,
+      readableCode: this.status,
+      message: this.message,
+    });
+  }
+}
 
 /**
  * Endpoint with authentication and input
@@ -65,14 +84,14 @@ export function endpoint<Input, Output>(
     validation?: Schema<Input>;
     auth?: AuthOptions;
   },
-  handler: (input?: Input, user?: Auth) => Promise<Output>,
+  handler: (input: Input | undefined, user: Auth) => Promise<Output>,
 ): (input?: Input) => Promise<TransformUndefinedToVoid<Output>> {
   return async (inputValue?: Input) => {
     let user: Auth | undefined = undefined;
     if (auth !== undefined) {
       user = await authMap[auth]();
       if (user === undefined) {
-        throw new Error("Unauthorized");
+        throw new ApiError(`You don't have the role ${user}`, "Forbidden");
       }
     }
 
@@ -80,13 +99,32 @@ export function endpoint<Input, Output>(
     if (validation !== undefined) {
       const parsed = validation.safeParse(inputValue);
       if (!parsed.success) {
-        throw new Error(`Invalid input: ${parsed.error.message}`);
+        throw new ApiError(
+          `The input is invalid: ${parsed.error.message}`,
+          "BadRequest",
+        );
       }
       validatedInput = parsed.data;
     }
 
-    return handler(validatedInput, user) as Promise<
-      TransformUndefinedToVoid<Output>
-    >;
+    return (
+      handler(validatedInput, user!) as Promise<
+        TransformUndefinedToVoid<Output>
+      >
+    ).catch((x) => {
+      if (x instanceof ApiError) {
+        throw x;
+      }
+      console.log("The following error was not expected");
+      console.error(x);
+      throw new ApiError("Internal server error", "InternalServerError");
+    });
   };
 }
+
+const apiErrorTextToCode = {
+  Forbidden: 403,
+  NotFound: 404,
+  BadRequest: 400,
+  InternalServerError: 500,
+};

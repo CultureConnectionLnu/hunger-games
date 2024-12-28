@@ -1,15 +1,15 @@
 import { type SignedInAuthObject } from "@clerk/backend/internal";
 import { type WebSocket } from "ws";
 import { z } from "zod";
-import { service } from "./service";
-import { type GameEntry } from "./service/active-games-service";
-import { type ConnectionPlayerView } from "./stores/core/connection-view-slice";
-import { type GameType } from "./stores/games/game-factory";
+import { service } from "../service";
+import { type GameEntry } from "../service/active-games-service";
+import { type ConnectionPlayerView } from "../stores/core/connection-view-slice";
+import { type GameType } from "../stores/games/game-factory";
 import {
   rockPaperScissorsItemSchema,
   type RockPaperScissorsItem,
-} from "./stores/games/rock-paper-scissors-slice";
-import { type RockPaperScissorsPlayerView } from "./stores/games/rock-paper-scissors-view-slice";
+} from "../stores/games/rock-paper-scissors-slice";
+import { type RockPaperScissorsPlayerView } from "../stores/games/rock-paper-scissors-view-slice";
 
 type KnownErrorReasons =
   | "no-game-found"

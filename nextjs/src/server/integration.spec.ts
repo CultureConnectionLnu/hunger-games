@@ -1,4 +1,4 @@
-import { webSocketConnectionTests } from "./web-socket-connection_spec";
+import { webSocketConnectionTests } from "./ws/web-socket-connection_spec";
 
 /**
  * All tests within one file are executed sequentially.

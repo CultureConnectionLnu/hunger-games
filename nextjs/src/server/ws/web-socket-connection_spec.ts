@@ -3,15 +3,15 @@ import { WebSocket } from "ws";
 import { createStore } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
 import { createGameSlice, type GameSlice } from "~/app/_store/game-slice";
-import { testUserMap } from "./auth/clerk";
-import { initServices, service } from "./service";
-import { type ConnectionPlayerView } from "./stores/core/connection-view-slice";
-import { type SubscribeStore } from "./stores/core/zustand-helper";
+import { testUserMap } from "../auth/clerk";
+import { initServices, service } from "../service";
+import { type ConnectionPlayerView } from "../stores/core/connection-view-slice";
+import { type SubscribeStore } from "../stores/core/zustand-helper";
 import {
   getTestJwt,
   setupServer,
   setupWebSocketServer,
-} from "./testing/helper";
+} from "../testing/helper";
 import { Temporal } from "temporal-polyfill";
 
 export function webSocketConnectionTests() {

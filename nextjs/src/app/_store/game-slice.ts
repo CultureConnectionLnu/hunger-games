@@ -1,7 +1,7 @@
 import { type StateCreator } from "zustand";
 import { type GameType } from "~/server/stores/games/game-factory";
 import { type RockPaperScissorsItem } from "~/server/stores/games/rock-paper-scissors-slice";
-import { type WsMessageToClient } from "~/server/web-socket-connection";
+import { type WsMessageToClient } from "~/server/ws/web-socket-connection";
 import { type AcceptedAny } from "~/type-utils";
 import { WSClient } from "./ws-client";
 

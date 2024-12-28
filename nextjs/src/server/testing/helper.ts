@@ -1,27 +1,7 @@
 import { createServer, type Server } from "http";
 import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
-import { env } from "~/env";
-import { clerkClient, testUserMap } from "../auth/clerk";
-import { createWebSocketServer } from "../web-socket-server";
-
-// #region types
-
-// created this type based on the response from the endpoint
-interface ClerkSession {
-  abandon_at: number;
-  actor: null;
-  client_id: string;
-  created_at: number;
-  expire_at: number;
-  id: string;
-  last_active_at: number;
-  object: "session";
-  status: string;
-  updated_at: number;
-  user_id: string;
-}
-
-// #endregion
+import { type ClerkSession, clerkTesting, testUserMap } from "../auth/clerk";
+import { createWebSocketServer } from "../ws/web-socket-server";
 
 // #region testing hooks
 
@@ -77,30 +57,14 @@ export async function getTestJwt(playerName: keyof typeof testUserMap) {
     }
   }
 
-  const session = await createNewActiveSession(testUserMap[playerName]);
-  const client = await clerkClient.sessions.getToken(
-    session.id,
-    "testing-player",
+  const { session, token } = await clerkTesting.getToken(
+    testUserMap[playerName],
   );
-  const token = client.jwt;
   tokenCache.set(playerName, {
     session,
     token,
   });
   return token;
-
-  async function createNewActiveSession(userId: string): Promise<ClerkSession> {
-    const response = await fetch(`https://api.clerk.com/v1/sessions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.CLERK_SECRET_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ user_id: userId }),
-    });
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return response.json();
-  }
 }
 
 /**

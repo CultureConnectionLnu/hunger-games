@@ -1,9 +1,9 @@
+import { type SignedInAuthObject } from "@clerk/backend/internal";
 import { type IncomingMessage, type Server } from "http";
 import type internal from "stream";
 import { WebSocketServer } from "ws";
-import { type SignedInAuthObject } from "@clerk/backend/internal";
-import { clerkClient } from "./auth/clerk";
 import { type AcceptedAny } from "~/type-utils";
+import { clerk } from "../auth/clerk";
 import { WebSocketConnection } from "./web-socket-connection";
 
 export function createWebSocketServer(server: Server) {
@@ -26,7 +26,7 @@ export function createWebSocketServer(server: Server) {
     socket.on("error", onSocketError);
 
     const request = convertIncomingMessageToRequest(incomingMessage);
-    void clerkClient
+    void clerk
       .authenticateRequest(request)
       .catch((err) => {
         console.error(

@@ -2,7 +2,7 @@ import next from "next";
 import { createServer } from "node:http";
 import { parse } from "node:url";
 import { env } from "~/env";
-import { createWebSocketServer } from "./web-socket-server";
+import { createWebSocketServer } from "./ws/web-socket-server";
 
 const port = parseInt(env.PORT);
 const dev = env.NEXT_PUBLIC_NODE_ENV !== "production";
@@ -25,11 +25,4 @@ void app.prepare().then(() => {
       }`,
     );
   });
-
-  logFeaturesFlags();
 });
-
-function logFeaturesFlags() {
-  console.log("Feature Flags:");
-  console.log("  FEATURE_GAME_TIMEOUT", env.FEATURE_GAME_TIMEOUT);
-}

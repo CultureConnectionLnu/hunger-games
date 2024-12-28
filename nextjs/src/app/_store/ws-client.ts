@@ -2,7 +2,7 @@ import { WebSocket as BackendWebSocket } from "ws";
 import {
   type WSMessageFromClient,
   type WsMessageToClient,
-} from "~/server/web-socket-connection";
+} from "~/server/ws/web-socket-connection";
 
 const FIRST_RECONNECT_TIMEOUT_IN_MS = 100;
 
