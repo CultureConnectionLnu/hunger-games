@@ -552,7 +552,6 @@ export function webSocketConnectionTests() {
 
           await expectPolling(
             () => client.getState().game.mutable.errors.length === 1,
-            1000,
           );
           expect(client.getState().game.mutable.errors[0]).toEqual({
             action: "ready",
@@ -561,6 +560,29 @@ export function webSocketConnectionTests() {
             reason: "game-logic",
             type: "error",
           });
+        });
+
+        test("should remove error after ack", async () => {
+          const { createClient } = testSetup(serverGetters);
+          const client = await createClient("player1");
+
+          await service.activeGames.createNewGame(
+            "1",
+            "rock-paper-scissors",
+            [testUserMap.player1, "whatever"],
+            NOOP,
+          );
+          await waitFor(() => client.getState().game.mutable.gameIsOngoing);
+          client.getState().game.joinGame();
+          client.getState().game.markReady();
+          client.getState().game.markReady();
+
+          await waitFor(
+            () => client.getState().game.mutable.errors.length === 1,
+          );
+          client.getState().game.ackError("1");
+
+          expect(client.getState().game.mutable.errors).toEqual([]);
         });
       });
     },
