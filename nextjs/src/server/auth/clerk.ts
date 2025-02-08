@@ -92,11 +92,26 @@ export const clerkTesting = {
   },
 };
 
+// only exists in dev environment
 export const testUserMap = {
   player1: `user_2qnxhDypNgu06vQWVLq3c5LIqIW`,
   player2: `user_2qoSlvCG0zYxqTing8yEFCP7AFq`,
   player3: `user_2qoSruc5OEJywAgad58mmBT94GL`,
 };
+
+const clerkSessionSchema = z.object({
+  abandon_at: z.number(),
+  client_id: z.string(),
+  created_at: z.number(),
+  expire_at: z.number(),
+  id: z.string(),
+  last_active_at: z.number(),
+  object: z.literal("session"),
+  status: z.string(),
+  updated_at: z.number(),
+  user_id: z.string(),
+});
+export type ClerkSession = z.infer<typeof clerkSessionSchema>;
 
 async function createNewActiveSession(userId: string): Promise<ClerkSession> {
   const response = await fetch(`https://api.clerk.com/v1/sessions`, {
@@ -107,22 +122,10 @@ async function createNewActiveSession(userId: string): Promise<ClerkSession> {
     },
     body: JSON.stringify({ user_id: userId }),
   });
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-  return response.json();
+
+  const data = await response.json();
+  return clerkSessionSchema.parse(data);
 }
 
 // created this type based on the response from the endpoint
-export interface ClerkSession {
-  abandon_at: number;
-  actor: null;
-  client_id: string;
-  created_at: number;
-  expire_at: number;
-  id: string;
-  last_active_at: number;
-  object: "session";
-  status: string;
-  updated_at: number;
-  user_id: string;
-}
 // #endregion

@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import { WebSocket } from "ws";
 import { createStore } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import { createGameSlice, type GameSlice } from "~/app/_store/game-slice";
+import { createGameSlice, type GameSlice } from "~/provider/store/game-slice";
 import { testUserMap } from "../auth/clerk";
 import { initServices, service } from "../service";
 import { type ConnectionPlayerView } from "../stores/core/connection-view-slice";
