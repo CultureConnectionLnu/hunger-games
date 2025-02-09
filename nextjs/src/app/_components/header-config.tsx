@@ -1,5 +1,5 @@
-import { auth } from "@clerk/nextjs/server";
 import type * as MdIcons from "react-icons/md";
+import { clerk } from "~/server/auth/clerk";
 
 const headerConfig: HeaderConfig = {
   groups: [
@@ -227,9 +227,7 @@ export type EvaluatedNavigationBarConfig = {
 export type EvaluatedNavigationBarEntry = Omit<NavigationBarEntry, "require">;
 
 export async function getHeaderConfig() {
-  // todo: move this code into a separate service that handles all user interactions
-  const user = await auth();
-  const roles = user?.sessionClaims?.metadata.roles ?? [];
+  const roles = await clerk.getRolesOfCurrentUser();
 
   const evalHeaderConfig: EvaluatedHeaderConfig = {
     groups: headerConfig.groups

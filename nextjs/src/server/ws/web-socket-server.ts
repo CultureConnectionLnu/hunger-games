@@ -1,5 +1,5 @@
 import { type SignedInAuthObject } from "@clerk/backend/internal";
-import { type IncomingMessage, type Server } from "http";
+import { type IncomingMessage, type Server } from "node:http";
 import type internal from "stream";
 import { WebSocketServer } from "ws";
 import { type AcceptedAny } from "~/type-utils";
@@ -23,6 +23,9 @@ export function createWebSocketServer(server: Server) {
     socket: internal.Duplex,
     head: Buffer,
   ) => {
+    if (incomingMessage.url === "/_next/webpack-hmr") {
+      return;
+    }
     socket.on("error", onSocketError);
 
     const request = convertIncomingMessageToRequest(incomingMessage);
@@ -30,7 +33,7 @@ export function createWebSocketServer(server: Server) {
       .authenticateRequest(request)
       .catch((err) => {
         console.error(
-          `Something went wrong while authenticating the user: ${err}`,
+          `Something went wrong while authenticating the user: ${String(err)}`,
         );
         respondUnauthorized(socket);
       })
@@ -56,7 +59,7 @@ export function createWebSocketServer(server: Server) {
       })
       .catch((err) => {
         console.error(
-          `Something went wrong while upgrading the connection to WebSocket: ${err}`,
+          `Something went wrong while upgrading the connection to WebSocket: ${String(err)}`,
         );
         responseInternalServerError(socket);
       });

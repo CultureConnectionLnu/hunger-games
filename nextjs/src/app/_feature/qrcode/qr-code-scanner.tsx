@@ -1,6 +1,6 @@
 "use client";
 
-import { QrReader } from "react-qr-reader";
+import { Scanner } from "@yudiel/react-qr-scanner";
 
 export function QrCodeScanner({
   onReadUserId,
@@ -8,16 +8,15 @@ export function QrCodeScanner({
   onReadUserId?: (userId: string) => void;
 }) {
   return (
-    <QrReader
-      onResult={(result, error) => {
-        if (error) {
-          console.info(error);
+    <Scanner
+      onError={(error) => {
+        console.info(error);
+      }}
+      onScan={(result) => {
+        const rawUrl = result[0]?.rawValue;
+        if (!rawUrl) {
           return;
         }
-        if (!result) {
-          return;
-        }
-        const rawUrl = result.getText();
         try {
           const url = new URL(rawUrl, "http://base.url");
           const userId = url.searchParams.get("userId");
@@ -28,7 +27,7 @@ export function QrCodeScanner({
           onReadUserId?.(userId);
         } catch (error) {
           // not a valid url
-          console.info("read not valid URL", rawUrl);
+          console.info("read not valid URL", rawUrl, error);
         }
       }}
       constraints={{ facingMode: "environment" }}

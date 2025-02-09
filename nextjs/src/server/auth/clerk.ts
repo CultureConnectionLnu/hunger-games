@@ -1,5 +1,4 @@
 import { createClerkClient, type User } from "@clerk/backend";
-import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { env } from "~/env";
 
@@ -7,6 +6,12 @@ const clerkClient = createClerkClient({
   secretKey: env.CLERK_SECRET_KEY,
   publishableKey: env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
 });
+
+const clerkNextjsServer = import("@clerk/nextjs/server");
+const auth = async () => {
+  const mod = await clerkNextjsServer;
+  return mod.auth();
+};
 
 export const clerk = {
   getUser: (userId: string) =>
@@ -18,6 +23,10 @@ export const clerk = {
     clerkClient.users.updateUserMetadata(userId, {
       privateMetadata: { roles },
     }),
+  getRolesOfCurrentUser: async () => {
+    const user = await auth();
+    return user?.sessionClaims?.metadata.roles ?? [];
+  },
   hasRole: (user: User, role: Roles) =>
     user.publicMetadata.roles?.includes(role) ?? false,
   authenticateRequest: (request: Request) =>

@@ -24,7 +24,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [store, setStore] = useState<StoreInstance | undefined>(undefined);
 
   useEffect(() => {
-    if (isSignedIn === false) {
+    if (!isSignedIn) {
       // todo: destroy store on logout
       setStore(undefined);
       return;

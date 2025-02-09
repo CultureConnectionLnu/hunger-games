@@ -1,58 +1,53 @@
+##### BASE
+
+# node:22.13.1-alpine3.21
+FROM --platform=linux/amd64 node@sha256:e2b39f7b64281324929257d0f8004fb6cb4bf0fdfb9aa8cedb235a766aec31da AS base 
+WORKDIR /app
+RUN apk add --no-cache libc6-compat openssl
+RUN npm install --global pnpm@8.14.0
+
+##### PRODUCTION DEPENDENCIES
+
+FROM base AS proddeps 
+COPY package.json pnpm-lock.yaml\* ./
+RUN pnpm install --frozen-lockfile --production
+
 ##### DEPENDENCIES
 
-# node:20-alpine
-FROM --platform=linux/amd64 node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 AS deps 
-RUN apk add --no-cache libc6-compat openssl
-WORKDIR /app
-RUN yarn global add pnpm@8.14.0
-
-# Install dependencies based on the preferred package manager
-
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml\* ./
-
+FROM proddeps AS deps 
 RUN pnpm install --frozen-lockfile
 
 ##### BUILDER
 
-# node:20-alpine
-FROM --platform=linux/amd64 node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 AS builder
+FROM base AS builder
 ARG NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 ARG NEXT_PUBLIC_NODE_ENV
-ARG NEXT_PUBLIC_WS_LOCATION
-ARG NEXT_PUBLIC_FEATURE_MANUAL_JOIN
-RUN npm install --global pnpm@8.14.0
 
-WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
-
 RUN SKIP_ENV_VALIDATION=1 pnpm run build
 
 ##### RUNNER
 
-# node:20-alpine
-FROM --platform=linux/amd64 node@sha256:7e227295e96f5b00aa79555ae166f50610940d888fc2e321cf36304cbd17d7d6 AS runner
-# FROM --platform=linux/amd64 gcr.io/distroless/nodejs20-debian12 AS runner
+# node:22.13.1-alpine3.21
+FROM --platform=linux/amd64 node@sha256:e2b39f7b64281324929257d0f8004fb6cb4bf0fdfb9aa8cedb235a766aec31da AS runner
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED 1
 ENV SKIP_ENV_VALIDATION 1
 
-COPY --from=builder /app/next.config.js ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/package.json ./package.json
 
-# todo: introduce compilation
 COPY --from=builder /app/src ./src
 COPY --from=builder /app/tsconfig.json ./
-COPY --from=deps /app/node_modules ./node_modules
 
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/.next/ ./.next
+COPY --from=proddeps /app/package.json ./package.json
+COPY --from=proddeps /app/node_modules ./node_modules
 
 EXPOSE 3000
-EXPOSE 3001
 
-CMD ["npm", "run", "start:docker"]
+CMD ["npm", "run", "run:server"]
