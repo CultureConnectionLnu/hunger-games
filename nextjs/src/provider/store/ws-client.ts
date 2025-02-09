@@ -17,7 +17,7 @@ export class WSClient {
   constructor(
     private onMessage: (message: WsMessageToClient) => void,
     private onConnectedChange: (connected: boolean) => void,
-    private getToken: () => Promise<string>,
+    private getToken: () => Promise<string | null>,
     url?: string,
   ) {
     if (url === undefined) {
@@ -81,9 +81,8 @@ export class WSClient {
       };
       return;
     }
+    // idea from: https://stackoverflow.com/questions/4361173/http-headers-in-websockets-client-api
     const ws = new WebSocket(this.url, token);
-    // only a guess that this works:
-    // https://stackoverflow.com/questions/4361173/http-headers-in-websockets-client-api
 
     ws.onmessage = (event) => {
       const message = this.parseMessage(event.data as string);
@@ -133,7 +132,7 @@ export class WSClient {
   }
 
   private tryReconnect() {
-    if (this.isClosed) {
+    if (this.isClosed || this.ws?.readyState === WebSocket.OPEN) {
       return;
     }
 

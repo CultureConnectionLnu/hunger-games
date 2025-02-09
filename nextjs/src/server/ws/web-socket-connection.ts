@@ -34,6 +34,7 @@ export class WebSocketConnection {
     private ws: WebSocket,
     private auth: SignedInAuthObject,
   ) {
+    console.log("connection", this.auth.userId);
     this.unsubscribeListeners.push(
       service.activeGames.listenForPlayerJoiningGame(
         this.auth.userId,
@@ -52,7 +53,8 @@ export class WebSocketConnection {
       this.auth.userId,
     );
 
-    this.ws.on("close", () => {
+    this.ws.on("close", (code, reason) => {
+      console.log("close", this.auth.userId, code, reason.toString());
       this.onWebSocketDisconnect();
     });
 

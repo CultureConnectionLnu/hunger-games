@@ -87,6 +87,7 @@ function convertIncomingMessageToRequest(req: IncomingMessage) {
     if (value === undefined || Array.isArray(value)) {
       continue;
     }
+    // idea from: https://stackoverflow.com/questions/4361173/http-headers-in-websockets-client-api
     if (key.toLowerCase() === "sec-websocket-protocol".toLowerCase()) {
       headers.set("Authorization", value);
       continue;

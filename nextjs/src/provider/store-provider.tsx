@@ -10,7 +10,7 @@ type StoreProviderProps = {
   store?: StoreInstance;
 };
 
-function storeFactory(getToken: () => Promise<string>, wsUrl?: string) {
+function storeFactory(getToken: () => Promise<string | null>, wsUrl?: string) {
   const store = createStore<Store>()((...a) => ({
     ...createGameSlice(getToken, wsUrl)(...a),
   }));
@@ -25,11 +25,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isSignedIn) {
-      // todo: destroy store on logout
       setStore(undefined);
       return;
     }
-    setStore(storeFactory(async () => (await getToken())!));
+    setStore(storeFactory(getToken));
+
+    return () => {
+      store?.getState().game.cleanup();
+    };
+
     // explicitly ignore the 'getToken' dependency, as it will always provide the current token, even if its not the same instance
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);

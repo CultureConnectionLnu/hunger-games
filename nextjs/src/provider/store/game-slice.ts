@@ -86,7 +86,7 @@ type GameActions = {
 // #region slice
 
 export function createGameSlice(
-  getToken: () => Promise<string>,
+  getToken: () => Promise<string | null>,
   url?: string,
 ): StateCreator<GameSlice> {
   return function gameSlice(originalSet, get) {
