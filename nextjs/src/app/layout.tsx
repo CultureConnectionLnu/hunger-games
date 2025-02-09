@@ -2,10 +2,12 @@ import "~/styles/globals.css";
 
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
-import { ClerkProvider, SignedIn } from "@clerk/nextjs";
+import { ClerkProvider } from "@clerk/nextjs";
 import { StoreProvider } from "~/provider/store-provider";
 import { TooltipProvider } from "~/components/ui/tooltip";
 import JoinRunningGame from "./_components/join-running-fight";
+import Header from "./_components/header";
+import { SignedIn } from "./_components/signed-in";
 
 export const metadata: Metadata = {
   title: "Hunger Games",
@@ -25,6 +27,7 @@ export default function RootLayout({
               <SignedIn>
                 <JoinRunningGame />
               </SignedIn>
+              <Header />
               {children}
             </StoreProvider>
           </TooltipProvider>

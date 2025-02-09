@@ -8,7 +8,7 @@ const FIRST_RECONNECT_TIMEOUT_IN_MS = 100;
 
 export class WSClient {
   private url;
-  private ws!: WebSocket | BackendWebSocket;
+  private ws?: WebSocket | BackendWebSocket;
   private reconnectAttempts = 0;
   private reconnectTimeout = FIRST_RECONNECT_TIMEOUT_IN_MS;
   private isBrowser: boolean;
@@ -45,13 +45,18 @@ export class WSClient {
     this.send = () => {
       throw new Error("WSClient is closed");
     };
-    this.ws.close();
+    this.ws?.close();
   }
 
   private async init() {
     const result = await (this.isBrowser
       ? this.initBrowser()
       : this.initServer());
+
+    if (!result) {
+      return;
+    }
+
     this.ws = result.ws;
     this.send = result.send;
 
@@ -69,9 +74,14 @@ export class WSClient {
   }
 
   private async initBrowser() {
-    const urlWithToken = new URL(this.url);
-    urlWithToken.username = await this.getToken();
-    const ws = new WebSocket(urlWithToken.toString());
+    const token = await this.getToken();
+    if (!token) {
+      this.send = () => {
+        throw new Error("WSClient is not logged in");
+      };
+      return;
+    }
+    const ws = new WebSocket(this.url, token);
     // only a guess that this works:
     // https://stackoverflow.com/questions/4361173/http-headers-in-websockets-client-api
 

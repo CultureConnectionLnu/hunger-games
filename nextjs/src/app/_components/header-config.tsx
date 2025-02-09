@@ -235,10 +235,11 @@ export async function getHeaderConfig() {
       .map(({ links: baseLinks, title, require }) => {
         const links = mapLinkConfig(roles, baseLinks);
         if (require === "sign-in" || require === "sign-out")
-          return { title, require, links };
+          return { title, require, links } as const;
 
-        return { title, require: "none", links };
-      }),
+        return { title, require: "none", links } as const;
+      })
+      .filter((group) => group.links.length > 0),
   };
 
   const evalNavConfig: EvaluatedNavigationBarConfig = {

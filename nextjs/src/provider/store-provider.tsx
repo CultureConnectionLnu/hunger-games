@@ -39,6 +39,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
+export function useStoreReady() {
+  const { store } = useContext(StoreContext);
+  return store !== undefined;
+}
+
 export function useStore<T>(selector: (state: Store) => T): T {
   const { store } = useContext(StoreContext);
   if (store === undefined) {

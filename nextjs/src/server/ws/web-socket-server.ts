@@ -87,6 +87,10 @@ function convertIncomingMessageToRequest(req: IncomingMessage) {
     if (value === undefined || Array.isArray(value)) {
       continue;
     }
+    if (key.toLowerCase() === "sec-websocket-protocol".toLowerCase()) {
+      headers.set("Authorization", value);
+      continue;
+    }
     headers.set(key, value);
   }
 
