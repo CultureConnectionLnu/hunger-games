@@ -7,15 +7,34 @@ import { clerk } from "../auth/clerk";
 import { WebSocketConnection } from "./web-socket-connection";
 
 export function createWebSocketServer(server: Server) {
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({
+    noServer: true,
+    // handleProtocols: (protocols) => {
+    //   const supportedProtocol = "secure-ws";
+
+    //   // false: Reject the connection if no supported protocol is found
+    //   return protocols.has(supportedProtocol) ? supportedProtocol : false;
+    // },
+  });
+  const connections = new Map<string, WebSocketConnection>();
 
   wss.on("connection", (ws) => {
     // the effort of globally extending the WebSocket type with the `auth` property is not worth it
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const auth: SignedInAuthObject = (ws as AcceptedAny).auth;
+    const existingConnection = connections.get(auth.userId);
+    if (existingConnection) {
+      existingConnection.ws.close();
+      if (existingConnection.ws.readyState === WebSocket.OPEN) {
+        console.log(
+          "Force disconnect another session for the current user",
+          auth.userId,
+        );
+      }
+    }
 
     // don't store the connection so that it can be garbage collected when the client disconnects
-    new WebSocketConnection(ws, auth);
+    connections.set(auth.userId, new WebSocketConnection(ws, auth));
   });
 
   const upgrade = (
@@ -85,11 +104,6 @@ function convertIncomingMessageToRequest(req: IncomingMessage) {
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
     if (value === undefined || Array.isArray(value)) {
-      continue;
-    }
-    // idea from: https://stackoverflow.com/questions/4361173/http-headers-in-websockets-client-api
-    if (key.toLowerCase() === "sec-websocket-protocol".toLowerCase()) {
-      headers.set("Authorization", value);
       continue;
     }
     headers.set(key, value);

@@ -10,9 +10,9 @@ type StoreProviderProps = {
   store?: StoreInstance;
 };
 
-function storeFactory(getToken: () => Promise<string | null>, wsUrl?: string) {
+function storeFactory(isSignedIn: () => boolean, wsUrl?: string) {
   const store = createStore<Store>()((...a) => ({
-    ...createGameSlice(getToken, wsUrl)(...a),
+    ...createGameSlice(isSignedIn, wsUrl)(...a),
   }));
   return store;
 }
@@ -20,7 +20,7 @@ function storeFactory(getToken: () => Promise<string | null>, wsUrl?: string) {
 const StoreContext = createContext<StoreProviderProps>({});
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const { getToken, isSignedIn } = useAuth();
+  const { isSignedIn } = useAuth();
   const [store, setStore] = useState<StoreInstance | undefined>(undefined);
 
   useEffect(() => {
@@ -28,7 +28,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setStore(undefined);
       return;
     }
-    setStore(storeFactory(getToken));
+    setStore(storeFactory(() => isSignedIn));
 
     return () => {
       store?.getState().game.cleanup();

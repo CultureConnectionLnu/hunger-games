@@ -11,7 +11,7 @@
     "db:studio": "SKIP_ENV_VALIDATION=1 drizzle-kit studio",
     "dev": "dotenv cross-env NODE_ENV=development npm run run:server",
     "start": "dotenv cross-env NODE_ENV=production npm run run:server",
-    "preview": "next build && next start",
+    "preview": "npm run build && npm run start",
     "run:server": "tsx src/server/server.ts",
     "lint": "next lint",
     "lint:fix": "next lint --fix",

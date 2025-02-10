@@ -592,12 +592,21 @@ export function webSocketConnectionTests() {
 function testSetup(serverGetters: ReturnType<typeof setupServer>) {
   initServices();
   return {
-    createClient: (playerName: keyof typeof testUserMap) => {
-      const getToken = () => getTestJwt(playerName);
+    createClient: async (playerName: keyof typeof testUserMap) => {
+      const token = await getTestJwt(playerName);
       const url = `ws://localhost:${serverGetters.getPort()}`;
       const store = createStore<GameSlice>()(
         subscribeWithSelector((...a) => ({
-          ...createGameSlice(getToken, url)(...a),
+          ...createGameSlice(
+            () => true,
+            url,
+            (url) =>
+              new WebSocket(url, {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              }),
+          )(...a),
         })),
       );
       const subStore = store as SubscribeStore<GameSlice>;

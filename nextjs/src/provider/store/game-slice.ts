@@ -86,8 +86,9 @@ type GameActions = {
 // #region slice
 
 export function createGameSlice(
-  getToken: () => Promise<string | null>,
+  isLoggedIn: () => boolean,
   url?: string,
+  wsFactory?: (url: string) => NonNullable<WSClient["ws"]>,
 ): StateCreator<GameSlice> {
   return function gameSlice(originalSet, get) {
     const set = function setGameSlice(
@@ -175,8 +176,9 @@ export function createGameSlice(
       (connected) => {
         set({ connected });
       },
-      getToken,
+      isLoggedIn,
       url,
+      wsFactory,
     );
 
     return {

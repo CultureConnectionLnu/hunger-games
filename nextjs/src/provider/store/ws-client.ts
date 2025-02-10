@@ -1,4 +1,4 @@
-import { WebSocket as BackendWebSocket } from "ws";
+import type { WebSocket as BackendWebSocket } from "ws";
 import {
   type WSMessageFromClient,
   type WsMessageToClient,
@@ -11,20 +11,22 @@ export class WSClient {
   private ws?: WebSocket | BackendWebSocket;
   private reconnectAttempts = 0;
   private reconnectTimeout = FIRST_RECONNECT_TIMEOUT_IN_MS;
-  private isBrowser: boolean;
   private isClosed = false;
 
   constructor(
     private onMessage: (message: WsMessageToClient) => void,
     private onConnectedChange: (connected: boolean) => void,
-    private getToken: () => Promise<string | null>,
+    private isLoggedIn: () => boolean,
     url?: string,
+    private wsFactory: (url: string) => NonNullable<WSClient["ws"]> = (url) =>
+      new WebSocket(url),
   ) {
     if (url === undefined) {
-      this.isBrowser = true;
-      this.url = window.location.origin;
+      const wsUrl = new URL(window.location.origin);
+      wsUrl.protocol = wsUrl.protocol === "https:" ? "wss:" : "ws:";
+      wsUrl.pathname = "/ws";
+      this.url = wsUrl.toString();
     } else {
-      this.isBrowser = false;
       this.url = url;
     }
 
@@ -49,13 +51,16 @@ export class WSClient {
   }
 
   private async init() {
-    const result = await (this.isBrowser
-      ? this.initBrowser()
-      : this.initServer());
-
-    if (!result) {
+    if (this.isLoggedIn() === false) {
+      this.send = () => {
+        throw new Error("WSClient is not logged in");
+      };
       return;
     }
+
+    const ws = this.wsFactory(this.url);
+    const result =
+      ws instanceof WebSocket ? this.initBrowser(ws) : this.initServer(ws);
 
     this.ws = result.ws;
     this.send = result.send;
@@ -73,25 +78,9 @@ export class WSClient {
     return result;
   }
 
-  private async initBrowser() {
-    const token = await this.getToken();
-    if (!token) {
-      this.send = () => {
-        throw new Error("WSClient is not logged in");
-      };
-      return;
-    }
-    // idea from: https://stackoverflow.com/questions/4361173/http-headers-in-websockets-client-api
-    const ws = new WebSocket(this.url, token);
-
-    ws.onmessage = (event) => {
-      const message = this.parseMessage(event.data as string);
-      this.onMessage(message);
-    };
-
-    ws.onerror = (event) => {
-      console.error("WS error", event);
-    };
+  private initBrowser(ws: WebSocket) {
+    ws.onmessage = (event) => this.wsOnMessageHandler(event.data as string);
+    ws.onerror = (event) => this.wsOnErrorHandler(event);
 
     return {
       ws,
@@ -100,27 +89,31 @@ export class WSClient {
     };
   }
 
-  private async initServer() {
-    const ws = new BackendWebSocket(this.url, {
-      headers: {
-        Authorization: `Bearer ${await this.getToken()}`,
-      },
-    });
-
-    ws.onmessage = (event) => {
-      const message = this.parseMessage(event.data as string);
-      this.onMessage(message);
-    };
-
-    ws.onerror = (event) => {
-      console.error("WS error", event);
-    };
+  /**
+   * Exists for integration tests.
+   */
+  private initServer(ws: BackendWebSocket) {
+    ws.onmessage = (event) => this.wsOnMessageHandler(event.data as string);
+    ws.onerror = (event) => this.wsOnErrorHandler(event);
 
     return {
       ws,
       send: (message: WSMessageFromClient) =>
         ws.send(this.serializeMessage(message)),
     };
+  }
+
+  private wsOnMessageHandler(data: string) {
+    const message = this.parseMessage(data);
+    if (message.type === "ping") {
+      this.send({ type: "pong", id: message.id });
+      return;
+    }
+    this.onMessage(message);
+  }
+
+  private wsOnErrorHandler(event: unknown) {
+    console.error("WS error", event);
   }
 
   private parseMessage(messageString: string) {

@@ -21,6 +21,14 @@ type KnownActions = "pause" | "connect" | "ready" | "choose" | "unknown";
 export class WebSocketConnection {
   private unsubscribeListeners: Array<() => void> = [];
   private _currentGame?: GameEntry;
+  private pingPongHandler = new PingPongHandler(
+    (id) => this.sendMessageToClient({ type: "ping", id }),
+    () => {
+      console.log("disconnected", this.auth.userId);
+      this.close();
+    },
+  );
+
   private get currentGame() {
     return this._currentGame;
   }
@@ -31,10 +39,9 @@ export class WebSocketConnection {
   }
 
   constructor(
-    private ws: WebSocket,
+    public ws: WebSocket,
     private auth: SignedInAuthObject,
   ) {
-    console.log("connection", this.auth.userId);
     this.unsubscribeListeners.push(
       service.activeGames.listenForPlayerJoiningGame(
         this.auth.userId,
@@ -48,6 +55,12 @@ export class WebSocketConnection {
     this.init();
   }
 
+  public close() {
+    this.ws.close();
+    this.pingPongHandler.stop();
+    this.onWebSocketDisconnect();
+  }
+
   private init() {
     this.currentGame = service.activeGames.getActiveGameOfPlayer(
       this.auth.userId,
@@ -55,7 +68,7 @@ export class WebSocketConnection {
 
     this.ws.on("close", (code, reason) => {
       console.log("close", this.auth.userId, code, reason.toString());
-      this.onWebSocketDisconnect();
+      this.close();
     });
 
     this.ws.on("message", (data: Buffer | ArrayBuffer | Buffer[]) => {
@@ -67,6 +80,8 @@ export class WebSocketConnection {
         this.receiveMessageFromClient(data.toString());
       }
     });
+
+    this.pingPongHandler.start();
   }
 
   private initGameStoreListeners(entry: GameEntry) {
@@ -96,7 +111,7 @@ export class WebSocketConnection {
 
     if (entry.type !== "rock-paper-scissors") {
       // todo: implement once other games exits
-      return;
+      throw new Error("not implemented");
     }
 
     this.unsubscribeListeners.push(
@@ -144,6 +159,9 @@ export class WebSocketConnection {
         return;
       case "mark-ready":
         this.onReadyMark();
+        return;
+      case "pong":
+        this.pingPongHandler.handlePong(data.id);
         return;
     }
 
@@ -261,6 +279,45 @@ export class WebSocketConnection {
   // #endregion
 }
 
+class PingPongHandler {
+  private pingTimerId?: NodeJS.Timeout;
+  private index = 0;
+  private expectedPongIds = new Set<string>();
+  private readonly threshold = 5;
+  private readonly timeout = 100;
+
+  constructor(
+    private onPing: (id: string) => void,
+    private onNoResponse: () => void,
+  ) {}
+
+  public stop() {
+    clearInterval(this.pingTimerId);
+  }
+
+  public start() {
+    this.sendPing();
+    this.pingTimerId = setInterval(() => {
+      this.sendPing();
+    }, this.timeout);
+  }
+
+  public handlePong(id: string) {
+    this.expectedPongIds.delete(id);
+  }
+
+  private sendPing() {
+    if (this.expectedPongIds.size >= this.threshold) {
+      this.onNoResponse();
+      return;
+    }
+
+    const id = `${this.index++}`;
+    this.onPing(id);
+    this.expectedPongIds.add(id);
+  }
+}
+
 const wsMessageFromClientSchema = z.union([
   z.object({
     type: z.literal("connect-to-fight"),
@@ -279,6 +336,10 @@ const wsMessageFromClientSchema = z.union([
     game: z.literal("rock-paper-scissors"),
     action: z.literal("choose"),
     data: rockPaperScissorsItemSchema,
+  }),
+  z.object({
+    type: z.literal("pong"),
+    id: z.string(),
   }),
 ]);
 
@@ -304,4 +365,8 @@ export type WsMessageToClient =
       type: "game-logic";
       gameType: GameType;
       data: RockPaperScissorsPlayerView;
+    }
+  | {
+      type: "ping";
+      id: string;
     };
