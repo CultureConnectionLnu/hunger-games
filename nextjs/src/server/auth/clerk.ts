@@ -73,13 +73,13 @@ export async function isAdmin() {
   return hasRole("admin");
 }
 
-async function hasRole(role: Roles) {
+export async function hasRole(role: Roles) {
   const user = await auth();
   if (user.userId === null) {
     return undefined;
   }
 
-  if (user.sessionClaims?.metadata.roles?.includes(role) === false) {
+  if (Boolean(user.sessionClaims?.metadata.roles?.includes(role)) === false) {
     return undefined;
   }
 
