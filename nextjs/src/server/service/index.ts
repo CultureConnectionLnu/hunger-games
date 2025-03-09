@@ -4,7 +4,10 @@ import "./types";
 import "./active-games-service";
 import "./game-config-service";
 
-let servicesInstances: KnownServiceMap | undefined;
+declare global {
+  // eslint-disable-next-line no-var
+  var __serviceInstances: KnownServiceMap | undefined;
+}
 
 // create a proxy that has a single method `get` which returns the service based on the name
 export const service = new Proxy<KnownServiceMap>({} as KnownServiceMap, {
@@ -14,10 +17,10 @@ export const service = new Proxy<KnownServiceMap>({} as KnownServiceMap, {
       throw new Error(`Service '${name}' not found.`);
     }
 
-    if (servicesInstances === undefined) {
+    if (globalThis.__serviceInstances === undefined) {
       initServices();
     }
-    return servicesInstances![name];
+    return globalThis.__serviceInstances![name];
   },
 });
 
@@ -34,20 +37,20 @@ function isKnownServiceName(name: string): name is keyof KnownServiceMap {
 
 export function initServices() {
   cleanupServices();
-  servicesInstances = {} as KnownServiceMap;
+  globalThis.__serviceInstances = {} as KnownServiceMap;
 
   Object.entries(globalThis.KnownServices).forEach(
     ([name, serviceConstructor]) => {
       // @ts-expect-error The type of `KnownServices` ensures that this actually works
-      servicesInstances[name] = new serviceConstructor();
+      globalThis.__serviceInstances[name] = new serviceConstructor();
     },
   );
-  return servicesInstances;
+  return globalThis.__serviceInstances;
 }
 
 export function cleanupServices() {
-  if (servicesInstances === undefined) return;
-  Object.values(servicesInstances).forEach((service: Service) =>
+  if (globalThis.__serviceInstances === undefined) return;
+  Object.values(globalThis.__serviceInstances).forEach((service: Service) =>
     service.cleanup(),
   );
 }

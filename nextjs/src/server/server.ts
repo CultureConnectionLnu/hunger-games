@@ -4,6 +4,10 @@ import { parse } from "node:url";
 import { env } from "~/env";
 import { createWebSocketServer } from "./ws/web-socket-server";
 
+// early initialization to ensure that no re initialization is happening later on
+import "./service";
+import "./api";
+
 const port = parseInt(env.PORT);
 const dev = env.NEXT_PUBLIC_NODE_ENV !== "production";
 const app = next({ dev });

@@ -69,3 +69,11 @@ export function useStore<T>(selector: (state: ClientStore) => T): T {
   }
   return zustandUseStore(store, selector);
 }
+
+export function StoreReadyLoading({ children }: { children: React.ReactNode }) {
+  const storeReady = useStoreReady();
+  if (storeReady === false) {
+    return <div>Loading...</div>;
+  }
+  return <>{children}</>;
+}

@@ -1,5 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { ScrollArea } from "@radix-ui/react-scroll-area";
+import { useMutation } from "@tanstack/react-query";
+import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useSearchParamState } from "~/app/_feature/url-sync/query";
 import { Button } from "~/components/ui/button";
 import {
@@ -11,15 +14,13 @@ import {
 } from "~/components/ui/card";
 import { Skeleton } from "~/components/ui/skeleton";
 import { toast } from "~/components/ui/use-toast";
-import { env } from "~/env";
-import { QrCode } from "../../_feature/qrcode/qr-code-visualizer";
-import { ScrollArea } from "@radix-ui/react-scroll-area";
-import { NoQuest } from "../quest/_components/no-quest";
-import { kindToText } from "../quest/_components/walk-quest";
-import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
-import { useMutation } from "@tanstack/react-query";
 import { api } from "~/server/api";
+import { QrCode } from "../../_feature/qrcode/qr-code-visualizer";
+import { NoQuest } from "../quest/_components/no-quest";
+// the import in dev mode is wrong if not for this * import
+import * as env from "~/env";
+import { useRouter } from "next/navigation";
+import { extractUserIdFromUrl } from "~/app/_feature/qrcode/qr-code-scanner";
 
 export default function PlayerOverview() {
   return (
@@ -131,6 +132,8 @@ function JoinGame() {
         route="/game/overview"
         text="When the opponent scans this QR code with his phone, then you start a match."
       />
+
+      {env.env.NEXT_PUBLIC_NODE_ENV === "development" && <ManualInput />}
     </div>
   );
 }
@@ -160,4 +163,29 @@ function useStartMatch() {
     // No need to rerender for the set function
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opponent, startMatch.isPending]);
+}
+
+function ManualInput() {
+  const router = useRouter();
+  const ref = useRef<HTMLInputElement>(null);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p>
+        If you want to test the app without scanning a QR code, you can enter a
+        user ID manually.
+      </p>
+      <input
+        ref={ref}
+        type="text"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            const userId = extractUserIdFromUrl(ref.current?.value ?? "");
+            if (!userId) return;
+            router.push(`/game/overview?userId=${userId}`);
+          }
+        }}
+      />
+    </div>
+  );
 }

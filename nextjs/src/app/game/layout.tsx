@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { StoreReadyLoading } from "~/provider/store-provider";
 import { api } from "~/server/api";
 
 export default async function GameLayout({
@@ -9,5 +10,6 @@ export default async function GameLayout({
   if (!(await api.user.hasRole({ role: "player" }))) {
     redirect("/no-player");
   }
-  return <>{children}</>;
+
+  return <StoreReadyLoading>{children}</StoreReadyLoading>;
 }
