@@ -1,6 +1,6 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect } from "react";
@@ -26,14 +26,14 @@ import { useStore } from "~/provider/store-provider";
 import { GameCard, GameContentLoading } from "./_components/base";
 
 export default function CurrentGame() {
-  const { user, isLoaded: userLoaded } = useUser();
+  const { isLoaded, isSignedIn } = useAuth();
   const roomView = useStore((state) => state.game.mutable.room?.showView);
 
-  if (!userLoaded) {
+  if (!isLoaded) {
     return <GameLoadingScreen />;
   }
 
-  if (roomView === undefined || user == null) {
+  if (roomView === undefined || !isSignedIn) {
     return <NoFightOngoing />;
   }
 
@@ -49,7 +49,6 @@ export default function CurrentGame() {
     case "waiting-for-other-player-reconnect":
       return <WaitForOtherPlayerToReconnect />;
     case "game-ended":
-      // it auto forwards to a different page, so no need to show it here
       return <CalculatingScore />;
     case "game-paused":
       return <GamePaused />;
@@ -83,9 +82,7 @@ function RunningGame() {
     return <>Impossible state. Please reload the page.</>;
   }
 
-  return (
-    <GameContainer title={GameTypeToTitleMap[gameType]}>{game}</GameContainer>
-  );
+  return <GameContainer>{game}</GameContainer>;
 }
 
 function JoiningGame() {
@@ -98,18 +95,20 @@ function JoiningGame() {
 }
 
 function GameContainer({
-  param,
   title,
   children,
 }: {
   children: React.ReactNode;
-  title: string;
-  param?: {
-    noGameRunning?: boolean;
-  };
+  title?: string;
 }) {
   const router = useRouter();
   const timers = useStore((state) => state.timer.visible);
+  const gameType = useStore((state) => state.game.mutable.gameSpecific?.type);
+  const actualTitle =
+    title ?? (gameType ? GameTypeToTitleMap[gameType] : "Loading...");
+  const noGameRunning = useStore(
+    (state) => state.game.mutable.room?.showView === undefined,
+  );
 
   const alertLeave = (
     <AlertDialog>
@@ -141,8 +140,8 @@ function GameContainer({
     <>
       <header className="flex h-14 w-full items-center justify-between px-4">
         <div>{/* empty so that the next element is in the center */}</div>
-        {title}
-        {(param?.noGameRunning ?? true) ? leave : alertLeave}
+        {actualTitle}
+        {noGameRunning ? leave : alertLeave}
       </header>
       <main className="flex h-full flex-col px-4">
         <section className="flex flex-row gap-4">
@@ -173,7 +172,7 @@ function Timer({ timer }: { timer: ClientStore["timer"]["visible"][number] }) {
 
 function GameLoadingScreen() {
   return (
-    <GameContainer title="Loading...">
+    <GameContainer>
       <GameContentLoading />
     </GameContainer>
   );
@@ -181,7 +180,7 @@ function GameLoadingScreen() {
 
 function NoFightOngoing() {
   return (
-    <GameContainer title="No game" param={{ noGameRunning: true }}>
+    <GameContainer title="No game">
       <GameCard
         header={
           <CardTitle className="flex gap-4">
@@ -201,19 +200,23 @@ function NoFightOngoing() {
 function ReadyScreen() {
   const markReady = useStore((state) => state.game.markReady);
   return (
-    <GameCard header={<CardTitle>Are you ready to play?</CardTitle>}>
-      <div className="space-y-2">
-        <Button onClick={() => markReady()}>Ready</Button>
-      </div>
-    </GameCard>
+    <GameContainer>
+      <GameCard header={<CardTitle>Are you ready to play?</CardTitle>}>
+        <div className="space-y-2">
+          <Button onClick={() => markReady()}>Ready</Button>
+        </div>
+      </GameCard>
+    </GameContainer>
   );
 }
 
 function WaitForOtherPlayerToJoin() {
   return (
-    <GameCard
-      header={<CardTitle>Waiting for opponent to join</CardTitle>}
-    ></GameCard>
+    <GameContainer>
+      <GameCard
+        header={<CardTitle>Waiting for opponent to join</CardTitle>}
+      ></GameCard>
+    </GameContainer>
   );
 }
 
@@ -221,9 +224,11 @@ function WaitForOtherPlayerToReady() {
   useResumeGame();
 
   return (
-    <GameCard
-      header={<CardTitle>Waiting for opponent to be ready</CardTitle>}
-    ></GameCard>
+    <GameContainer>
+      <GameCard
+        header={<CardTitle>Waiting for opponent to be ready</CardTitle>}
+      ></GameCard>
+    </GameContainer>
   );
 }
 
@@ -231,17 +236,22 @@ function WaitForOtherPlayerToReconnect() {
   useResumeGame();
 
   return (
-    <GameCard
-      header={<CardTitle>Waiting for opponent to reconnect</CardTitle>}
-    ></GameCard>
+    <GameContainer>
+      <GameCard
+        header={<CardTitle>Waiting for opponent to reconnect</CardTitle>}
+      ></GameCard>
+    </GameContainer>
   );
 }
 
+// todo: merge into other component
 function OtherPlayerLobbyStatus({
   params,
 }: {
   params: { opponentName: string; opponentStatus: "none" | "joined" | "ready" };
 }) {
+  // todo: introduce state in the room that shows the opponent status
+
   const statusToText = {
     none: <div className="text-gray-400">Joining</div>,
     joined: <div>Joined</div>,
@@ -258,8 +268,12 @@ function OtherPlayerLobbyStatus({
 }
 
 function CalculatingScore() {
+  // todo: show the results
+  // todo: provide forward button to score page
   return (
-    <GameCard header={<CardTitle>Calculating Score</CardTitle>}></GameCard>
+    <GameContainer>
+      <GameCard header={<CardTitle>Calculating Score</CardTitle>}></GameCard>
+    </GameContainer>
   );
 }
 

@@ -77,6 +77,19 @@ export function createTimerSlice() {
       (state) => state?.game.mutable.gameSpecific?.logic.timer,
       set,
     );
+    // cleanup
+    api.subscribe(
+      (state) => state?.game.mutable.room?.outcome !== undefined,
+      (gameEndEvent) => {
+        if (gameEndEvent === false) return;
+        originalSet({
+          timer: {
+            visible: [],
+            all: {},
+          },
+        });
+      },
+    );
 
     return {
       visible: [],

@@ -35,7 +35,12 @@ function ShowResult() {
   const result = useStore(
     (state) => state.game.mutable.gameSpecific?.logic.roundResult,
   );
-  const score = useStore(state => state.game.mutable.gameSpecific?.logic.score)
+  const score = useStore(
+    (state) => state.game.mutable.gameSpecific?.logic.score,
+  );
+
+  // todo: change `youWon` to `yourResult`, as there is a "tie" value missing
+
   return (
     <GameCard
       header={<CardTitle>{result?.youWon ? "You Won" : "You lost"}</CardTitle>}
@@ -61,7 +66,9 @@ function WaitForOpponentToChoose() {
 }
 
 function SelectionContainer() {
-  const chooseItem = useStore(state => state.game.mutable.gameSpecific?.actions.chooseItem)
+  const chooseItem = useStore(
+    (state) => state.game.mutable.gameSpecific?.actions.chooseItem,
+  );
 
   if (chooseItem === undefined)
     return (

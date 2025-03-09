@@ -182,6 +182,10 @@ export function createConnectionViewSlice(
         },
       } satisfies DeepPartial<ConnectionPlayerView>;
 
+      /** todo: found case where the disconnect timeout is shown, even though the startTimeout should be shown instead
+       *  was some combination like of client1 already ready and the client2 reconnecting
+       */
+
       if (someOneDisconnected && playerState.ready && opponentState.ready) {
         // game started and one player disconnected
         return {
