@@ -1,9 +1,18 @@
 "use client";
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { createGameSlice, type GameSlice } from "./store/game-slice";
-import { createStore, useStore as zustandUseStore } from "zustand";
 import { useAuth } from "@clerk/nextjs";
-type Store = GameSlice;
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { createStore, useStore as zustandUseStore } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
+import { createGameSlice } from "./store/game-slice";
+import { createTimerSlice } from "./store/timer-slice";
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  interface ClientStore {}
+
+  type ClientStoreInstance = ReturnType<typeof createStore<ClientStore>>;
+}
+
 type StoreInstance = ReturnType<typeof storeFactory>;
 
 type StoreProviderProps = {
@@ -11,9 +20,12 @@ type StoreProviderProps = {
 };
 
 function storeFactory(isSignedIn: () => boolean, wsUrl?: string) {
-  const store = createStore<Store>()((...a) => ({
-    ...createGameSlice(isSignedIn, wsUrl)(...a),
-  }));
+  const store = createStore<ClientStore>()(
+    subscribeWithSelector((...a) => ({
+      game: createGameSlice(isSignedIn, wsUrl)(...a),
+      timer: createTimerSlice()(...a),
+    })),
+  );
   return store;
 }
 
@@ -48,7 +60,7 @@ export function useStoreReady() {
   return store !== undefined;
 }
 
-export function useStore<T>(selector: (state: Store) => T): T {
+export function useStore<T>(selector: (state: ClientStore) => T): T {
   const { store } = useContext(StoreContext);
   if (store === undefined) {
     throw new Error(

@@ -1,13 +1,14 @@
 import "~/styles/globals.css";
 
-import { Toaster } from "~/components/ui/toaster";
+import { ClerkProvider } from "@clerk/nextjs";
 import { GeistSans } from "geist/font/sans";
 import { type Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
-import { StoreProvider } from "~/provider/store-provider";
+import { Toaster } from "~/components/ui/toaster";
 import { TooltipProvider } from "~/components/ui/tooltip";
-import JoinRunningGame from "./_components/join-running-fight";
+import { QueryProvider } from "~/provider/query-provider";
+import { StoreProvider } from "~/provider/store-provider";
 import Header from "./_components/header";
+import JoinRunningGame from "./_components/join-running-fight";
 import { SignedIn } from "./_components/signed-in";
 
 export const metadata: Metadata = {
@@ -21,20 +22,22 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className={`${GeistSans.variable}`}>
-        <body>
-          <TooltipProvider>
-            <StoreProvider>
-              <SignedIn>
-                <JoinRunningGame />
-              </SignedIn>
-              <Header />
-              {children}
-              <Toaster />
-            </StoreProvider>
-          </TooltipProvider>
-        </body>
-      </html>
+      <QueryProvider>
+        <html lang="en" className={`${GeistSans.variable}`}>
+          <body>
+            <TooltipProvider>
+              <StoreProvider>
+                <SignedIn>
+                  <JoinRunningGame />
+                </SignedIn>
+                <Header />
+                {children}
+                <Toaster />
+              </StoreProvider>
+            </TooltipProvider>
+          </body>
+        </html>
+      </QueryProvider>
     </ClerkProvider>
   );
 }

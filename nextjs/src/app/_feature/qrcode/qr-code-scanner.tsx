@@ -18,8 +18,7 @@ export function QrCodeScanner({
           return;
         }
         try {
-          const url = new URL(rawUrl, "http://base.url");
-          const userId = url.searchParams.get("userId");
+          const userId = extractUserIdFromUrl(rawUrl);
           if (!userId) {
             console.info("no userId in URL", rawUrl);
             return;
@@ -33,4 +32,9 @@ export function QrCodeScanner({
       constraints={{ facingMode: "environment" }}
     />
   );
+}
+
+export function extractUserIdFromUrl(rawUrl: string) {
+  const url = new URL(rawUrl, "http://base.url");
+  return url.searchParams.get("userId");
 }

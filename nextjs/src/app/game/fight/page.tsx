@@ -3,10 +3,12 @@
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
-import { FaGamepad, FaSpinner } from "react-icons/fa";
+import React, { useEffect } from "react";
+import { FaGamepad } from "react-icons/fa";
+import { MdOutlineTimer } from "react-icons/md";
 import { RxCross2 } from "react-icons/rx";
-import { RockPaperScissorsGame } from "~/app/_game/rock-paper-scissors";
+import { RockPaperScissorsGame } from "~/app/game/fight/_components/rock-paper-scissors";
+import { Alert, AlertDescription, AlertTitle } from "~/components/ui/alert";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,10 +22,8 @@ import {
 } from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import { CardTitle } from "~/components/ui/card";
-import { Skeleton } from "~/components/ui/skeleton";
-import { GameCard, GameContentLoading } from "../../_game/base";
-import { GameName } from "./_components/game-name";
 import { useStore } from "~/provider/store-provider";
+import { GameCard, GameContentLoading } from "./_components/base";
 
 export default function CurrentGame() {
   const { user, isLoaded: userLoaded } = useUser();
@@ -51,8 +51,40 @@ export default function CurrentGame() {
     case "game-ended":
       // it auto forwards to a different page, so no need to show it here
       return <CalculatingScore />;
-    case "game-paused"
+    case "game-paused":
+      return <GamePaused />;
+    case "game":
+      return <RunningGame />;
   }
+}
+
+function GamePaused() {
+  return <>Game Paused</>;
+}
+
+function RunningGame() {
+  const gameType = useStore((state) => state.game.mutable.gameSpecific?.type);
+
+  let game: React.ReactNode | undefined = undefined;
+  switch (gameType) {
+    case "rock-paper-scissors":
+      game = <RockPaperScissorsGame />;
+      break;
+    // case "ordered-memory":
+    //   game = <OrderedMemoryGame />;
+    //   break;
+    // case "typing":
+    //   game = <TypingGame />;
+    //   break;
+  }
+
+  if (game === undefined || gameType === undefined) {
+    return <>Impossible state. Please reload the page.</>;
+  }
+
+  return (
+    <GameContainer title={GameTypeToTitleMap[gameType]}>{game}</GameContainer>
+  );
 }
 
 function JoiningGame() {
@@ -64,118 +96,19 @@ function JoiningGame() {
   return <GameLoadingScreen />;
 }
 
-function GameLobby({
-  params,
-}: {
-  params: {
-    gameName: KnownGames;
-    fightId: string;
-    userId: string;
-  };
-}) {
-  const [lastEvent, setLastEvent] = useState<ServerEvent>();
-  const [gameEnded, setGameEnded] = useState(false);
-  const { handleEvent } = useTimers();
-
-  api.lobby.onGameAction.useSubscription(params, {
-    onData(data) {
-      switch (data.event) {
-        case "start-timer":
-          return handleEvent(data.event, data.data, "Game start timeout");
-        case "disconnect-timer":
-          return handleEvent(data.event, data.data, "Disconnect Timeout");
-        default:
-          setLastEvent(data);
-
-          if (data.event === "game-ended" || data.event === "game-aborted") {
-            // make sure that the end screen does not disappear because of random event
-            setGameEnded(true);
-          }
-      }
-    },
-    enabled: !gameEnded,
-  });
-  if (!lastEvent) {
-    return <GameLoadingScreen />;
-  }
-
-  // Render Lobby
-  let lobby: React.ReactNode | undefined = undefined;
-  if (lastEvent.event !== "game-in-progress") {
-    switch (lastEvent.view) {
-      case "none":
-        lobby = <GameContentLoading />;
-        break;
-      case "joined":
-      case "ready":
-        const joinedData = lastEvent.data as JoinedEvent["data"];
-        const showReadyScreen = lastEvent.view === "joined";
-        lobby = (
-          <>
-            {showReadyScreen ? <ReadyScreen /> : <WaitForOtherPlayer />}
-            <OtherPlayerLobbyStatus params={joinedData} />{" "}
-          </>
-        );
-        break;
-      case "game-ended":
-        // info: the auto join feature will transition the player to the end screen
-        lobby = <CalculatingScore />;
-        break;
-      // todo: add game-halted view
-    }
-  }
-
-  if (lobby !== undefined) {
-    return (
-      <GameContainer header={<GameName gameName={params.gameName} />}>
-        {lobby}
-      </GameContainer>
-    );
-  }
-
-  // Render Game
-  let game: React.ReactNode | undefined = undefined;
-  switch (params.gameName) {
-    case "rock-paper-scissors":
-      game = <RockPaperScissorsGame params={params} />;
-      break;
-    case "ordered-memory":
-      game = <OrderedMemoryGame params={params} />;
-      break;
-    case "typing":
-      game = <TypingGame params={params} />;
-      break;
-  }
-
-  if (game !== undefined) {
-    return (
-      <GameContainer header={<GameName gameName={params.gameName} />}>
-        {game}
-      </GameContainer>
-    );
-  }
-
-  // This should only happen in an error case
-  return (
-    <GameContainer header={"Game not implemented"}>
-      The game {params.gameName} has no implementation
-    </GameContainer>
-  );
-}
-
 function GameContainer({
   param,
-  header,
+  title,
   children,
 }: {
   children: React.ReactNode;
-  header: React.ReactNode;
+  title: string;
   param?: {
     noGameRunning?: boolean;
   };
 }) {
   const router = useRouter();
-  const { timers } = useTimers();
+  const timers = useStore((state) => state.timer.visible);
 
   const alertLeave = (
     <AlertDialog>
@@ -207,13 +140,13 @@ function GameContainer({
     <>
       <header className="flex h-14 w-full items-center justify-between px-4">
         <div>{/* empty so that the next element is in the center */}</div>
-        {header}
+        {title}
         {(param?.noGameRunning ?? true) ? leave : alertLeave}
       </header>
       <main className="flex h-full flex-col px-4">
         <section className="flex flex-row gap-4">
-          {(timers ? [...timers.values()] : []).map((timer) => (
-            <Timer key={timer.id} params={{ id: timer.id }} />
+          {timers.map((timer) => (
+            <Timer key={timer.name} timer={timer} />
           ))}
         </section>
 
@@ -225,9 +158,21 @@ function GameContainer({
   );
 }
 
+function Timer({ timer }: { timer: ClientStore["timer"]["visible"][number] }) {
+  return (
+    <Alert>
+      <AlertTitle className="flex gap-4">
+        <MdOutlineTimer />
+        <span>{timer.formattedTime}</span>
+      </AlertTitle>
+      <AlertDescription>{timer.name}</AlertDescription>
+    </Alert>
+  );
+}
+
 function GameLoadingScreen() {
   return (
-    <GameContainer header={<Skeleton className="h-4 w-1/2" />}>
+    <GameContainer title="Loading...">
       <GameContentLoading />
     </GameContainer>
   );
@@ -235,7 +180,7 @@ function GameLoadingScreen() {
 
 function NoFightOngoing() {
   return (
-    <GameContainer header={"No game"} param={{ noGameRunning: true }}>
+    <GameContainer title="No game" param={{ noGameRunning: true }}>
       <GameCard
         header={
           <CardTitle className="flex gap-4">
@@ -312,3 +257,10 @@ function CalculatingScore() {
     <GameCard header={<CardTitle>Calculating Score</CardTitle>}></GameCard>
   );
 }
+
+const GameTypeToTitleMap = {
+  "rock-paper-scissors": "Rock Paper Scissors",
+} satisfies Record<
+  NonNullable<ClientStore["game"]["mutable"]["gameSpecific"]>["type"],
+  string
+>;

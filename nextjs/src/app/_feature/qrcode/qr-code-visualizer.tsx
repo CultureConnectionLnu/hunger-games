@@ -1,6 +1,7 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
+import { useEffect, useState } from "react";
 
 import QRCode from "react-qr-code";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -12,9 +13,19 @@ import {
 
 export function QrCode({ route, text }: { route: string; text: string }) {
   const { isLoaded, user } = useUser();
-  const url = new URL(route, window.location.origin);
-  url.searchParams.set("userId", user?.id ?? "");
-  const currentUrl = url.toString();
+  const [scanUrl, setScanUrl] = useState<string>("");
+
+  useEffect(() => {
+    const origin = globalThis.location?.origin;
+    if (origin === undefined) {
+      // this means its running on the server
+      return;
+    }
+
+    const url = new URL(route, origin);
+    url.searchParams.set("userId", user?.id ?? "");
+    setScanUrl(url.toString());
+  }, [route, user?.id]);
 
   return (
     <div className="relative mx-auto grid w-full max-w-xs items-center gap-2">
@@ -24,9 +35,9 @@ export function QrCode({ route, text }: { route: string; text: string }) {
             <div className="absolute left-0 top-0 aspect-square w-16 rounded-tl-lg bg-gray-100" />
             <div className="absolute right-0 top-0 aspect-square w-16 rounded-tr-lg bg-gray-100" />
             <div className="absolute bottom-0 left-0 aspect-square w-16 rounded-bl-lg bg-gray-100" />
-            <Skeleton className="absolute left-0 top-0 aspect-square w-12 rounded-none rounded-tl-lg  bg-white" />
-            <Skeleton className="absolute right-0 top-0 aspect-square w-12 rounded-none rounded-tr-lg  bg-white" />
-            <Skeleton className="absolute bottom-0 left-0 aspect-square w-12 rounded-none rounded-bl-lg  bg-white" />
+            <Skeleton className="absolute left-0 top-0 aspect-square w-12 rounded-none rounded-tl-lg bg-white" />
+            <Skeleton className="absolute right-0 top-0 aspect-square w-12 rounded-none rounded-tr-lg bg-white" />
+            <Skeleton className="absolute bottom-0 left-0 aspect-square w-12 rounded-none rounded-bl-lg bg-white" />
           </Skeleton>
         </Skeleton>
       ) : (
@@ -34,9 +45,9 @@ export function QrCode({ route, text }: { route: string; text: string }) {
           <div className="flex aspect-square w-full flex-col items-center justify-center overflow-hidden">
             <Tooltip>
               <TooltipTrigger>
-                <QRCode value={currentUrl} />
+                <QRCode value={scanUrl} />
               </TooltipTrigger>
-              <TooltipContent>{currentUrl}</TooltipContent>
+              <TooltipContent>{scanUrl}</TooltipContent>
             </Tooltip>
           </div>
           <p className="flex flex-col items-center text-center text-sm font-medium not-italic text-gray-500">

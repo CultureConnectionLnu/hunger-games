@@ -1,11 +1,17 @@
-import { type StateCreator } from "zustand";
 import { type GameType } from "~/server/stores/games/game-factory";
 import { type RockPaperScissorsItem } from "~/server/stores/games/rock-paper-scissors-slice";
 import { type WsMessageToClient } from "~/server/ws/web-socket-connection";
 import { type AcceptedAny } from "~/type-utils";
 import { WSClient } from "./ws-client";
+import { createSlice } from "./types";
 
 // #region types
+
+declare global {
+  interface ClientStore {
+    game: GameSlice;
+  }
+}
 
 type GetType<
   Message extends WsMessageToClient,
@@ -23,28 +29,26 @@ type RoomMessage = GetType<WsMessageToClient, "game-room">["data"];
 type GameLogicMessage = GetType<WsMessageToClient, "game-logic">;
 
 export interface GameSlice {
-  game: {
-    mutable: {
-      room?: RoomMessage;
-      gameSpecific?: GameSpecific;
-      errors: ErrorMessage[];
-      gameIsOngoing: boolean;
-      connected: boolean;
-    };
-    joinGame: WsCall;
-    pauseGame: WsCall;
-    resumeGame: WsCall;
-    markReady: WsCall;
-    /**
-     * This will cleanup the game slice and will prohibit further calls to the WebSocket.
-     * Therefore rendering the game slice unusable.
-     */
-    cleanup: () => void;
-    /**
-     * Remove an error from the error list.
-     */
-    ackError: (id: string) => void;
+  mutable: {
+    room?: RoomMessage;
+    gameSpecific?: GameSpecific;
+    errors: ErrorMessage[];
+    gameIsOngoing: boolean;
+    connected: boolean;
   };
+  joinGame: WsCall;
+  pauseGame: WsCall;
+  resumeGame: WsCall;
+  markReady: WsCall;
+  /**
+   * This will cleanup the game slice and will prohibit further calls to the WebSocket.
+   * Therefore rendering the game slice unusable.
+   */
+  cleanup: () => void;
+  /**
+   * Remove an error from the error list.
+   */
+  ackError: (id: string) => void;
 }
 
 type WsCallResult =
@@ -89,11 +93,9 @@ export function createGameSlice(
   isLoggedIn: () => boolean,
   url?: string,
   wsFactory?: (url: string) => NonNullable<WSClient["ws"]>,
-): StateCreator<GameSlice> {
-  return function gameSlice(originalSet, get) {
-    const set = function setGameSlice(
-      mutation: Partial<GameSlice["game"]["mutable"]>,
-    ) {
+) {
+  return createSlice<GameSlice>(function gameSlice(originalSet, get) {
+    const set = function setGameSlice(mutation: Partial<GameSlice["mutable"]>) {
       originalSet((state) => ({
         game: {
           ...state.game,
@@ -182,70 +184,66 @@ export function createGameSlice(
     );
 
     return {
-      game: {
-        mutable: {
-          gameIsOngoing: false,
-          connected: false,
-          errors: [],
-        },
-        joinGame: () => {
-          const error = callGuard();
-          if (error !== undefined) {
-            return error;
-          }
-
-          ws.send({
-            type: "connect-to-fight",
-          });
-        },
-
-        pauseGame: () => {
-          const error = callGuard();
-          if (error !== undefined) {
-            return error;
-          }
-
-          ws.send({
-            type: "pause-game",
-          });
-        },
-
-        resumeGame: () => {
-          const error = callGuard();
-          if (error !== undefined) {
-            return error;
-          }
-
-          ws.send({
-            type: "resume-game",
-          });
-        },
-
-        markReady: () => {
-          const error = callGuard();
-          if (error !== undefined) {
-            return error;
-          }
-
-          ws.send({
-            type: "mark-ready",
-          });
-        },
-
-        cleanup: () => {
-          ws.close();
-        },
-
-        ackError: (id: string) => {
-          set({
-            errors: get().game.mutable.errors.filter(
-              (error) => error.id !== id,
-            ),
-          });
-        },
+      mutable: {
+        gameIsOngoing: false,
+        connected: false,
+        errors: [],
       },
-    } satisfies GameSlice;
-  };
+      joinGame: () => {
+        const error = callGuard();
+        if (error !== undefined) {
+          return error;
+        }
+
+        ws.send({
+          type: "connect-to-fight",
+        });
+      },
+
+      pauseGame: () => {
+        const error = callGuard();
+        if (error !== undefined) {
+          return error;
+        }
+
+        ws.send({
+          type: "pause-game",
+        });
+      },
+
+      resumeGame: () => {
+        const error = callGuard();
+        if (error !== undefined) {
+          return error;
+        }
+
+        ws.send({
+          type: "resume-game",
+        });
+      },
+
+      markReady: () => {
+        const error = callGuard();
+        if (error !== undefined) {
+          return error;
+        }
+
+        ws.send({
+          type: "mark-ready",
+        });
+      },
+
+      cleanup: () => {
+        ws.close();
+      },
+
+      ackError: (id: string) => {
+        set({
+          errors: get().game.mutable.errors.filter((error) => error.id !== id),
+        });
+      },
+    };
+  });
 }
 
 // #endregion
