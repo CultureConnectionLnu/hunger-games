@@ -59,15 +59,8 @@ export default function CurrentGame() {
 }
 
 function GamePaused() {
-  const resumeGame = useStore((state) => state.game.resumeGame);
-
-  useEffect(() => {
-    resumeGame();
-    // we only want to call this a single time upon mounting
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return <>Game Paused</>;
+  useResumeGame();
+  return <GameContainer>Game Paused</GameContainer>;
 }
 
 function RunningGame() {
@@ -225,6 +218,8 @@ function WaitForOtherPlayerToJoin() {
 }
 
 function WaitForOtherPlayerToReady() {
+  useResumeGame();
+
   return (
     <GameCard
       header={<CardTitle>Waiting for opponent to be ready</CardTitle>}
@@ -233,6 +228,8 @@ function WaitForOtherPlayerToReady() {
 }
 
 function WaitForOtherPlayerToReconnect() {
+  useResumeGame();
+
   return (
     <GameCard
       header={<CardTitle>Waiting for opponent to reconnect</CardTitle>}
@@ -272,3 +269,13 @@ const GameTypeToTitleMap = {
   NonNullable<ClientStore["game"]["mutable"]["gameSpecific"]>["type"],
   string
 >;
+
+function useResumeGame() {
+  const resumeGame = useStore((state) => state.game.resumeGame);
+
+  useEffect(() => {
+    resumeGame();
+    // we only want to call this a single time upon mounting
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}

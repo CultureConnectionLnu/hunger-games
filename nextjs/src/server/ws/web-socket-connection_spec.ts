@@ -10,7 +10,6 @@ import {
   setupServer,
   setupWebSocketServer,
 } from "../testing/helper";
-import { it } from "node:test";
 
 export function webSocketConnectionTests() {
   describe(
@@ -334,7 +333,8 @@ export function webSocketConnectionTests() {
           );
 
           const reconnectedClient2 = await createClient("player2");
-          reconnectedClient2.getState().game.joinGame();
+          reconnectedClient2.getState().game.resumeGame();
+
           await expectPolling(
             () =>
               reconnectedClient2.getState().game.mutable.room?.showView ===
@@ -386,6 +386,56 @@ export function webSocketConnectionTests() {
           await expectTimerRunning(
             () =>
               client1.getState().game.mutable.room!.timer.otherPlayerDisconnect,
+          );
+        });
+
+        test("should continue to wait for other player to click ready after reconnect", async () => {
+          const { createClient } = testSetup(serverGetters);
+          const client1 = await createClient("player1");
+          const client2 = await createClient("player2");
+
+          await service.activeGames.createNewGame(
+            "1",
+            "rock-paper-scissors",
+            [testUserMap.player1, testUserMap.player2],
+            NOOP,
+          );
+
+          await waitFor(() => client1.getState().game.mutable.gameIsOngoing);
+          await waitFor(() => client2.getState().game.mutable.gameIsOngoing);
+
+          client1.getState().game.joinGame();
+          client2.getState().game.joinGame();
+
+          await waitFor(
+            () =>
+              client1.getState().game.mutable.room?.showView === "ready-button",
+          );
+          await waitFor(
+            () =>
+              client2.getState().game.mutable.room?.showView === "ready-button",
+          );
+
+          client1.getState().game.markReady();
+          client1.getState().game.cleanup();
+
+          await waitFor(
+            () =>
+              client2.getState().game.mutable.room?.showView ===
+              "waiting-for-other-player-reconnect",
+          );
+
+          const reconnectedClient1 = await createClient("player1");
+          reconnectedClient1.getState().game.resumeGame();
+
+          await expectPolling(
+            () =>
+              reconnectedClient1.getState().game.mutable.room?.showView ===
+              "waiting-for-other-player-ready",
+          );
+          await expectPolling(
+            () =>
+              client2.getState().game.mutable.room?.showView === "ready-button",
           );
         });
       });

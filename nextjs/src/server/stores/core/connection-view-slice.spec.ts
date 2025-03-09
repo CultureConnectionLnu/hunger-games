@@ -521,7 +521,7 @@ describe("connection view slice", () => {
 
         expect(
           getState().connectedView.mutable.player1.timer.startTimeout.visible,
-        ).toBe(true);
+        ).toBe(false);
         expect(
           getState().connectedView.mutable.player1.timer.otherPlayerDisconnect
             .visible,
