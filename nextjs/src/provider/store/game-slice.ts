@@ -151,11 +151,12 @@ export function createGameSlice(
             },
             gameIsOngoing: true,
           });
-          if (message.data.roundResult !== undefined) {
-            set({
-              gameIsOngoing: false,
-            });
-          }
+          // todo: introduce unique event to stop the game
+          // if (message.data.roundResult !== undefined) {
+          //   set({
+          //     gameIsOngoing: false,
+          //   });
+          // }
           return;
         case "join-game":
           set({

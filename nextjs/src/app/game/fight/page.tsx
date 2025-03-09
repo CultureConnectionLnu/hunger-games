@@ -59,6 +59,14 @@ export default function CurrentGame() {
 }
 
 function GamePaused() {
+  const resumeGame = useStore((state) => state.game.resumeGame);
+
+  useEffect(() => {
+    resumeGame();
+    // we only want to call this a single time upon mounting
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return <>Game Paused</>;
 }
 

@@ -1,18 +1,16 @@
+import { Temporal } from "temporal-polyfill";
 import { describe, expect, test } from "vitest";
 import { WebSocket } from "ws";
-import { createStore } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
-import { createGameSlice, type GameSlice } from "~/provider/store/game-slice";
+import { storeFactory } from "~/provider/store-provider";
 import { testUserMap } from "../auth/clerk";
 import { initServices, service } from "../service";
 import { type ConnectionPlayerView } from "../stores/core/connection-view-slice";
-import { type SubscribeStore } from "../stores/core/zustand-helper";
 import {
   getTestJwt,
   setupServer,
   setupWebSocketServer,
 } from "../testing/helper";
-import { Temporal } from "temporal-polyfill";
+import { it } from "node:test";
 
 export function webSocketConnectionTests() {
   describe(
@@ -429,7 +427,7 @@ export function webSocketConnectionTests() {
           await expectPolling(
             () => client2.getState().game.mutable.room?.showView === "game",
           );
-          return { client1, client2 };
+          return { client1, client2, createClient };
         }
 
         test("should be in choosing view", async () => {
@@ -525,6 +523,61 @@ export function webSocketConnectionTests() {
             ),
           ]);
         });
+
+        describe("disconnect", () => {
+          test("should pause the game", async () => {
+            const { client1, client2 } = await rpsTestSetup();
+            client2.getState().game.cleanup();
+
+            await expectPolling(
+              () =>
+                client1.getState().game.mutable.room?.showView ===
+                "game-paused",
+            );
+          });
+
+          test("should not resume game when still connected player calls resume", async () => {
+            const { client1, client2 } = await rpsTestSetup();
+            client2.getState().game.cleanup();
+
+            await waitFor(
+              () =>
+                client1.getState().game.mutable.room?.showView ===
+                "game-paused",
+            );
+
+            client1.getState().game.resumeGame();
+
+            await expectPolling(
+              () =>
+                client1.getState().game.mutable.room?.showView ===
+                "game-paused",
+            );
+          });
+
+          test("should resume the game", async () => {
+            const { client1, client2, createClient } = await rpsTestSetup();
+            client2.getState().game.cleanup();
+
+            await waitFor(
+              () =>
+                client1.getState().game.mutable.room?.showView ===
+                "game-paused",
+            );
+
+            const reconnectedClient2 = await createClient("player2");
+            reconnectedClient2.getState().game.resumeGame();
+
+            await expectPolling(
+              () =>
+                reconnectedClient2.getState().game.mutable.room?.showView ===
+                "game",
+            );
+            await expectPolling(
+              () => client1.getState().game.mutable.room?.showView === "game",
+            );
+          });
+        });
       });
 
       describe("errors", () => {
@@ -595,32 +648,27 @@ function testSetup(serverGetters: ReturnType<typeof setupServer>) {
     createClient: async (playerName: keyof typeof testUserMap) => {
       const token = await getTestJwt(playerName);
       const url = `ws://localhost:${serverGetters.getPort()}`;
-      const store = createStore<GameSlice>()(
-        subscribeWithSelector((...a) => ({
-          ...createGameSlice(
-            () => true,
-            url,
-            (url) =>
-              new WebSocket(url, {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              }),
-          )(...a),
-        })),
+      const store = storeFactory(
+        () => true,
+        url,
+        (url) =>
+          new WebSocket(url, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
       );
-      const subStore = store as SubscribeStore<GameSlice>;
 
       const client = {
-        getState: () => subStore.getState(),
+        getState: () => store.getState(),
       };
 
       return new Promise<typeof client>((resolve) => {
-        if (subStore.getState().game.mutable.connected) {
+        if (store.getState().game.mutable.connected) {
           return resolve(client);
         }
 
-        const unSub = subStore.subscribe(
+        const unSub = store.subscribe(
           (state) => state.game.mutable.connected,
           (connected) => {
             if (connected) {

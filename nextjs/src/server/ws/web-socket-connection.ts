@@ -296,6 +296,8 @@ class PingPongHandler {
   }
 
   public start() {
+  // todo: fix implementation
+  return;
     this.sendPing();
     this.pingTimerId = setInterval(() => {
       this.sendPing();

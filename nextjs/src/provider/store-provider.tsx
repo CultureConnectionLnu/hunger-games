@@ -2,9 +2,10 @@
 import { useAuth } from "@clerk/nextjs";
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { createStore, useStore as zustandUseStore } from "zustand";
-import { subscribeWithSelector } from "zustand/middleware";
+import { devtools, subscribeWithSelector } from "zustand/middleware";
 import { createGameSlice } from "./store/game-slice";
 import { createTimerSlice } from "./store/timer-slice";
+import * as env from "~/env";
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -19,12 +20,17 @@ type StoreProviderProps = {
   store?: StoreInstance;
 };
 
-function storeFactory(isSignedIn: () => boolean, wsUrl?: string) {
+export function storeFactory(...params: Parameters<typeof createGameSlice>) {
+  const noopDevtools = ((x) => x) as typeof devtools;
+  const conditionalDevtools =
+    env.env.NEXT_PUBLIC_NODE_ENV === "development" ? devtools : noopDevtools;
   const store = createStore<ClientStore>()(
-    subscribeWithSelector((...a) => ({
-      game: createGameSlice(isSignedIn, wsUrl)(...a),
-      timer: createTimerSlice()(...a),
-    })),
+    conditionalDevtools(
+      subscribeWithSelector((...a) => ({
+        game: createGameSlice(...params)(...a),
+        timer: createTimerSlice()(...a),
+      })),
+    ),
   );
   return store;
 }
