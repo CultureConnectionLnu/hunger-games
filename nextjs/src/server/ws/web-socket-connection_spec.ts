@@ -59,7 +59,7 @@ export function webSocketConnectionTests() {
           expect(client.getState().game.mutable.gameIsOngoing).toBe(false);
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [clerkTesting.testUserMap.player1, "whatever"],
             NOOP,
@@ -77,7 +77,7 @@ export function webSocketConnectionTests() {
           const client3 = await createClient("player3");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [
               clerkTesting.testUserMap.player1,
@@ -101,7 +101,7 @@ export function webSocketConnectionTests() {
           const { createClient } = testSetup(serverGetters);
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [clerkTesting.testUserMap.player1, "whatever"],
             NOOP,
@@ -122,7 +122,7 @@ export function webSocketConnectionTests() {
           const client2 = await createClient("player2");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [
               clerkTesting.testUserMap.player1,
@@ -148,7 +148,7 @@ export function webSocketConnectionTests() {
           const client2 = await createClient("player2");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [
               clerkTesting.testUserMap.player1,
@@ -182,7 +182,7 @@ export function webSocketConnectionTests() {
           const client2 = await createClient("player2");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [
               clerkTesting.testUserMap.player1,
@@ -222,7 +222,7 @@ export function webSocketConnectionTests() {
           const client1 = await createClient("player1");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [
               clerkTesting.testUserMap.player1,
@@ -253,7 +253,7 @@ export function webSocketConnectionTests() {
             startTimeout: Temporal.Duration.from({ milliseconds: 250 }),
           });
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [clerkTesting.testUserMap.player1, "whatever"],
             NOOP,
@@ -280,7 +280,7 @@ export function webSocketConnectionTests() {
           const client2 = await createClient("player2");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [
               clerkTesting.testUserMap.player1,
@@ -320,7 +320,7 @@ export function webSocketConnectionTests() {
           const client2 = await createClient("player2");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [
               clerkTesting.testUserMap.player1,
@@ -374,7 +374,7 @@ export function webSocketConnectionTests() {
           const client2 = await createClient("player2");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [
               clerkTesting.testUserMap.player1,
@@ -419,7 +419,7 @@ export function webSocketConnectionTests() {
           const client2 = await createClient("player2");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [
               clerkTesting.testUserMap.player1,
@@ -474,7 +474,7 @@ export function webSocketConnectionTests() {
           const client2 = await createClient("player2");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [
               clerkTesting.testUserMap.player1,
@@ -673,7 +673,7 @@ export function webSocketConnectionTests() {
           const client = await createClient("player1");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [clerkTesting.testUserMap.player1, "whatever"],
             NOOP,
@@ -700,7 +700,7 @@ export function webSocketConnectionTests() {
           const client = await createClient("player1");
 
           await service.activeGames.createNewGame(
-            "1",
+            1,
             "rock-paper-scissors",
             [clerkTesting.testUserMap.player1, "whatever"],
             NOOP,

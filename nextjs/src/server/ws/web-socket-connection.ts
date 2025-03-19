@@ -296,8 +296,8 @@ class PingPongHandler {
   }
 
   public start() {
-  // todo: fix implementation
-  return;
+    // todo: fix implementation
+    return;
     this.sendPing();
     this.pingTimerId = setInterval(() => {
       this.sendPing();
@@ -355,7 +355,7 @@ export type WsMessageToClient =
     }
   | {
       type: "join-game";
-      gameId: string;
+      gameId: number;
       gameType: GameType;
       playerIds: [string, string];
     }

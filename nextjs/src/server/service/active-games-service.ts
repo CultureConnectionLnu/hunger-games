@@ -15,7 +15,7 @@ export type GameEntry = {
     type: K;
     game: GameMap[K];
     playerIds: string[];
-    id: string;
+    id: number;
   };
 }[keyof GameMap];
 
@@ -34,7 +34,7 @@ class ActiveGameService implements Service {
   }
 
   async createNewGame(
-    gameId: string,
+    gameId: number,
     gameType: keyof GameMap,
     players: [string, string],
     onGameComplete: (outcome: GameResult) => Promise<void>,
@@ -46,8 +46,7 @@ class ActiveGameService implements Service {
       type: gameType,
       game,
       playerIds: players,
-      // todo: should come from database
-      id: crypto.randomUUID(),
+      id: gameId,
     } satisfies GameEntry;
     this.games.push(gameEntry);
     this.playerJoinListeners.get(player1Id)?.(gameEntry);

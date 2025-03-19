@@ -3,10 +3,11 @@
 
 import { sql } from "drizzle-orm";
 import {
-  index,
-  integer,
+  pgEnum,
   pgTableCreator,
+  serial,
   timestamp,
+  integer,
   varchar,
 } from "drizzle-orm/pg-core";
 
@@ -18,19 +19,38 @@ import {
  */
 export const createTable = pgTableCreator((name) => `hunger-games_${name}`);
 
-export const posts = createTable(
-  "post",
-  {
-    id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
-    name: varchar("name", { length: 256 }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .default(sql`CURRENT_TIMESTAMP`)
-      .notNull(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).$onUpdate(
-      () => new Date()
-    ),
-  },
-  (example) => ({
-    nameIndex: index("name_idx").on(example.name),
-  })
-);
+const metadata = {
+  createdAt: timestamp("created_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+};
+
+const clerkId = varchar("clerk_id", { length: 255 });
+
+export const matchReason = pgEnum("match_reason", [
+  "ongoing",
+  "game-result",
+  "never-started",
+  "force-stop-game",
+  "other-player-disconnected",
+]);
+export const matchResult = pgEnum("match_result", ["winner", "tie"]);
+
+export const matchGames = pgEnum("match_games", ["rock-paper-scissors"]);
+
+export const match = createTable("match", {
+  id: serial("id").primaryKey(),
+  game: matchGames("game").notNull(),
+  winner: clerkId,
+  reason: matchReason("reason").default("ongoing").notNull(),
+  result: matchResult("result"),
+  ...metadata,
+});
+
+export const userToMatch = createTable("user_to_match", {
+  clerkId,
+  matchId: integer("match_id").references(() => match.id, {
+    onDelete: "cascade",
+  }),
+  ...metadata,
+});
