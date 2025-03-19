@@ -24,6 +24,7 @@ import { Button } from "~/components/ui/button";
 import { CardTitle } from "~/components/ui/card";
 import { useStore } from "~/provider/store-provider";
 import { GameCard, GameContentLoading } from "./_components/base";
+import { useGameName } from "~/app/_feature/useGameName";
 
 export default function CurrentGame() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -104,11 +105,11 @@ function GameContainer({
   const router = useRouter();
   const timers = useStore((state) => state.timer.visible);
   const gameType = useStore((state) => state.game.mutable.gameSpecific?.type);
-  const actualTitle =
-    title ?? (gameType ? GameTypeToTitleMap[gameType] : "Loading...");
+  const gameName = useGameName(gameType);
   const noGameRunning = useStore(
     (state) => state.game.mutable.room?.showView === undefined,
   );
+  const actualTitle = title ?? gameName;
 
   const alertLeave = (
     <AlertDialog>
@@ -276,13 +277,6 @@ function CalculatingScore() {
     </GameContainer>
   );
 }
-
-const GameTypeToTitleMap = {
-  "rock-paper-scissors": "Rock Paper Scissors",
-} satisfies Record<
-  NonNullable<ClientStore["game"]["mutable"]["gameSpecific"]>["type"],
-  string
->;
 
 function useResumeGame() {
   const resumeGame = useStore((state) => state.game.resumeGame);

@@ -30,6 +30,18 @@ export const changeUserRoles = endpoint(
   },
 );
 
+export const getUserName = endpoint(
+  {
+    validation: z.object({
+      userId: z.string(),
+    }),
+  },
+  async ({ userId }) => {
+    const user = await clerk.getUser(userId);
+    return userToName(user);
+  },
+);
+
 export const hasRole = endpoint(
   {
     validation: z.object({ role: rolesSchema }),
@@ -46,4 +58,22 @@ function transformUserToUserView(user: User) {
     lastName: user.lastName,
     roles: user.publicMetadata.roles ?? [],
   };
+}
+
+function userToName(user?: User) {
+  const fallback = "Anonymous User";
+  if (user === undefined) {
+    return fallback;
+  }
+
+  if (user.firstName && user.lastName) {
+    return `${user.firstName} ${user.lastName}`;
+  }
+  if (user.firstName) {
+    return user.firstName;
+  }
+  if (user.username) {
+    return user.username;
+  }
+  return fallback;
 }
