@@ -1,6 +1,6 @@
 import { createServer, type Server } from "http";
 import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
-import { type ClerkSession, clerkTesting, testUserMap } from "../auth/clerk";
+import { type ClerkSession, clerkTesting } from "../auth/clerk";
 import { createWebSocketServer } from "../ws/web-socket-server";
 
 // #region testing hooks
@@ -49,7 +49,9 @@ const tokenCache = new Map<
   }
 >();
 
-export async function getTestJwt(playerName: keyof typeof testUserMap) {
+export async function getTestJwt(
+  playerName: keyof typeof clerkTesting.testUserMap,
+) {
   const cached = tokenCache.get(playerName);
   if (cached !== undefined) {
     if (cached.session.expire_at > Date.now()) {
@@ -58,7 +60,7 @@ export async function getTestJwt(playerName: keyof typeof testUserMap) {
   }
 
   const { session, token } = await clerkTesting.getToken(
-    testUserMap[playerName],
+    clerkTesting.testUserMap[playerName],
   );
   tokenCache.set(playerName, {
     session,

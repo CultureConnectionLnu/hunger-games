@@ -90,6 +90,13 @@ export async function hasRole(role: Roles) {
 
 // #region testing helpers
 
+// only exists in dev environment
+const testUserMap = {
+  player1: `user_2qnxhDypNgu06vQWVLq3c5LIqIW`,
+  player2: `user_2qoSlvCG0zYxqTing8yEFCP7AFq`,
+  player3: `user_2qoSruc5OEJywAgad58mmBT94GL`,
+};
+
 export const clerkTesting = {
   getToken: async (userId: string) => {
     const session = await createNewActiveSession(userId);
@@ -99,13 +106,7 @@ export const clerkTesting = {
     );
     return { token: client.jwt, session };
   },
-};
-
-// only exists in dev environment
-export const testUserMap = {
-  player1: `user_2qnxhDypNgu06vQWVLq3c5LIqIW`,
-  player2: `user_2qoSlvCG0zYxqTing8yEFCP7AFq`,
-  player3: `user_2qoSruc5OEJywAgad58mmBT94GL`,
+  testUserMap,
 };
 
 const clerkSessionSchema = z.object({

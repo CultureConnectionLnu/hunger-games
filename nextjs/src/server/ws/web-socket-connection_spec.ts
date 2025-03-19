@@ -2,7 +2,7 @@ import { Temporal } from "temporal-polyfill";
 import { describe, expect, test } from "vitest";
 import { WebSocket } from "ws";
 import { storeFactory } from "~/provider/store-provider";
-import { testUserMap } from "../auth/clerk";
+import { clerkTesting } from "../auth/clerk";
 import { initServices, service } from "../service";
 import { type ConnectionPlayerView } from "../stores/core/connection-view-slice";
 import {
@@ -61,7 +61,7 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, "whatever"],
+            [clerkTesting.testUserMap.player1, "whatever"],
             NOOP,
           );
 
@@ -79,7 +79,10 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, testUserMap.player2],
+            [
+              clerkTesting.testUserMap.player1,
+              clerkTesting.testUserMap.player2,
+            ],
             NOOP,
           );
 
@@ -100,7 +103,7 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, "whatever"],
+            [clerkTesting.testUserMap.player1, "whatever"],
             NOOP,
           );
 
@@ -121,7 +124,10 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, testUserMap.player2],
+            [
+              clerkTesting.testUserMap.player1,
+              clerkTesting.testUserMap.player2,
+            ],
             NOOP,
           );
 
@@ -144,7 +150,10 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, testUserMap.player2],
+            [
+              clerkTesting.testUserMap.player1,
+              clerkTesting.testUserMap.player2,
+            ],
             NOOP,
           );
 
@@ -175,7 +184,10 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, testUserMap.player2],
+            [
+              clerkTesting.testUserMap.player1,
+              clerkTesting.testUserMap.player2,
+            ],
             NOOP,
           );
 
@@ -212,7 +224,10 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, testUserMap.player2],
+            [
+              clerkTesting.testUserMap.player1,
+              clerkTesting.testUserMap.player2,
+            ],
             NOOP,
           );
 
@@ -240,7 +255,7 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, "whatever"],
+            [clerkTesting.testUserMap.player1, "whatever"],
             NOOP,
           );
 
@@ -253,7 +268,7 @@ export function webSocketConnectionTests() {
           );
           expect(client1.getState().game.mutable.room?.outcome).toEqual({
             result: "win",
-            yourId: testUserMap.player1,
+            yourId: clerkTesting.testUserMap.player1,
             opponentId: "whatever",
             reason: "never-started",
           });
@@ -267,7 +282,10 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, testUserMap.player2],
+            [
+              clerkTesting.testUserMap.player1,
+              clerkTesting.testUserMap.player2,
+            ],
             NOOP,
           );
 
@@ -304,7 +322,10 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, testUserMap.player2],
+            [
+              clerkTesting.testUserMap.player1,
+              clerkTesting.testUserMap.player2,
+            ],
             NOOP,
           );
 
@@ -355,7 +376,10 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, testUserMap.player2],
+            [
+              clerkTesting.testUserMap.player1,
+              clerkTesting.testUserMap.player2,
+            ],
             NOOP,
           );
 
@@ -397,7 +421,10 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, testUserMap.player2],
+            [
+              clerkTesting.testUserMap.player1,
+              clerkTesting.testUserMap.player2,
+            ],
             NOOP,
           );
 
@@ -449,7 +476,10 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, testUserMap.player2],
+            [
+              clerkTesting.testUserMap.player1,
+              clerkTesting.testUserMap.player2,
+            ],
             NOOP,
           );
 
@@ -539,8 +569,8 @@ export function webSocketConnectionTests() {
             youChoose: "rock",
             opponentChoose: "paper",
             youWon: false,
-            yourId: testUserMap.player1,
-            opponentId: testUserMap.player2,
+            yourId: clerkTesting.testUserMap.player1,
+            opponentId: clerkTesting.testUserMap.player2,
           });
         });
 
@@ -645,7 +675,7 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, "whatever"],
+            [clerkTesting.testUserMap.player1, "whatever"],
             NOOP,
           );
           await waitFor(() => client.getState().game.mutable.gameIsOngoing);
@@ -672,7 +702,7 @@ export function webSocketConnectionTests() {
           await service.activeGames.createNewGame(
             "1",
             "rock-paper-scissors",
-            [testUserMap.player1, "whatever"],
+            [clerkTesting.testUserMap.player1, "whatever"],
             NOOP,
           );
           await waitFor(() => client.getState().game.mutable.gameIsOngoing);
@@ -695,7 +725,7 @@ export function webSocketConnectionTests() {
 function testSetup(serverGetters: ReturnType<typeof setupServer>) {
   initServices();
   return {
-    createClient: async (playerName: keyof typeof testUserMap) => {
+    createClient: async (playerName: keyof typeof clerkTesting.testUserMap) => {
       const token = await getTestJwt(playerName);
       const url = `ws://localhost:${serverGetters.getPort()}`;
       const store = storeFactory(
