@@ -11,12 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "~/components/ui/table";
-import { type api } from "~/server/api";
+import type { API, GetOk, UnwrapArray } from "~/lib/utils";
 
-type UnwrapArray<T> = T extends Array<infer U> ? U : T;
-type MatchEntry = UnwrapArray<
-  Awaited<ReturnType<typeof api.game.getAllMyMatches>>
->;
+type MatchEntry = UnwrapArray<GetOk<API["game"]["getAllMyMatches"]>>;
 
 export function MatchHistory({ matches }: { matches: MatchEntry[] }) {
   return (

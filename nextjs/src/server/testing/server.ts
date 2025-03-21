@@ -1,9 +1,6 @@
 import { createServer, type Server } from "http";
 import { afterAll, afterEach, beforeAll, beforeEach } from "vitest";
-import { type ClerkSession, clerkTesting } from "../auth/clerk";
 import { createWebSocketServer } from "../ws/web-socket-server";
-
-// #region testing hooks
 
 export function setupServer() {
   let server: Server;
@@ -37,41 +34,6 @@ export function setupWebSocketServer(
   });
 }
 
-// #endregion
-
-// #region helper functions
-
-const tokenCache = new Map<
-  string,
-  {
-    session: ClerkSession;
-    token: string;
-  }
->();
-
-export async function getTestJwt(
-  playerName: keyof typeof clerkTesting.testUserMap,
-) {
-  const cached = tokenCache.get(playerName);
-  if (cached !== undefined) {
-    if (cached.session.expire_at > Date.now()) {
-      return cached.token;
-    }
-  }
-
-  const { session, token } = await clerkTesting.getToken(
-    clerkTesting.testUserMap[playerName],
-  );
-  tokenCache.set(playerName, {
-    session,
-    token,
-  });
-  return token;
-}
-
-/**
- * Starts an HTTP server on a dynamic port.
- */
 async function startServer() {
   return new Promise<{ server: Server; port: number }>((resolve, reject) => {
     // Create an HTTP server
@@ -99,5 +61,3 @@ async function startServer() {
     });
   });
 }
-
-// #endregion

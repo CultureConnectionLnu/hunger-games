@@ -227,8 +227,20 @@ export type EvaluatedNavigationBarConfig = {
 export type EvaluatedNavigationBarEntry = Omit<NavigationBarEntry, "require">;
 
 export async function getHeaderConfig() {
-  const roles = await clerk.getRolesOfCurrentUser();
+  const rolesResult = await clerk.getRolesOfCurrentUser();
+  if (rolesResult.isErr()) {
+    return {
+      headerConfig: {
+        groups: [],
+      },
+      navConfig: {
+        signedInEntries: [],
+        signedOutEntries: [],
+      },
+    };
+  }
 
+  const roles = rolesResult.value;
   const evalHeaderConfig: EvaluatedHeaderConfig = {
     groups: headerConfig.groups
       .filter((group) => filterRequire(roles, group.require))

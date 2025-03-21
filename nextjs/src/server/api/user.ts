@@ -1,22 +1,41 @@
 "use server";
 
-import { type User } from "@clerk/backend";
-import { clerk, hasRole as clerkHasRole, rolesSchema } from "../auth/clerk";
+import {
+  type ClerkUser,
+  clerk,
+  hasRole as clerkHasRole,
+  rolesSchema,
+} from "../auth/clerk";
 import { endpoint } from "./helper";
 import { z } from "zod";
+import { err, ok } from "neverthrow";
 
-export const getAllUsers = endpoint({ auth: "admin" }, async () =>
-  clerk.getAllUsers().then((res) => res.data.map(transformUserToUserView)),
-);
-export const getAllPlayers = endpoint({ auth: "moderator" }, async () =>
-  clerk
-    .getAllUsers()
-    .then((res) =>
-      res.data
-        .map(transformUserToUserView)
-        .filter((user) => user.roles.includes("player")),
-    ),
-);
+export const getAllUsers = endpoint({ auth: "admin" }, async () => {
+  const result = await clerk.getAllUsers();
+  if (result.isErr()) {
+    return err({
+      code: "INTERNAL_SERVER_ERROR",
+      reason: result.error,
+    });
+  }
+  return ok(result.value.map(transformUserToUserView));
+});
+
+export const getAllPlayers = endpoint({ auth: "moderator" }, async () => {
+  const result = await clerk.getAllUsers();
+  if (result.isErr()) {
+    return err({
+      code: "INTERNAL_SERVER_ERROR",
+      reason: result.error,
+    });
+  }
+  return ok(
+    result.value
+      .map(transformUserToUserView)
+      .filter((user) => user.roles.includes("player")),
+  );
+});
+
 export const changeUserRoles = endpoint(
   {
     validation: z.object({
@@ -26,7 +45,14 @@ export const changeUserRoles = endpoint(
     auth: "admin",
   },
   async ({ userId, roles }) => {
-    await clerk.changeUserRoles(userId, roles);
+    const result = await clerk.changeUserRoles(userId, roles);
+    if (result.isErr()) {
+      return err({
+        code: "INTERNAL_SERVER_ERROR",
+        reason: result.error,
+      });
+    }
+    return ok(result.value);
   },
 );
 
@@ -37,8 +63,14 @@ export const getUserName = endpoint(
     }),
   },
   async ({ userId }) => {
-    const user = await clerk.getUser(userId);
-    return userToName(user);
+    const result = await clerk.getUser(userId);
+    if (result.isErr()) {
+      return err({
+        code: "INTERNAL_SERVER_ERROR",
+        reason: result.error,
+      });
+    }
+    return ok(userToName(result.value));
   },
 );
 
@@ -47,20 +79,19 @@ export const hasRole = endpoint(
     validation: z.object({ role: rolesSchema }),
   },
   async ({ role }) => {
-    return (await clerkHasRole(role)) !== undefined;
+    return ok((await clerkHasRole(role)) !== undefined);
   },
 );
 
-function transformUserToUserView(user: User) {
+function transformUserToUserView(user: ClerkUser) {
   return {
     id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
+    name: userToName(user),
     roles: user.publicMetadata.roles ?? [],
   };
 }
 
-function userToName(user?: User) {
+function userToName(user?: ClerkUser) {
   const fallback = "Anonymous User";
   if (user === undefined) {
     return fallback;

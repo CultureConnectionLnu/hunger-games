@@ -5,11 +5,7 @@ import { storeFactory } from "~/provider/store-provider";
 import { clerkTesting } from "../auth/clerk";
 import { initServices, service } from "../service";
 import { type ConnectionPlayerView } from "../stores/core/connection-view-slice";
-import {
-  getTestJwt,
-  setupServer,
-  setupWebSocketServer,
-} from "../testing/helper";
+import { getTestJwt, setupServer, setupWebSocketServer } from "../testing";
 
 describe(
   "web socket connection",

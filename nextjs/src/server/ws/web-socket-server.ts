@@ -5,36 +5,20 @@ import { WebSocketServer } from "ws";
 import { type AcceptedAny } from "~/type-utils";
 import { clerk } from "../auth/clerk";
 import { WebSocketConnection } from "./web-socket-connection";
+import { err, ok } from "neverthrow";
 
 export function createWebSocketServer(server: Server) {
   const wss = new WebSocketServer({
     noServer: true,
-    // handleProtocols: (protocols) => {
-    //   const supportedProtocol = "secure-ws";
-
-    //   // false: Reject the connection if no supported protocol is found
-    //   return protocols.has(supportedProtocol) ? supportedProtocol : false;
-    // },
   });
-  const connections = new Map<string, WebSocketConnection>();
 
   wss.on("connection", (ws) => {
     // the effort of globally extending the WebSocket type with the `auth` property is not worth it
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const auth: SignedInAuthObject = (ws as AcceptedAny).auth;
-    const existingConnection = connections.get(auth.userId);
-    if (existingConnection) {
-      existingConnection.ws.close();
-      if (existingConnection.ws.readyState === WebSocket.OPEN) {
-        console.log(
-          "Force disconnect another session for the current user",
-          auth.userId,
-        );
-      }
-    }
 
     // don't store the connection so that it can be garbage collected when the client disconnects
-    connections.set(auth.userId, new WebSocketConnection(ws, auth));
+    new WebSocketConnection(ws, auth);
   });
 
   const upgrade = (
@@ -50,20 +34,14 @@ export function createWebSocketServer(server: Server) {
     const request = convertIncomingMessageToRequest(incomingMessage);
     void clerk
       .authenticateRequest(request)
-      .catch((err) => {
-        console.error(
-          `Something went wrong while authenticating the user: ${String(err)}`,
-        );
-        respondUnauthorized(socket);
-      })
-      .then((client) => {
-        if (client === undefined) {
-          // auth already failed
-          return;
+      .then((clientResult) => {
+        if (clientResult.isErr() || clientResult.value === undefined) {
+          return err("UNAUTHORIZED");
         }
+
+        const client = clientResult.value;
         if (client.isSignedIn === false) {
-          respondUnauthorized(socket);
-          return;
+          return err("UNAUTHORIZED");
         }
 
         socket.removeListener("error", onSocketError);
@@ -75,12 +53,24 @@ export function createWebSocketServer(server: Server) {
           (ws as AcceptedAny).auth = auth;
           wss.emit("connection", ws, incomingMessage, auth);
         });
+        return ok(undefined);
       })
-      .catch((err) => {
+      .catch((error) => {
         console.error(
-          `Something went wrong while upgrading the connection to WebSocket: ${String(err)}`,
+          `Something went wrong while upgrading the connection to WebSocket: ${String(error)}`,
         );
-        responseInternalServerError(socket);
+        return err("INTERNAL_SERVER_ERROR");
+      })
+      .then((result) => {
+        if (result.isOk()) {
+          return;
+        }
+        if (result.error === "UNAUTHORIZED") {
+          socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        } else {
+          socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
+        }
+        socket.destroy();
       });
   };
 
@@ -113,14 +103,4 @@ function convertIncomingMessageToRequest(req: IncomingMessage) {
     method,
     headers,
   });
-}
-
-function respondUnauthorized(socket: internal.Duplex) {
-  socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-  socket.destroy();
-}
-
-function responseInternalServerError(socket: internal.Duplex) {
-  socket.write("HTTP/1.1 500 Internal Server Error\r\n\r\n");
-  socket.destroy();
 }

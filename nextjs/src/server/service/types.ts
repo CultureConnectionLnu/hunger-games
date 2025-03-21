@@ -46,3 +46,10 @@ export function registerService<T extends ServiceConstructor<Service>>(
   }
   map[name] = service;
 }
+
+export type TypedEventEmitter<T extends Record<string, unknown>> = {
+  on: <K extends keyof T>(event: K, listener: (value: T[K]) => void) => void;
+  off: <K extends keyof T>(event: K, listener: (value: T[K]) => void) => void;
+  emit: <K extends keyof T>(event: K, value: T[K]) => void;
+  removeAllListeners: () => void;
+};

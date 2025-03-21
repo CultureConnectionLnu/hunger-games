@@ -5,12 +5,9 @@ import { ScrollArea } from "~/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { MatchDialog } from "./match-dialog";
 import { MatchHistory } from "./match";
-import { type api } from "~/server/api";
+import type { API, GetOk, UnwrapArray } from "~/lib/utils";
 
-type UnwrapArray<T> = T extends Array<infer U> ? U : T;
-type MatchEntry = UnwrapArray<
-  Awaited<ReturnType<typeof api.game.getAllMyMatches>>
->;
+type MatchEntry = UnwrapArray<GetOk<API["game"]["getAllMyMatches"]>>;
 
 export function HistoryTabs({
   params,

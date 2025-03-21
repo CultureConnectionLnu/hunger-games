@@ -15,13 +15,9 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import { Skeleton } from "~/components/ui/skeleton";
-import { cn } from "~/lib/utils";
-import { type api } from "~/server/api";
+import { cn, type API, type GetOk, type UnwrapArray } from "~/lib/utils";
 
-type UnwrapArray<T> = T extends Array<infer U> ? U : T;
-type MatchEntry = UnwrapArray<
-  Awaited<ReturnType<typeof api.game.getAllMyMatches>>
->;
+type MatchEntry = UnwrapArray<GetOk<API["game"]["getAllMyMatches"]>>;
 
 export function MatchDialog({ matches }: { matches: MatchEntry[] }) {
   const [matchId, setMatchId] = useSearchParamState("matchId");

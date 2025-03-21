@@ -2,11 +2,12 @@
 
 import { z } from "zod";
 import { clerk } from "../auth/clerk";
-import { ApiError, endpoint } from "./helper";
+import { dbErrorBoundary, endpoint } from "./helper";
 import { service } from "../service";
 import { db } from "../db";
 import { match, userToMatch } from "../db/schema";
 import { eq, sql } from "drizzle-orm";
+import { ok, err } from "neverthrow";
 
 export const startGame = endpoint(
   {
@@ -17,16 +18,40 @@ export const startGame = endpoint(
   },
   async ({ opponentId }, user) => {
     if (user.userId === opponentId) {
-      throw new ApiError("You cannot play against yourself", "BadRequest");
+      return err({
+        code: "BAD_REQUEST",
+        reason: "CANNOT_PLAY_AGAINST_YOURSELF",
+      });
     }
 
-    const opponent = await clerk.getUser(opponentId);
-    if (opponent === undefined) {
-      throw new ApiError("Invalid opponent id", "BadRequest");
+    const opponentResult = await clerk.getUser(opponentId);
+    if (opponentResult.isErr()) {
+      return err({
+        code: "BAD_REQUEST",
+        reason: "OPPONENT_NOT_FOUND",
+      });
     }
+    const opponent = opponentResult.value;
 
     if (clerk.hasRole(opponent, "player") === false) {
-      throw new ApiError("Opponent is not a player", "BadRequest");
+      return err({
+        code: "BAD_REQUEST",
+        reason: "OPPONENT_IS_NOT_A_PLAYER",
+      });
+    }
+
+    if (service.activeGames.getActiveGameOfPlayer(user.userId) !== undefined) {
+      return err({
+        code: "BAD_REQUEST",
+        reason: "YOU_ARE_ALREADY_IN_GAME",
+      });
+    }
+
+    if (service.activeGames.getActiveGameOfPlayer(opponentId) !== undefined) {
+      return err({
+        code: "BAD_REQUEST",
+        reason: "OPPONENT_IS_ALREADY_IN_GAME",
+      });
     }
 
     const players = [user.userId, opponentId] satisfies [string, string];
@@ -34,27 +59,46 @@ export const startGame = endpoint(
 
     const gameType = "rock-paper-scissors";
     const matchId = await db.transaction(async (tx) => {
-      const [newMatch] = await tx
-        .insert(match)
-        .values({ game: gameType })
-        .returning({ id: match.id });
+      const newMatchResult = await dbErrorBoundary(
+        tx.insert(match).values({ game: gameType }).returning({ id: match.id }),
+        "DB_UNABLE_TO_CREATE_NEW_MATCH",
+      );
 
-      if (!newMatch) {
+      if (newMatchResult.isErr()) {
         tx.rollback();
-        throw new ApiError("Failed to create new fight", "InternalServerError");
+        return err(newMatchResult.error);
+      }
+      const [newMatch] = newMatchResult.value;
+      if (newMatch === undefined) {
+        tx.rollback();
+        return err("DB_EMPTY_NEW_MATCH_ID");
       }
 
-      await tx.insert(userToMatch).values(
-        players.map((player) => ({
-          clerkId: player,
-          matchId: newMatch.id,
-        })),
+      const userToMatchResult = await dbErrorBoundary(
+        tx.insert(userToMatch).values(
+          players.map((player) => ({
+            clerkId: player,
+            matchId: newMatch.id,
+          })),
+        ),
+        "DB_UNABLE_TO_CREATE_USER_TO_MATCH_ENTRIES",
       );
-      return newMatch.id;
+      if (userToMatchResult.isErr()) {
+        tx.rollback();
+        return err(userToMatchResult.error);
+      }
+      return ok(newMatch.id);
     });
 
+    if (matchId.isErr()) {
+      return err({
+        code: "INTERNAL_SERVER_ERROR",
+        reason: matchId.error,
+      });
+    }
+
     await service.activeGames.createNewGame(
-      matchId,
+      matchId.value,
       gameType,
       players,
       async (outcome) => {
@@ -73,9 +117,10 @@ export const startGame = endpoint(
             result: outcome.result,
             winner: outcome.winnerId,
           })
-          .where(eq(match.id, matchId));
+          .where(eq(match.id, matchId.value));
       },
     );
+    return ok(matchId.value);
   },
 );
 
@@ -83,21 +128,32 @@ export const getAllMyMatches = endpoint(
   {
     auth: "player",
   },
-  async (_, user) =>
-    db
-      .select({
-        matchId: match.id,
-        game: match.game,
-        youWon: sql<boolean>`CASE WHEN ${match.winner} = ${user.userId} THEN true ELSE false END`,
-        result: match.result,
-        reason: match.reason,
-        opponentId: sql<string>`
+  async (_, user) => {
+    const result = await dbErrorBoundary(
+      db
+        .select({
+          matchId: match.id,
+          game: match.game,
+          youWon: sql<boolean>`CASE WHEN ${match.winner} = ${user.userId} THEN true ELSE false END`,
+          result: match.result,
+          reason: match.reason,
+          opponentId: sql<string>`
           (SELECT ${userToMatch.clerkId}
            FROM ${userToMatch} 
            WHERE ${userToMatch.matchId} = ${match.id} AND ${userToMatch.clerkId} != ${user.userId}
            LIMIT 1)`,
-      })
-      .from(match)
-      .innerJoin(userToMatch, eq(match.id, userToMatch.matchId))
-      .where(eq(userToMatch.clerkId, user.userId)),
+        })
+        .from(match)
+        .innerJoin(userToMatch, eq(match.id, userToMatch.matchId))
+        .where(eq(userToMatch.clerkId, user.userId)),
+      "DB_UNABLE_TO_GET_ALL_MY_MATCHES",
+    );
+    if (result.isErr()) {
+      return err({
+        code: "INTERNAL_SERVER_ERROR",
+        reason: result.error,
+      });
+    }
+    return ok(result.value);
+  },
 );

@@ -1,6 +1,7 @@
+import { EventEmitter } from "events";
 import { type GameResult } from "../stores/core/game-result-slice";
 import { createGameFactory, type GameMap } from "../stores/games/game-factory";
-import { registerService, type Service } from "./types";
+import { registerService, type TypedEventEmitter, type Service } from "./types";
 
 // #region types
 
@@ -21,7 +22,15 @@ export type GameEntry = {
 
 // #endregion
 
-class ActiveGameService implements Service {
+class ActiveGameService
+  extends EventEmitter
+  implements
+    Service,
+    TypedEventEmitter<{
+      gameCreated: GameEntry;
+      gameCompleted: GameEntry;
+    }>
+{
   private games: GameEntry[] = [];
   private playerJoinListeners = new Map<string, (game: GameEntry) => void>();
 
@@ -61,9 +70,12 @@ class ActiveGameService implements Service {
           // get rid of the reference
           unSub();
           this.games = this.games.filter((wrapper) => wrapper.game !== game);
+          this.emit("gameCompleted", gameEntry);
         });
       },
     );
+
+    this.emit("gameCreated", gameEntry);
   }
 
   listenForPlayerJoiningGame(
@@ -81,6 +93,7 @@ class ActiveGameService implements Service {
       gameEntry.game.store.getState().gameResult.forceStopGame();
     });
     this.games = [];
+    this.removeAllListeners();
   }
 }
 
