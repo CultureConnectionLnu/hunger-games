@@ -110,7 +110,7 @@ export const startGame = endpoint(
           );
           return;
         }
-        void db
+        await db
           .update(match)
           .set({
             reason: outcome.reason,

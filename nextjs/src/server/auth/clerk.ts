@@ -249,7 +249,7 @@ const clerkTestingContext = {
       ([_, value]) => value === userId,
     );
     if (testUserName === undefined) {
-      throw new Error("TESTING: Unknown clerk user id");
+      throw new Error("TESTING: Unknown clerk user id. " + userId);
     }
 
     const username = testUserName[0];

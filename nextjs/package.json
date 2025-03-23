@@ -20,7 +20,7 @@
     "check": "next lint && tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "ts": "tsc --noEmit --incremental",
-    "test": "dotenv cross-env NODE_ENV=test vitest run --no-file-parallelism",
+    "test": "dotenv cross-env NODE_ENV=test vitest run",
     "test:watch": "dotenv cross-env NODE_ENV=test vitest"
   },
   "dependencies": {

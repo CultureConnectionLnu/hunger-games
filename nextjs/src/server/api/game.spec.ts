@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { clerkTesting } from "../auth/clerk";
 import { getAllMyMatches, startGame } from "./game";
 import { actionTest } from "../testing";
+import { service } from "../service";
+import { type GameEntry } from "../service/active-games-service";
 
 describe("game api", () => {
   beforeAll(() => {
@@ -10,58 +12,6 @@ describe("game api", () => {
 
   afterAll(() => {
     clerkTesting.enableMockAuth(false);
-  });
-
-  describe("getAllMyMatches", () => {
-    test(
-      "should return forbidden when not logged in",
-      actionTest(async () => {
-        clerkTesting.mockAuth("none");
-        await expect(getAllMyMatches()).resolves.toErr({
-          code: "FORBIDDEN",
-          reason: "You are not authorized to access this resource",
-        });
-      }),
-    );
-
-    test(
-      "should return forbidden when the user is not a player",
-      actionTest(async () => {
-        clerkTesting.mockAuth("user1");
-        await expect(getAllMyMatches()).resolves.toErr({
-          code: "FORBIDDEN",
-          reason: "You are not authorized to access this resource",
-        });
-      }),
-    );
-
-    test(
-      "should return no matches for a player with no matches",
-      actionTest(async () => {
-        clerkTesting.mockAuth("player1");
-        await expect(getAllMyMatches()).resolves.toOk([]);
-      }),
-    );
-
-    test(
-      "should return the currently running match",
-      actionTest(async () => {
-        clerkTesting.mockAuth("player1");
-        const matchId = (
-          await startGame({ opponentId: clerkTesting.testUserMap.player2 })
-        )._unsafeUnwrap();
-        await expect(getAllMyMatches()).resolves.toOk([
-          {
-            matchId,
-            game: "rock-paper-scissors",
-            opponentId: clerkTesting.testUserMap.player2,
-            reason: "ongoing",
-            result: null,
-            youWon: false,
-          },
-        ]);
-      }),
-    );
   });
 
   describe("startGame", () => {
@@ -151,4 +101,101 @@ describe("game api", () => {
       }),
     );
   });
+
+  describe("getAllMyMatches", () => {
+    test(
+      "should return forbidden when not logged in",
+      actionTest(async () => {
+        clerkTesting.mockAuth("none");
+        await expect(getAllMyMatches()).resolves.toErr({
+          code: "FORBIDDEN",
+          reason: "You are not authorized to access this resource",
+        });
+      }),
+    );
+
+    test(
+      "should return forbidden when the user is not a player",
+      actionTest(async () => {
+        clerkTesting.mockAuth("user1");
+        await expect(getAllMyMatches()).resolves.toErr({
+          code: "FORBIDDEN",
+          reason: "You are not authorized to access this resource",
+        });
+      }),
+    );
+
+    test(
+      "should return no matches for a player with no matches",
+      actionTest(async () => {
+        clerkTesting.mockAuth("player1");
+        await expect(getAllMyMatches()).resolves.toOk([]);
+      }),
+    );
+
+    test(
+      "should return the currently running match",
+      actionTest(async () => {
+        clerkTesting.mockAuth("player1");
+        const matchId = (
+          await startGame({ opponentId: clerkTesting.testUserMap.player2 })
+        )._unsafeUnwrap();
+
+        await expect(getAllMyMatches()).resolves.toOk([
+          {
+            matchId,
+            game: "rock-paper-scissors",
+            opponentId: clerkTesting.testUserMap.player2,
+            reason: "ongoing",
+            result: null,
+            youWon: false,
+          },
+        ]);
+      }),
+    );
+
+    test(
+      "should show the finished match",
+      actionTest(async () => {
+        clerkTesting.mockAuth("player1");
+
+        const matchId = (
+          await startGame({ opponentId: clerkTesting.testUserMap.player2 })
+        )._unsafeUnwrap();
+        fakeWinGame(
+          service.activeGames.getActiveGameOfPlayer(
+            clerkTesting.testUserMap.player1,
+          )!,
+          "player1",
+        );
+
+        await expect(getAllMyMatches()).resolves.toOk([
+          {
+            matchId,
+            game: "rock-paper-scissors",
+            opponentId: clerkTesting.testUserMap.player2,
+            reason: "game-result",
+            result: "winner",
+            youWon: true,
+          },
+        ]);
+      }),
+    );
+  });
 });
+
+function fakeWinGame(game: GameEntry, winner: "player1" | "player2") {
+  const store = game.game.store.getState();
+  const player1Id = store.connectedView.mutable.player1.id;
+  const player2Id = store.connectedView.mutable.player2.id;
+  const winnerId = winner === "player1" ? player1Id : player2Id;
+  const looserId = winner === "player1" ? player2Id : player1Id;
+
+  store.gameResult.gameWon(winnerId, looserId);
+}
+
+function fakeTieGame(game: GameEntry) {
+  const store = game.game.store.getState();
+
+  store.gameResult.gameTied();
+}
