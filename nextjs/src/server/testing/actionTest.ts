@@ -92,13 +92,17 @@ class GameHelper {
     this.matchId = activeGame.id;
     this.store = activeGame.game.store.getState();
 
-    this.getId = (player: "player1" | "player2") =>
-      this.store.connectedView.mutable[player].id;
-    this.getOpponentId = (player: "player1" | "player2") =>
-      this.getId(player === "player1" ? "player2" : "player1");
+    this.getId = (player: "initiator" | "opponent") => {
+      if (player === "initiator") {
+        return this.store.connectedView.mutable.player1.id;
+      }
+      return this.store.connectedView.mutable.player2.id;
+    };
+    this.getOpponentId = (player: "initiator" | "opponent") =>
+      this.getId(player === "initiator" ? "opponent" : "initiator");
   }
 
-  public async fakeWin(winner: "player1" | "player2") {
+  public async fakeWin(winner: "initiator" | "opponent") {
     return new Promise<this>((resolve) => {
       service.activeGames.once("gameCompleted", () => {
         resolve(this);
@@ -119,7 +123,7 @@ class GameHelper {
     });
   }
 
-  public async fakePlayerDisconnected(winner: "player1" | "player2") {
+  public async fakePlayerDisconnected(winner: "initiator" | "opponent") {
     return new Promise<this>((resolve) => {
       service.activeGames.once("gameCompleted", () => {
         resolve(this);
@@ -140,7 +144,7 @@ class GameHelper {
     });
   }
 
-  public async fakeNeverStarted(winner?: "player1" | "player2") {
+  public async fakeNeverStarted(winner?: "initiator" | "opponent") {
     return new Promise<this>((resolve) => {
       service.activeGames.once("gameCompleted", () => {
         resolve(this);

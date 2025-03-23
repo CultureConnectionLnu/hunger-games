@@ -154,7 +154,7 @@ describe("game api", () => {
         clerkTesting.mockAuth("player1");
         const meta = await helper
           .startGame("player2")
-          .then((game) => game.fakeWin("player1"))
+          .then((game) => game.fakeWin("initiator"))
           .then((game) => game.getMeta());
 
         await expect(getAllMyMatches()).resolves.toOk([
@@ -174,12 +174,27 @@ describe("game api", () => {
         clerkTesting.mockAuth("player1");
         const firstWin = await helper
           .startGame("player2")
-          .then((game) => game.fakeWin("player1"))
+          .then((game) => game.fakeWin("initiator"))
           .then((game) => game.getMeta());
 
         const firstLoose = await helper
           .startGame("player2")
-          .then((game) => game.fakeWin("player2"))
+          .then((game) => game.fakeWin("opponent"))
+          .then((game) => game.getMeta());
+
+        const neverStarted = await helper
+          .startGame("player3")
+          .then((game) => game.fakeNeverStarted("opponent"))
+          .then((game) => game.getMeta());
+
+        const neverStartedTie = await helper
+          .startGame("player3")
+          .then((game) => game.fakeNeverStarted())
+          .then((game) => game.getMeta());
+
+        const disconnectWin = await helper
+          .startGame("player3")
+          .then((game) => game.fakePlayerDisconnected("initiator"))
           .then((game) => game.getMeta());
 
         const ongoing = (await helper.startGame("player2")).getMeta();
@@ -196,6 +211,24 @@ describe("game api", () => {
             reason: "game-result",
             result: "winner",
             youWon: false,
+          },
+          {
+            ...neverStarted,
+            reason: "never-started",
+            result: "winner",
+            youWon: false,
+          },
+          {
+            ...neverStartedTie,
+            reason: "never-started",
+            result: "tie",
+            youWon: false,
+          },
+          {
+            ...disconnectWin,
+            reason: "other-player-disconnected",
+            result: "winner",
+            youWon: true,
           },
           {
             ...ongoing,
