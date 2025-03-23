@@ -4,13 +4,21 @@ import { match } from "../db/schema";
 import { service } from "../service";
 import { type GameEntry } from "../service/active-games-service";
 import { waitUntil } from "./utils";
+import { clerkTesting } from "../auth/clerk";
+import { startGame } from "../api/game";
 
 type TestState = {
   createdGames: GameEntry[];
   completedGames: GameEntry[];
 };
 
-export function actionTest(testFn: () => Promise<void>) {
+type TestHelpers = {
+  startGame(
+    opponent: keyof typeof clerkTesting.testUserMap,
+  ): Promise<GameHelper>;
+};
+
+export function actionTest(testFn: (helpers: TestHelpers) => Promise<void>) {
   const state: TestState = {
     createdGames: [],
     completedGames: [],
@@ -30,7 +38,19 @@ export function actionTest(testFn: () => Promise<void>) {
     service.activeGames.on("gameCompleted", completeGameListener);
 
     try {
-      await testFn();
+      await testFn({
+        startGame: async (opponent) => {
+          const opponentId = clerkTesting.testUserMap[opponent];
+          const matchId = (await startGame({ opponentId }))._unsafeUnwrap();
+          const activeGame = service.activeGames
+            .getAllActiveGames()
+            .find((game) => game.id === matchId);
+          if (!activeGame) {
+            throw new Error("Game not found");
+          }
+          return new GameHelper(opponentId, activeGame);
+        },
+      });
     } finally {
       // remove listeners
       service.activeGames.off("gameCreated", createGameListener);
@@ -57,4 +77,90 @@ async function forceStopAllGames(state: TestState) {
 
 async function removeAllMatches(ids: number[]) {
   await db.delete(match).where(inArray(match.id, ids));
+}
+
+class GameHelper {
+  private matchId;
+  private store;
+  private getId;
+  private getOpponentId;
+
+  constructor(
+    private opponentId: string,
+    private activeGame: GameEntry,
+  ) {
+    this.matchId = activeGame.id;
+    this.store = activeGame.game.store.getState();
+
+    this.getId = (player: "player1" | "player2") =>
+      this.store.connectedView.mutable[player].id;
+    this.getOpponentId = (player: "player1" | "player2") =>
+      this.getId(player === "player1" ? "player2" : "player1");
+  }
+
+  public async fakeWin(winner: "player1" | "player2") {
+    return new Promise<this>((resolve) => {
+      service.activeGames.once("gameCompleted", () => {
+        resolve(this);
+      });
+      this.store.gameResult.gameWon(
+        this.getId(winner),
+        this.getOpponentId(winner),
+      );
+    });
+  }
+
+  public async fakeTie() {
+    return new Promise<this>((resolve) => {
+      service.activeGames.once("gameCompleted", () => {
+        resolve(this);
+      });
+      this.store.gameResult.gameTied();
+    });
+  }
+
+  public async fakePlayerDisconnected(winner: "player1" | "player2") {
+    return new Promise<this>((resolve) => {
+      service.activeGames.once("gameCompleted", () => {
+        resolve(this);
+      });
+      this.store.gameResult.otherPlayerDisconnected(
+        this.getId(winner),
+        this.getOpponentId(winner),
+      );
+    });
+  }
+
+  public async fakeForceStop() {
+    return new Promise<this>((resolve) => {
+      service.activeGames.once("gameCompleted", () => {
+        resolve(this);
+      });
+      this.store.gameResult.forceStopGame();
+    });
+  }
+
+  public async fakeNeverStarted(winner?: "player1" | "player2") {
+    return new Promise<this>((resolve) => {
+      service.activeGames.once("gameCompleted", () => {
+        resolve(this);
+      });
+      this.store.gameResult.neverStarted(
+        winner
+          ? {
+              winnerId: this.getId(winner),
+              looserId: this.getOpponentId(winner),
+            }
+          : undefined,
+      );
+    });
+  }
+
+  public getMeta() {
+    return {
+      matchId: this.matchId,
+      game: this.activeGame.type,
+      opponentId: this.opponentId,
+    };
+  }
 }
