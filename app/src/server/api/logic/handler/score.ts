@@ -198,25 +198,23 @@ class ScoreHandler {
   }
 
   private calculateScoreEntries(loserCurrentScore: number) {
-    const reducePointsBy = Math.trunc(
-      (loserCurrentScore * fightScoringConfig.winnerGetsPercent) / 100,
-    );
+    const log3 = Math.log(loserCurrentScore) / Math.log(3);
+    const proportion = 5 / log3 - 0.3;
+
+    // Calculate points to take based on proportion
+    const pointsToTake = Math.round(loserCurrentScore * proportion);
+
+    // Ensure loser doesn't lose more points than they have
+    const actualPointsToTake = Math.min(pointsToTake, loserCurrentScore);
+
+    // Ensure winner gets at least 100 points
     const winnerAddition = Math.max(
       fightScoringConfig.winnerMinimumPointsBonus,
-      reducePointsBy,
+      actualPointsToTake,
     );
 
-    const newLoserScore = loserCurrentScore - reducePointsBy;
-    if (newLoserScore < fightScoringConfig.lowestScore) {
-      return {
-        // the result would be 0 then
-        loserSubtraction: -loserCurrentScore,
-        winnerAddition: loserCurrentScore,
-      };
-    }
-
     return {
-      loserSubtraction: -reducePointsBy,
+      loserSubtraction: -actualPointsToTake,
       winnerAddition,
     };
   }
