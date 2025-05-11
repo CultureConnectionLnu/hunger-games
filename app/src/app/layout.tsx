@@ -19,8 +19,8 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "Hunger Games",
-  description: "Culture Connection Hunger Games Student Game",
+  title: "Hit Run Fight",
+  description: "Culture Connection Hit Run Fight Student Game",
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 

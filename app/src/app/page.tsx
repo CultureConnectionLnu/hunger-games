@@ -15,7 +15,7 @@ export default async function Home() {
           />
         </div>
         <h1 className="mb-4 text-center text-2xl font-bold text-white">
-          Culture Connection Hunger Games
+          Culture Connection Hit Run Fight
         </h1>
         <p className="text-center text-white">
           Become a player if you are not one yet!
